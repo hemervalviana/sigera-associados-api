@@ -128,7 +128,7 @@ Concluída em 24/10/2026.
 
 O projeto não tem Git, README nem configuração de produção.
 
-- [x] **Git preparado:** `.gitignore` (bin, obj, .vs, segredos locais, `urlpublica.local.json`) e `.gitattributes`. Falta rodar `git init` e o primeiro commit.
+- [x] **Git e GitHub (24/10/2026):** repositório privado https://github.com/hemervalviana/sigera-associados-api, branch `main`, com `.gitignore` e `.gitattributes`.
 - [x] **README.md** na raiz: estrutura, configuração dos User Secrets, banco e migrations, execução, testes, sistemas e permissões, endpoints, túnel e links da documentação.
 - [ ] **`appsettings.Production.json`** e definição de onde ficarão os segredos em produção.
 - [ ] **Health checks** (`/health`) para o banco de identidade e as 4 bases.
