@@ -117,6 +117,8 @@ Rode a pasta inteira: passe o mouse em **07 - Testes de erro e segurança**, cli
 | [ ] | 07.11 | Grupo inexistente | **400** |
 | [ ] | 07.12 | Filial sem empresa | **400** |
 | [ ] | 07.13 | Acesso ao sistema 7 | **400** |
+| [ ] | 07.13b | Acesso a empresa inexistente (99) | **400** |
+| [ ] | 07.13c | Carteira de corretor inexistente | **400** |
 | [ ] | 07.14 | Link de confirmação adulterado | **400** |
 | [ ] | 07.15 | Usuário inexistente | **404** |
 

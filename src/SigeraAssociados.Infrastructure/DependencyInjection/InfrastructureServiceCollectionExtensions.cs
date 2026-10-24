@@ -117,6 +117,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IEscopoAcessoService, EscopoAcessoService>();
         services.AddScoped<IGestaoAcessosService, GestaoAcessosService>();
 
+        // Confere empresa, filial e corretor no banco do sistema ao conceder acesso.
+        services.AddScoped<IVerificadorCadastroSistema, VerificadorCadastroSistema>();
+
         // Consulta e manutenção das contas de usuário.
         services.AddScoped<IGestaoUsuariosService, GestaoUsuariosService>();
 

@@ -15,12 +15,15 @@ public sealed class GestaoAcessosService : IGestaoAcessosService
 {
 	private readonly SigeraIdentityDbContext _identityDb;
 	private readonly IMemoryCache _cache;
+	private readonly IVerificadorCadastroSistema _verificador;
 
 	public GestaoAcessosService(
 		SigeraIdentityDbContext identityDb,
-		IMemoryCache cache)
+		IMemoryCache cache,
+		IVerificadorCadastroSistema verificador)
 	{
 		_identityDb = identityDb;
+		_verificador = verificador;
 		_cache = cache;
 	}
 
@@ -83,6 +86,14 @@ public sealed class GestaoAcessosService : IGestaoAcessosService
 			return new ResultadoGestaoAcesso(
 				StatusGestaoAcesso.Duplicado,
 				"Este acesso já está cadastrado para o usuário.");
+		}
+
+		// Confere no banco do sistema se empresa, filial e corretor existem.
+		var erroCadastro = await VerificarCadastroAsync(acesso, cancellationToken);
+
+		if (erroCadastro is not null)
+		{
+			return new ResultadoGestaoAcesso(StatusGestaoAcesso.Invalido, erroCadastro);
 		}
 
 		var entidade = new UsuarioAcesso
@@ -168,6 +179,42 @@ public sealed class GestaoAcessosService : IGestaoAcessosService
 		if (acesso.SqPesCorretor is not null && acesso.CdEmp is null)
 		{
 			return "Para restringir pela carteira do corretor, informe também a empresa.";
+		}
+
+		return null;
+	}
+
+	/// <summary>
+	/// Confere no banco de negócio do sistema se a empresa, a filial e o
+	/// corretor do acesso existem. Retorna a mensagem de erro ou null.
+	/// Acesso ao sistema inteiro (sem empresa) não precisa de conferência.
+	/// </summary>
+	private async Task<string?> VerificarCadastroAsync(
+		NovoAcessoDto acesso,
+		CancellationToken cancellationToken)
+	{
+		if (acesso.CdEmp is not decimal empresa)
+		{
+			return null;
+		}
+
+		var nomeSistema = ((SigeraSystem)acesso.Sistema).ToString();
+
+		if (!await _verificador.EmpresaExisteAsync(acesso.Sistema, empresa, cancellationToken))
+		{
+			return $"A empresa {empresa:0} não existe no sistema {nomeSistema}.";
+		}
+
+		if (acesso.CdFil is decimal filial
+			&& !await _verificador.FilialExisteAsync(acesso.Sistema, empresa, filial, cancellationToken))
+		{
+			return $"A filial {filial:0} não tem associados nem contratos na empresa {empresa:0} do sistema {nomeSistema}.";
+		}
+
+		if (acesso.SqPesCorretor is decimal corretor
+			&& !await _verificador.CorretorExisteAsync(acesso.Sistema, empresa, corretor, cancellationToken))
+		{
+			return $"O corretor {corretor:0} não existe ou não tem contratos na empresa {empresa:0} do sistema {nomeSistema}.";
 		}
 
 		return null;

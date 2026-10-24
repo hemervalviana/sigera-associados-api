@@ -1,6 +1,6 @@
 # Postman — passo a passo da SigeraAssociados API
 
-A coleção `SigeraAssociados API.postman_collection.json` tem 49 requisições, organizadas em 8 pastas, na ordem em que você deve usá-las. Cada requisição tem uma explicação na aba **Docs** do Postman.
+A coleção `SigeraAssociados API.postman_collection.json` tem 51 requisições, organizadas em 8 pastas, na ordem em que você deve usá-las. Cada requisição tem uma explicação na aba **Docs** do Postman.
 
 ## 1. Instalar e abrir o Postman
 

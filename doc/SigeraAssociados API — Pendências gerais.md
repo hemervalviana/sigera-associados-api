@@ -66,7 +66,8 @@ São pontos que podem expor dados ou quebrar a consulta em produção.
 - [x] **Usuário `sa` trocado por `usr_sisgera_api`** no `appsettings.json`. O script `scripts\criar-login-usr_sisgera_api.sql` cria o login com leitura nas 4 bases e leitura/escrita no banco de identidade.
 - [ ] **Executar o script do login e atualizar os User Secrets** (`ConnectionSettings:Password`, `IdentityConnectionSettings:User` e `IdentityConnectionSettings:Password`).
 - [ ] **Certificado do SQL Server.** `TrustServerCertificate = true` está no appsettings base. Deixar só em Development e usar certificado válido nos demais ambientes.
-- [ ] **Validar a concessão de acesso.** `ConcederAsync` não confere se a empresa pertence ao sistema (cada base tem um único `CD_EMP`; SONASP = 2) nem se `SqPesCorretor` existe e é corretor. Um acesso errado não dá erro, só retorna vazio.
+- [x] **Concessão de acesso conferida no banco do sistema:** empresa precisa existir em `T009EMPS`; filial precisa ter associado ou contrato; corretor precisa existir em `T000PESS` e ter contrato em `T009CTRT` na empresa. Senão, **400** com a mensagem. Testes em `ConcessaoAcessoTests`; Postman 07.13b e 07.13c.
+- [ ] **Tabela de filiais:** se existir uma tabela própria de filiais, trocar a conferência de filial (hoje por associados/contratos) para ela.
 - [ ] **Escopo corretor + empresa inteira.** Hoje um acesso com empresa e sem corretor libera a empresa toda. Conferir na tela de administração que corretores nunca recebam esse tipo de acesso por engano.
 
 ## Prioridade média — funcionalidades faltando
