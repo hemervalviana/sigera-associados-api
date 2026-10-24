@@ -1,6 +1,6 @@
 # Postman — passo a passo da SigeraAssociados API
 
-A coleção `SigeraAssociados API.postman_collection.json` tem 24 requisições, organizadas em 6 pastas, na ordem em que você deve usá-las. Cada requisição tem uma explicação na aba **Docs** do Postman.
+A coleção `SigeraAssociados API.postman_collection.json` tem 49 requisições, organizadas em 8 pastas, na ordem em que você deve usá-las. Cada requisição tem uma explicação na aba **Docs** do Postman.
 
 ## 1. Instalar e abrir o Postman
 
@@ -58,6 +58,8 @@ Deixe essa janela aberta.
 | 04 - Associados | Consultar associados | Conforme os acessos |
 | 05 - Usuários | Criar, listar, trocar grupo, bloquear, excluir | Administradores e Gestores |
 | 06 - Acessos | Definir o que cada usuário vê | Administradores |
+| 07 - Testes de erro e segurança | Chamadas que a API deve recusar (401, 403, 400, 409, 404) | Rodar com **Run folder** |
+| 08 - Teste do usuário restrito | Confere que um usuário sem acesso irrestrito só vê a empresa e filial liberadas | Rodar com **Run folder** (preencha `restritoSenha`) |
 
 Para escolher o banco nas pastas 03 e 04, troque a variável `sistema` da coleção: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP.
 

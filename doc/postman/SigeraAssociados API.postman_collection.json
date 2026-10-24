@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "05799852-2095-4f13-8116-df7b26ba17fe",
+    "_postman_id": "2aa2c77a-2b1f-4619-a5c9-8d311b491ad9",
     "name": "SigeraAssociados API",
     "description": "Coleção de testes da SigeraAssociados API.\n\n## Como começar\n1. Suba a API (`dotnet run --project src\\SigeraAssociados.Api --launch-profile https`).\n2. Clique no nome da coleção > aba **Variables** e preencha `email` e `senha` na coluna **Current value**.\n3. Rode **01 - Autenticação > 01.1 - Login**. O token é guardado sozinho.\n4. Use as outras pastas na ordem. Cada requisição tem um passo a passo na aba **Docs** (ícone de documento à direita).\n\n## Variáveis principais\n- `baseUrl`: endereço da API.\n- `sistema`: banco usado nas pastas 03 e 04 (1 PROASP, 2 SONASP, 3 ABSP, 4 GSP).\n- `token`, `usuarioId`, `acessoId`: preenchidas automaticamente pelos scripts.\n\n## Erro de certificado\nSe aparecer *SSL Error: self signed certificate*, desligue em **Settings > General > SSL certificate verification**.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -286,7 +286,7 @@
               {
                 "key": "X-Sigera-Sistema",
                 "value": "{{sistema}}",
-                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
               }
             ],
             "url": {
@@ -323,7 +323,7 @@
               {
                 "key": "X-Sigera-Sistema",
                 "value": "{{sistema}}",
-                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
               }
             ],
             "url": {
@@ -366,7 +366,7 @@
               {
                 "key": "X-Sigera-Sistema",
                 "value": "{{sistema}}",
-                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
               }
             ],
             "url": {
@@ -402,7 +402,7 @@
               {
                 "key": "X-Sigera-Sistema",
                 "value": "{{sistema}}",
-                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
               }
             ],
             "url": {
@@ -479,7 +479,7 @@
               {
                 "key": "X-Sigera-Sistema",
                 "value": "{{sistema}}",
-                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
               }
             ],
             "url": {
@@ -1146,7 +1146,7 @@
               {
                 "key": "X-Sigera-Sistema",
                 "value": "{{sistema}}",
-                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
               }
             ],
             "url": {
@@ -1251,7 +1251,7 @@
               {
                 "key": "X-Sigera-Sistema",
                 "value": "{{sistema}}",
-                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
               }
             ],
             "url": {
@@ -1294,7 +1294,7 @@
               {
                 "key": "X-Sigera-Sistema",
                 "value": "{{sistema}}",
-                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
               }
             ],
             "url": {
@@ -1702,6 +1702,565 @@
           ]
         }
       ]
+    },
+    {
+      "name": "08 - Teste do usuário restrito (empresa e filial)",
+      "description": "Confere, de ponta a ponta, que um usuário **sem** acesso irrestrito só vê os associados liberados para ele.\n\n## Antes de rodar\n1. Na aba **Variables** da coleção, preencha `restritoSenha` (senha do usuário restrito) em **Current value**.\n2. Confira `restritoEmail` e `restritoUsuarioId` (o usuário precisa existir, estar confirmado e **não** ser administrador).\n3. Confira `senha` (a sua, de administrador).\n\n## Como rodar\nPasse o mouse na pasta > `...` > **Run folder** > **Run**. Ou envie uma a uma, na ordem.\n\nEsta pasta usa tokens próprios (`tokenAdmin` e `tokenRestrito`) e não troca o `token` das outras pastas.\n\n## O que ela faz\n- Remove do usuário restrito os acessos ao **sistema inteiro** (eles liberam tudo e invalidariam o teste).\n- Garante o acesso à empresa `restritoCdEmp` + filial `restritoCdFil` no sistema `sistemaRestrito`.\n- Compara o total do administrador com o do usuário restrito e confere as filiais devolvidas.\n- Confere que o restrito recebe 403 em outro sistema e na gestão de usuários, e 404 em associado de outra filial.",
+      "item": [
+        {
+          "name": "08.1 - Login como administrador (guarda tokenAdmin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Faz login com `email` e `senha` (administrador) e guarda o token em `tokenAdmin`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"senha\": \"{{senha}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set(\"tokenAdmin\", pm.response.json().accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08.2 - Remover acessos ao sistema inteiro do usuário restrito",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{restritoUsuarioId}}/acessos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{restritoUsuarioId}}",
+                "acessos"
+              ]
+            },
+            "description": "Lista os acessos do usuário restrito e **revoga automaticamente** os que liberam o sistema inteiro (`cdEmp` vazio) no `sistemaRestrito`.\n\nVeja no **Console** quais acessos foram revogados.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const sistema = Number(pm.collectionVariables.get(\"sistemaRestrito\"));",
+                  "const amplos = pm.response.json().acessos.filter(a => a.sistema === sistema && a.cdEmp === null);",
+                  "const base = pm.collectionVariables.get(\"baseUrl\");",
+                  "const usuarioId = pm.collectionVariables.get(\"restritoUsuarioId\");",
+                  "amplos.forEach(a => {",
+                  "    pm.sendRequest({",
+                  "        url: `${base}/api/administracao/usuarios/${usuarioId}/acessos/${a.id}`,",
+                  "        method: \"DELETE\",",
+                  "        header: { Authorization: \"Bearer \" + pm.collectionVariables.get(\"tokenAdmin\") }",
+                  "    }, (erro, resposta) => {",
+                  "        console.log(\"Acesso ao sistema inteiro revogado: id \" + a.id + \" -> \" + (erro ? erro : resposta.code));",
+                  "    });",
+                  "});",
+                  "pm.test(\"Acessos ao sistema inteiro encontrados: \" + amplos.length, () => true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08.3 - Garantir acesso à empresa e filial do teste",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{restritoUsuarioId}}/acessos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{restritoUsuarioId}}",
+                "acessos"
+              ]
+            },
+            "description": "Concede o acesso empresa `restritoCdEmp` + filial `restritoCdFil` no `sistemaRestrito`.\n\n**201** = concedido agora; **409** = já existia. Os dois estão certos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sistema\": \"{{sistemaRestrito}}\",\n  \"cdEmp\": \"{{restritoCdEmp}}\",\n  \"cdFil\": \"{{restritoCdFil}}\",\n  \"sqPesCorretor\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201, 409)\", () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08.4 - Total de associados como administrador (referência)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistemaRestrito}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/consulta?pagina=1&tamanhoPagina=100&ordenarPor=cdemp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "consulta"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "1"
+                },
+                {
+                  "key": "tamanhoPagina",
+                  "value": "100"
+                },
+                {
+                  "key": "ordenarPor",
+                  "value": "cdemp"
+                }
+              ]
+            },
+            "description": "Consulta como administrador para ter o total de referência e um associado de **outra filial** (usado no 08.9).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (pm.response.code === 200) {",
+                  "    const r = pm.response.json();",
+                  "    pm.collectionVariables.set(\"totalAdmin\", r.paginacao.totalRegistros);",
+                  "    const filial = Number(pm.collectionVariables.get(\"restritoCdFil\"));",
+                  "    const fora = r.associados.find(a => a.cdFil !== filial);",
+                  "    if (fora) {",
+                  "        pm.collectionVariables.set(\"associadoForaCdEmp\", fora.cdEmp);",
+                  "        pm.collectionVariables.set(\"associadoForaSqPesCli\", fora.sqPesCli);",
+                  "        console.log(\"Associado de outra filial para o 08.9: \" + fora.cdEmp + \"/\" + fora.sqPesCli + \" (filial \" + fora.cdFil + \")\");",
+                  "    }",
+                  "    console.log(\"Total como administrador: \" + r.paginacao.totalRegistros);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08.5 - Login como usuário restrito (guarda tokenRestrito)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Faz login com `restritoEmail` e `restritoSenha` e guarda o token em `tokenRestrito`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{restritoEmail}}\",\n  \"senha\": \"{{restritoSenha}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"restritoSenha\")) {",
+                  "    console.warn(\"Preencha a variável restritoSenha (aba Variables da coleção).\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set(\"tokenRestrito\", pm.response.json().accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08.6 - Minha conta como usuário restrito",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/conta",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "conta"
+              ]
+            },
+            "description": "Confere que o usuário **não** tem acesso irrestrito nem acesso ao sistema inteiro, e guarda se ele tem carteira de corretor.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRestrito}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const r = pm.response.json();",
+                  "const sistema = Number(pm.collectionVariables.get(\"sistemaRestrito\"));",
+                  "const doSistema = r.acessos.filter(a => a.sistema === sistema);",
+                  "pm.test(\"Não tem acesso irrestrito\", () => pm.expect(r.acessoIrrestrito).to.eql(false));",
+                  "pm.test(\"Não tem acesso ao sistema inteiro\", () => pm.expect(doSistema.some(a => a.cdEmp === null)).to.eql(false));",
+                  "pm.collectionVariables.set(\"restritoTemCarteira\", doSistema.some(a => a.sqPesCorretor !== null) ? \"true\" : \"false\");",
+                  "console.log(\"Acessos no sistema \" + sistema + \": \" + JSON.stringify(doSistema.map(a => ({ cdEmp: a.cdEmp, cdFil: a.cdFil, corretor: a.sqPesCorretor }))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08.7 - Buscar associados como usuário restrito (deve vir filtrado)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistemaRestrito}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/consulta?pagina=1&tamanhoPagina=100",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "consulta"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "1"
+                },
+                {
+                  "key": "tamanhoPagina",
+                  "value": "100"
+                }
+              ]
+            },
+            "description": "Principal teste da pasta. Confere que:\n- o total é **menor** que o do administrador (08.4);\n- todos os associados são da empresa `restritoCdEmp`;\n- sem carteira de corretor, todos são da filial `restritoCdFil`.\n\nNo console da API, a consulta deve usar `IN (...)` e **não** `OPENJSON`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRestrito}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const r = pm.response.json();",
+                  "const totalAdmin = Number(pm.collectionVariables.get(\"totalAdmin\"));",
+                  "const empresa = Number(pm.collectionVariables.get(\"restritoCdEmp\"));",
+                  "const filial = Number(pm.collectionVariables.get(\"restritoCdFil\"));",
+                  "const temCarteira = pm.collectionVariables.get(\"restritoTemCarteira\") === \"true\";",
+                  "pm.test(\"Total restrito (\" + r.paginacao.totalRegistros + \") menor que o do administrador (\" + totalAdmin + \")\",",
+                  "    () => pm.expect(r.paginacao.totalRegistros).to.be.below(totalAdmin));",
+                  "pm.test(\"Todos da empresa \" + empresa, () => r.associados.forEach(a => pm.expect(a.cdEmp).to.eql(empresa)));",
+                  "if (!temCarteira) {",
+                  "    pm.test(\"Todos da filial \" + filial + \" (usuário sem carteira)\", () => r.associados.forEach(a => pm.expect(a.cdFil).to.eql(filial)));",
+                  "}",
+                  "const porFilial = {};",
+                  "r.associados.forEach(a => { porFilial[a.cdFil] = (porFilial[a.cdFil] || 0) + 1; });",
+                  "console.log(\"Associados por filial nesta página: \" + JSON.stringify(porFilial));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08.8 - Usuário restrito em sistema sem acesso deve dar 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistemaSemAcesso}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados"
+              ]
+            },
+            "description": "Consulta o sistema `sistemaSemAcesso`, onde o usuário restrito não tem acesso.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRestrito}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (403)\", () => pm.expect(pm.response.code).to.be.oneOf([403]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08.9 - Associado de outra filial deve dar 404 para o restrito",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistemaRestrito}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{associadoForaCdEmp}}/{{associadoForaSqPesCli}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{associadoForaCdEmp}}",
+                "{{associadoForaSqPesCli}}"
+              ]
+            },
+            "description": "Tenta abrir o associado de outra filial encontrado no 08.4. Para o restrito ele não existe (404).\n\nSe o usuário tiver carteira de corretor e esse associado estiver nela, o resultado pode ser 200.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRestrito}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (404)\", () => pm.expect(pm.response.code).to.be.oneOf([404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08.10 - Usuário restrito tentando listar usuários deve dar 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios"
+              ]
+            },
+            "description": "Corretores não gerenciam usuários.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRestrito}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (403)\", () => pm.expect(pm.response.code).to.be.oneOf([403]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
@@ -1754,6 +2313,71 @@
       "key": "acessoId",
       "value": "",
       "description": "Preenchido pelos 06.1 a 06.3."
+    },
+    {
+      "key": "restritoEmail",
+      "value": "hemervalrv@gmail.com",
+      "description": "Pasta 08: e-mail do usuário restrito (não administrador, e-mail confirmado)."
+    },
+    {
+      "key": "restritoSenha",
+      "value": "",
+      "description": "Pasta 08: senha do usuário restrito. Preencha só em Current value."
+    },
+    {
+      "key": "restritoUsuarioId",
+      "value": "ed463c28-0a1e-4d10-9881-833696537935",
+      "description": "Pasta 08: ID do usuário restrito."
+    },
+    {
+      "key": "sistemaRestrito",
+      "value": "2",
+      "description": "Pasta 08: sistema do teste (2 = SONASP)."
+    },
+    {
+      "key": "sistemaSemAcesso",
+      "value": "1",
+      "description": "Pasta 08: sistema em que o restrito NÃO tem acesso (1 = PROASP)."
+    },
+    {
+      "key": "restritoCdEmp",
+      "value": "2",
+      "description": "Pasta 08: empresa liberada para o restrito."
+    },
+    {
+      "key": "restritoCdFil",
+      "value": "1",
+      "description": "Pasta 08: filial liberada para o restrito."
+    },
+    {
+      "key": "tokenAdmin",
+      "value": "",
+      "description": "Pasta 08: preenchido pelo 08.1."
+    },
+    {
+      "key": "tokenRestrito",
+      "value": "",
+      "description": "Pasta 08: preenchido pelo 08.5."
+    },
+    {
+      "key": "totalAdmin",
+      "value": "",
+      "description": "Pasta 08: preenchido pelo 08.4."
+    },
+    {
+      "key": "restritoTemCarteira",
+      "value": "",
+      "description": "Pasta 08: preenchido pelo 08.6."
+    },
+    {
+      "key": "associadoForaCdEmp",
+      "value": "",
+      "description": "Pasta 08: preenchido pelo 08.4."
+    },
+    {
+      "key": "associadoForaSqPesCli",
+      "value": "",
+      "description": "Pasta 08: preenchido pelo 08.4."
     },
     {
       "key": "cdEmp",

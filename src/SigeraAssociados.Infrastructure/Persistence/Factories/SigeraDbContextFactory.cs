@@ -44,7 +44,9 @@ public sealed class SigeraDbContextFactory
 
 		var dbContextOptions =
 			new DbContextOptionsBuilder<SigeraDbContext>()
-				.UseSqlServer(connectionStringBuilder.ConnectionString)
+				.UseSqlServer(
+					connectionStringBuilder.ConnectionString,
+					sql => sql.UseCompatibilityLevel(_options.CompatibilityLevel))
 				.Options;
 
 		return new SigeraDbContext(dbContextOptions);

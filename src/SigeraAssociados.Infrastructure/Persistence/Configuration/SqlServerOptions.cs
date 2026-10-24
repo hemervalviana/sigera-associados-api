@@ -25,4 +25,13 @@ public sealed class SqlServerOptions
 	public bool Encrypt { get; set; } = true;
 
 	public bool TrustServerCertificate { get; set; } = false;
+
+	/// <summary>
+	/// Nível de compatibilidade das bases de negócio (sys.databases.compatibility_level).
+	/// As bases PROASP_SIG, SONASP_SIG, ABSP_SIG e GSP_SIG estão em 100 (SQL Server 2008).
+	/// Com valor abaixo de 130, o EF Core não usa OPENJSON e traduz listas
+	/// (filtro de escopo) como IN (...). Atualize se o nível das bases mudar.
+	/// </summary>
+	[Range(80, 170, ErrorMessage = "O nível de compatibilidade deve estar entre 80 e 170.")]
+	public int CompatibilityLevel { get; set; } = 100;
 }

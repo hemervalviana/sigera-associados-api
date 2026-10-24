@@ -78,6 +78,26 @@ Antes de começar:
 | [ ] | 05.3 | Corretor tenta listar usuários | — | **403** |
 | [ ] | 01.1 | Voltar para o seu login | Restaure `email`/`senha` e rode o login | **200** |
 
+## Parte 6b — Usuário restrito automatizado (pasta 08)
+
+Confere que um usuário sem acesso irrestrito só vê a empresa e a filial liberadas. Também valida a correção do nível de compatibilidade 100: a consulta deve sair com `IN (...)`, sem `OPENJSON`.
+
+Antes: preencha `restritoSenha` em **Variables > Current value**, e confira `restritoEmail` e `restritoUsuarioId`. Depois rode a pasta **08** inteira com **Run folder**.
+
+| OK | Nº | O que testar | Esperado |
+|---|---|---|---|
+| [ ] | 08.1 | Login como administrador | **200** |
+| [ ] | 08.2 | Remove acessos ao sistema inteiro do restrito | **200**; o Console mostra os acessos revogados |
+| [ ] | 08.3 | Garante empresa 2 + filial 1 | **201** ou **409** |
+| [ ] | 08.4 | Total como administrador | **200**; o Console mostra o total |
+| [ ] | 08.5 | Login como restrito | **200** |
+| [ ] | 08.6 | Minha conta do restrito | `acessoIrrestrito: false` e nenhum acesso ao sistema inteiro |
+| [ ] | 08.7 | Associados do restrito | Total **menor** que o do administrador; todos da empresa 2; sem carteira, todos da filial 1 |
+| [ ] | — | Console da API no 08.7 | Consulta com `IN (`, **sem** `OPENJSON` |
+| [ ] | 08.8 | Restrito no sistema 1 (sem acesso) | **403** |
+| [ ] | 08.9 | Restrito abrindo associado de outra filial | **404** |
+| [ ] | 08.10 | Restrito listando usuários | **403** |
+
 ## Parte 7 — Testes de erro e segurança (pasta 07)
 
 Rode a pasta inteira: passe o mouse em **07 - Testes de erro e segurança**, clique em `...` e depois em **Run folder**. Todas devem aparecer como *PASS*.
