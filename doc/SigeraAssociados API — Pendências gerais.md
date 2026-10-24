@@ -61,8 +61,8 @@ São pontos que podem expor dados ou quebrar a consulta em produção.
 - [x] **Limite de tentativas (rate limiting):** login, confirmação e recuperação de senha com 10 por minuto por IP; criar usuário e reenviar confirmação com 5 a cada 10 minutos; geral com 300 por minuto por usuário. Acima disso a resposta é **429**. Código em `Api/Seguranca/LimiteRequisicoes.cs`.
 - [x] **Compatibilidade do SQL Server:** as 4 bases estão em nível 100 (SQL Server 2008). A fábrica de contexto usa `UseCompatibilityLevel(100)` (chave `ConnectionSettings:CompatibilityLevel`), e o filtro de escopo vira `IN (...)` em vez de `OPENJSON`.
 - [x] **Erro "Valor de parâmetro '201' está fora do intervalo" corrigido:** o filtro de escopo usava chaves calculadas (`CD_EMP * 100 + CD_FIL`) que estouravam `numeric(2,0)` com a compatibilidade 100. Agora cada acesso vira uma condição própria (`CD_EMP = x AND CD_FIL = y`, unidas por OR).
-- [ ] **Validar o filtro com usuário restrito:** rodar a pasta 08 do Postman e conferir o SQL no log (sem `OPENJSON`).
-- [ ] **Validar o filtro de escopo contra o SQL real.** Os testes do `AplicarEscopo` rodam em memória. Falta confirmar que a consulta com chaves compostas (`CD_EMP * 100 + CD_FIL`) gera o SQL esperado e tem desempenho aceitável numa base real.
+- [x] **Filtro com usuário restrito validado (24/10/2026):** pasta 08 do Postman toda aprovada; usuário restrito vê só empresa 2 + filial 1, recebe 403 em outro sistema e 404 em associado de outra filial.
+- [x] **Filtro de escopo validado contra o SQL real** (pasta 08 do Postman, bases em compatibilidade 100).
 - [x] **Usuário `sa` trocado por `usr_sisgera_api`** no `appsettings.json`. O script `scripts\criar-login-usr_sisgera_api.sql` cria o login com leitura nas 4 bases e leitura/escrita no banco de identidade.
 - [ ] **Executar o script do login e atualizar os User Secrets** (`ConnectionSettings:Password`, `IdentityConnectionSettings:User` e `IdentityConnectionSettings:Password`).
 - [ ] **Certificado do SQL Server.** `TrustServerCertificate = true` está no appsettings base. Deixar só em Development e usar certificado válido nos demais ambientes.
