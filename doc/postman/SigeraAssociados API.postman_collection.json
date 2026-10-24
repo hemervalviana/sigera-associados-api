@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "f7817c98-ec98-45d6-8651-ac32089dcd45",
+    "_postman_id": "853e6db9-c6ff-4212-b2a1-df451d66f666",
     "name": "SigeraAssociados API",
     "description": "Coleção de testes da SigeraAssociados API.\n\n## Como começar\n1. Suba a API (`dotnet run --project src\\SigeraAssociados.Api --launch-profile https`).\n2. Clique no nome da coleção > aba **Variables** e preencha `email` e `senha` na coluna **Current value**.\n3. Rode **01 - Autenticação > 01.1 - Login**. O token é guardado sozinho.\n4. Use as outras pastas na ordem. Cada requisição tem um passo a passo na aba **Docs** (ícone de documento à direita).\n\n## Variáveis principais\n- `baseUrl`: endereço da API.\n- `sistema`: banco usado nas pastas 03 e 04 (1 PROASP, 2 SONASP, 3 ABSP, 4 GSP).\n- `token`, `usuarioId`, `acessoId`: preenchidas automaticamente pelos scripts.\n\n## Erro de certificado\nSe aparecer *SSL Error: self signed certificate*, desligue em **Settings > General > SSL certificate verification**.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -56,7 +56,7 @@
                 "login"
               ]
             },
-            "description": "## O que faz\nAutentica com e-mail e senha e devolve um token JWT válido por 15 minutos.\n\n## Passo a passo\n1. Na coleção, aba **Variables**, preencha `email` e `senha` (coluna *Current value*).\n2. Clique em **Send**.\n3. O script da aba **Scripts > Post-response** grava o `accessToken` na variável `token`. Não precisa copiar nada.\n4. Quando o token vencer (401 nas outras chamadas), rode o login de novo.\n\n## Respostas\n- **200**: login feito, token salvo.\n- **401**: e-mail ou senha errados, ou e-mail ainda não confirmado.\n- **423**: conta bloqueada (5 tentativas erradas ou bloqueio pelo administrador).",
+            "description": "## O que faz\nAutentica com e-mail e senha e devolve um token JWT válido por 15 minutos.\n\n## Passo a passo\n1. Na coleção, aba **Variables**, preencha `email` e `senha` (coluna *Current value*).\n2. Clique em **Send**.\n3. O script da aba **Scripts > Post-response** grava o `accessToken` na variável `token` e o `refreshToken` na variável `refreshToken`. Não precisa copiar nada.\n4. Quando o token vencer (401 nas outras chamadas), rode o **01.5 - Renovar token** (não precisa da senha) ou o login de novo.\n\n## Respostas\n- **200**: login feito, token salvo.\n- **401**: e-mail ou senha errados, ou e-mail ainda não confirmado.\n- **423**: conta bloqueada (5 tentativas erradas ou bloqueio pelo administrador).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{email}}\",\n  \"senha\": \"{{senha}}\"\n}",
@@ -81,7 +81,8 @@
                   "if (pm.response.code === 200) {",
                   "    const r = pm.response.json();",
                   "    pm.collectionVariables.set(\"token\", r.accessToken);",
-                  "    console.log(\"Token salvo. Válido por \" + r.expiresIn + \" segundos.\");",
+                  "    pm.collectionVariables.set(\"refreshToken\", r.refreshToken);",
+                  "    console.log(\"Token salvo. Válido por \" + r.expiresIn + \" segundos. refreshToken válido até \" + r.refreshTokenExpiraEm + \".\");",
                   "}"
                 ]
               }
@@ -227,6 +228,158 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.5 - Renovar token sem senha (guarda os novos tokens)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/renovar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "renovar"
+              ]
+            },
+            "description": "## O que faz\nTroca o `refreshToken` por um novo token de acesso e um novo `refreshToken`, sem pedir a senha.\n\n## Passo a passo\n1. Rode antes o **01.1 - Login** (ele guarda o `refreshToken`).\n2. Clique em **Send**. Os dois tokens novos são guardados sozinhos.\n\nO `refreshToken` vale 7 dias e só pode ser usado **uma vez**: cada renovação devolve outro.\nSe um `refreshToken` já usado for enviado de novo, a API entende como possível roubo e encerra todas as sessões do usuário.\n\n## Respostas\n- **200**: tokens renovados.\n- **401**: refreshToken inválido, expirado, já usado ou usuário bloqueado; faça login de novo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (pm.response.code === 200) {",
+                  "    const r = pm.response.json();",
+                  "    pm.collectionVariables.set(\"token\", r.accessToken);",
+                  "    pm.collectionVariables.set(\"refreshToken\", r.refreshToken);",
+                  "    console.log(\"Tokens renovados.\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.6 - Logout desta sessão",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "## O que faz\nEncerra a sessão atual: o token de acesso deixa de valer **na hora** e o `refreshToken` é revogado.\n\nDepois do logout, as outras requisições dão **401** até um novo login.\n\n## Respostas\n- **200**: sessão encerrada.\n- **401**: já estava sem sessão.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\",\n  \"todosOsDispositivos\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set(\"token\", \"\");",
+                  "    pm.collectionVariables.set(\"refreshToken\", \"\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.7 - Logout de todos os dispositivos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "## O que faz\nEncerra **todas** as sessões do usuário, em qualquer navegador ou aplicativo: todos os tokens de acesso e de renovação deixam de valer na hora.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\",\n  \"todosOsDispositivos\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set(\"token\", \"\");",
+                  "    pm.collectionVariables.set(\"refreshToken\", \"\");",
+                  "}"
                 ]
               }
             }
@@ -2382,6 +2535,11 @@
       "key": "token",
       "value": "",
       "description": "Preenchido pelo login."
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "description": "Preenchido pelo login (01.1) e pela renovação (01.5)."
     },
     {
       "key": "novoUsuarioEmail",

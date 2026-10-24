@@ -72,6 +72,7 @@ public sealed class AssociadosController : ControllerBase
 
 	/// <summary>
 	/// Consulta associados com filtros, paginação e ordenação.
+	/// nome: começo do nome (ex.: "MARIA" encontra "MARIA DA SILVA").
 	/// ordenarPor: nome, cdemp, sqpescli, cdsitcli, situacao ou dtcarteira.
 	/// direcao: asc ou desc. tamanhoPagina: 1 a 100.
 	/// </summary>

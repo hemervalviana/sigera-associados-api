@@ -34,6 +34,7 @@ SIGERA_ASSOCIADOS_API/
 │   └── SigeraAssociados.IntegrationTests Endpoints, permissões por grupo, limites, confirmação
 ├── scripts/
 │   ├── criar-login-usr_sisgera_api.sql   Login do SQL Server usado pela API
+│   ├── criar-indice-nome-t000pess.sql    Índice de nome em T000PESS (busca por nome)
 │   └── iniciar-tunel-cloudflared.ps1     URL pública para o link de confirmação
 └── doc/                                   Pendências, fluxogramas, coleção do Postman
 ```
@@ -113,6 +114,19 @@ dotnet user-secrets set "SeedAdmin:Senha" "<senha forte>" --project $p
    ```
 
 As 4 bases de negócio são legadas e somente lidas: a API não cria nem altera tabelas nelas.
+
+### Scripts SQL
+
+Toda mudança de banco fica em um arquivo `.sql` na pasta `scripts`, pronto para executar e seguro para rodar mais de uma vez:
+
+| Script | O que faz | Executar com |
+|---|---|---|
+| `criar-login-usr_sisgera_api.sql` | Cria o login da API (leitura nas 4 bases, escrita no SigeraIdentity) | `sa` |
+| `criar-indice-nome-t000pess.sql` | Índice `IX_T000PESS_NM_PES` nas 4 bases, para a busca por nome | `sa` ou DBA |
+
+```powershell
+sqlcmd -S "127.0.0.1,1433" -U sa -C -i scripts\criar-indice-nome-t000pess.sql
+```
 
 ## Executar
 

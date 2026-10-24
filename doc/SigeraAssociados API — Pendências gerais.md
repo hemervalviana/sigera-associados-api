@@ -81,7 +81,7 @@ A gestão de usuários está incompleta: hoje só é possível criar contas e co
 - [ ] **Processo para conceder o grupo Administradores.** O código recusa esse grupo no cadastro e diz que "exige um processo separado", mas esse processo não existe.
 - [x] **Swagger instalado** (Swashbuckle.AspNetCore 10.3.1) no lugar do Microsoft.AspNetCore.OpenApi. Em Development: tela em `/swagger`, botão **Authorize** para o token JWT, campo `X-Sigera-Sistema` nas rotas de associados e diagnóstico, e descrições vindas dos comentários `///`.
 - [x] **Refresh token e logout:** login devolve `refreshToken` (7 dias, uso único, hash no banco); `POST /api/auth/renovar` e `POST /api/auth/logout` (sessão atual ou todos os dispositivos). Carimbo de segurança conferido a cada requisição: bloqueio, troca de grupo e senha nova valem na hora.
-- [ ] **Gerar e aplicar a migration `TokensRenovacao`** no banco `SigeraIdentity`.
+- [x] **Migration `TokensRenovacao` aplicada** no `SigeraIdentity` (24/10/2026); 198 testes aprovados.
 - [x] **Link de confirmação de e-mail.** Feito com o cloudflared tunnel (seção acima).
 - [x] **Link de redefinição de senha:** o e-mail de recuperação traz o botão **Redefinir senha** (com o túnel); o link abre um formulário da própria API (`GET /api/auth/redefinir-senha`), que só aparece se o token for válido, e o envio (`POST /api/auth/redefinir-senha/formulario`) troca a senha e zera as tentativas erradas.
 - [ ] **Auditoria persistida.** Concessão e revogação de acesso ficam só no log. Gravar quem fez, quando e o quê numa tabela.
@@ -106,14 +106,15 @@ Os testes cobrem bem o filtro de escopo e a validação de parâmetros; autentic
 
 A separação em camadas existe, mas o projeto Domain está vazio e há código duplicado entre as camadas.
 
-- [ ] **Projeto Domain vazio** (o `Class1.cs` já foi removido). As entidades estão em Infrastructure. Decidir se o Domain ganha modelos ou se é removido.
+- [x] **Projeto Domain mantido** (decisão de 24/10/2026): fica reservado para regras e modelos de domínio quando surgirem; hoje as entidades legadas continuam em Infrastructure.
 - [x] **Validação duplicada removida:** o `AssociadosController` não valida mais; a validação fica só no `AssociadosService`.
 - [x] **Erros padronizados em ProblemDetails** (`application/problem+json`) com título em português, `codigo` e `traceId`; tratador global registra no log e responde 500 sem detalhes internos; 401/403/404 sem corpo também recebem ProblemDetails. Erros de entrada usam `DadosInvalidosException` (não mais `ArgumentException`). Testes em `RespostasErroTests`.
 - [ ] **Registro de serviços espalhado.** `AssociadosService` e `SigeraSystemContext` são registrados no `Program.cs`. Criar um `AddApplication()` e mover o contexto para `AddSigeraInfrastructure`.
 - [ ] **`SigeraDatabaseService` duplica a criação de contexto** do `AssociadosRepository`. Unificar.
 - [x] **Grupos funcionais centralizados** em `Application/Usuarios/Grupos.cs`, usados por `SeedData`, `UsuarioAtual` e pelos `[Authorize]` dos controllers.
 - [ ] **Função legada `Administrador`.** Mantida só por compatibilidade. Migrar tudo para `Administradores` e remover.
-- [ ] **Busca por nome.** `Contains` vira `LIKE '%nome%'`, sem uso de índice. Avaliar busca por início do nome ou índice de texto completo se a base for grande.
+- [x] **Busca por nome pelo começo** (`NM_PES LIKE 'nome%'`): "MARIA" encontra "MARIA DA SILVA", não "ANA MARIA". Testes em `BuscaPorNomeTests`.
+- [x] **Índice `IX_T000PESS_NM_PES` criado nas 4 bases** (24/10/2026) com `scripts\criar-indice-nome-t000pess.sql`.
 
 ## Limpeza de arquivos
 
@@ -150,4 +151,4 @@ Perguntas que definem várias das pendências acima.
 - [ ] O grupo **Associados** é para o próprio associado ver os seus dados? Se for, falta ligar o usuário ao `SQ_PES_CLI`.
 - [ ] Vai existir frontend? Isso decide CORS, links nos e-mails e refresh token.
 - [ ] Quais dados além do cadastro básico a API precisa expor?
-- [ ] Manter o projeto Domain ou simplificar para 3 camadas?
+- [x] Manter o projeto Domain ou simplificar para 3 camadas? **Manter.**

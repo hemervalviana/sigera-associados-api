@@ -8,6 +8,10 @@ public sealed class ConsultaAssociadosRequest
 {
 	public decimal? CdEmp { get; init; }
 
+	/// <summary>
+	/// Começo do nome do associado (ex.: "MARIA" encontra "MARIA DA SILVA",
+	/// mas não "ANA MARIA").
+	/// </summary>
 	public string? Nome { get; init; }
 
 	public decimal? CdSitCli { get; init; }

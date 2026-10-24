@@ -99,6 +99,28 @@ public sealed class AssociadosRepository : IAssociadosRepository
 	}
 
 	/// <summary>
+	/// Filtra pelo começo do nome da pessoa (NM_PES LIKE 'nome%').
+	/// Diferente de "contém" (LIKE '%nome%'), permite ao SQL Server usar
+	/// um índice em NM_PES. Maiúsculas/minúsculas e acentos seguem a
+	/// collation do banco.
+	/// </summary>
+	internal static IQueryable<T000CLIE> FiltrarPorNome(
+		IQueryable<T000CLIE> query,
+		string? nome)
+	{
+		if (string.IsNullOrWhiteSpace(nome))
+		{
+			return query;
+		}
+
+		var inicio = nome.Trim();
+
+		return query.Where(a =>
+			a.Pessoa != null &&
+			a.Pessoa.NM_PES.StartsWith(inicio));
+	}
+
+	/// <summary>
 	/// Associados válidos do banco atual, sem rastreamento.
 	/// Ponto de partida de todas as consultas de associados.
 	/// </summary>
@@ -304,15 +326,7 @@ public sealed class AssociadosRepository : IAssociadosRepository
 				a => a.CD_EMP == request.CdEmp.Value);
 		}
 
-		if (!string.IsNullOrWhiteSpace(request.Nome))
-		{
-			var nome = request.Nome.Trim();
-
-			query = query.Where(a =>
-				a.Pessoa != null &&
-				a.Pessoa.NM_PES != null &&
-				a.Pessoa.NM_PES.Contains(nome));
-		}
+		query = FiltrarPorNome(query, request.Nome);
 
 		if (request.CdSitCli.HasValue)
 		{
