@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
 using SigeraAssociados.Application.Acesso;
 using SigeraAssociados.Application.Associados;
 using SigeraAssociados.Application.Interfaces.Repositories;
@@ -20,13 +21,6 @@ namespace SigeraAssociados.Infrastructure.Repositories;
 /// </summary>
 public sealed class AssociadosRepository : IAssociadosRepository
 {
-	// Multiplicadores usados para compor chaves numéricas únicas
-	// a partir de CD_EMP numeric(2,0), CD_FIL numeric(2,0)
-	// e SQ_PES numeric(7,0). Permitem traduzir vários pares
-	// (empresa, filial) em um único IN (...) no SQL.
-	private const decimal FatorFilial = 100m;
-	private const decimal FatorPessoa = 10_000_000m;
-
 	// Tipos de pessoa em T000PESS.TP_PES.
 	private const string TipoPessoaFisica = "F";
 	private const string TipoPessoaJuridica = "J";
@@ -120,12 +114,18 @@ public sealed class AssociadosRepository : IAssociadosRepository
 	/// <summary>
 	/// Restringe a consulta aos associados permitidos pelo escopo.
 	///
-	/// Regras (os escopos se somam):
-	/// - empresa inteira: CD_EMP da lista;
-	/// - empresa + filial: par (CD_EMP, CD_FIL) da lista;
-	///   associados sem filial (CD_FIL nulo) não são incluídos;
-	/// - carteira do corretor: existe contrato em T009CTRT
-	///   do associado com o corretor, na empresa (e filial, se informada).
+	/// Cada escopo vira uma condição própria, e as condições são somadas
+	/// com OR:
+	/// - empresa inteira: CD_EMP = empresa;
+	/// - empresa + filial: CD_EMP = empresa AND CD_FIL = filial
+	///   (associados sem filial não entram);
+	/// - carteira do corretor: CD_EMP = empresa [AND CD_FIL = filial]
+	///   AND EXISTS (contrato em T009CTRT do associado com o corretor).
+	///
+	/// Cada valor é comparado com a sua própria coluna, com o mesmo tipo
+	/// (numeric(2,0) ou numeric(7,0)). Isso evita chaves calculadas
+	/// (ex.: CD_EMP * 100 + CD_FIL = 201), que estouravam o tipo do
+	/// parâmetro, e evita OPENJSON nas bases com compatibilidade 100.
 	/// </summary>
 	internal static IQueryable<T000CLIE> AplicarEscopo(
 		IQueryable<T000CLIE> query,
@@ -144,50 +144,90 @@ public sealed class AssociadosRepository : IAssociadosRepository
 			return query.Where(_ => false);
 		}
 
-		var empresasInteiras = escopo.Escopos
-			.Where(e => e.SqPesCorretor is null && e.CdFil is null && e.CdEmp is not null)
-			.Select(e => e.CdEmp!.Value)
-			.Distinct()
-			.ToList();
+		Expression<Func<T000CLIE, bool>>? filtro = null;
 
-		var empresasFiliais = escopo.Escopos
-			.Where(e => e.SqPesCorretor is null && e.CdFil is not null && e.CdEmp is not null)
-			.Select(e => e.CdEmp!.Value * FatorFilial + e.CdFil!.Value)
-			.Distinct()
-			.ToList();
+		foreach (var item in escopo.Escopos.Where(e => e.CdEmp is not null).Distinct())
+		{
+			// Cópias locais: cada escopo vira parâmetros próprios no SQL.
+			var empresa = item.CdEmp!.Value;
+			var filial = item.CdFil;
+			var corretor = item.SqPesCorretor;
 
-		// Carteira em toda a empresa: chave (empresa, corretor).
-		var corretoresEmpresa = escopo.Escopos
-			.Where(e => e.SqPesCorretor is not null && e.CdFil is null && e.CdEmp is not null)
-			.Select(e => e.CdEmp!.Value * FatorPessoa + e.SqPesCorretor!.Value)
-			.Distinct()
-			.ToList();
+			Expression<Func<T000CLIE, bool>> condicao;
 
-		// Carteira restrita a uma filial do associado:
-		// chave (empresa, filial, corretor).
-		var corretoresFilial = escopo.Escopos
-			.Where(e => e.SqPesCorretor is not null && e.CdFil is not null && e.CdEmp is not null)
-			.Select(e => (e.CdEmp!.Value * FatorFilial + e.CdFil!.Value) * FatorPessoa
-				+ e.SqPesCorretor!.Value)
-			.Distinct()
-			.ToList();
+			if (corretor is null && filial is null)
+			{
+				condicao = a => a.CD_EMP == empresa;
+			}
+			else if (corretor is null)
+			{
+				var filialValor = filial!.Value;
+				condicao = a => a.CD_EMP == empresa && a.CD_FIL == filialValor;
+			}
+			else if (filial is null)
+			{
+				var corretorValor = corretor.Value;
+				condicao = a => a.CD_EMP == empresa
+					&& contratos.Any(c =>
+						c.CD_EMP == a.CD_EMP
+						&& c.SQ_PES_CLI == a.SQ_PES_CLI
+						&& c.SQ_PES_CRO == corretorValor);
+			}
+			else
+			{
+				var filialValor = filial.Value;
+				var corretorValor = corretor.Value;
+				condicao = a => a.CD_EMP == empresa
+					&& a.CD_FIL == filialValor
+					&& contratos.Any(c =>
+						c.CD_EMP == a.CD_EMP
+						&& c.SQ_PES_CLI == a.SQ_PES_CLI
+						&& c.SQ_PES_CRO == corretorValor);
+			}
 
-		var possuiCarteira =
-			corretoresEmpresa.Count > 0 || corretoresFilial.Count > 0;
+			filtro = filtro is null ? condicao : Ou(filtro, condicao);
+		}
 
-		return query.Where(a =>
-			empresasInteiras.Contains(a.CD_EMP)
-			|| (a.CD_FIL != null
-				&& empresasFiliais.Contains(a.CD_EMP * FatorFilial + a.CD_FIL.Value))
-			|| (possuiCarteira
-				&& contratos.Any(c =>
-					c.CD_EMP == a.CD_EMP
-					&& c.SQ_PES_CLI == a.SQ_PES_CLI
-					&& (corretoresEmpresa.Contains(c.CD_EMP * FatorPessoa + c.SQ_PES_CRO)
-						|| (a.CD_FIL != null
-							&& corretoresFilial.Contains(
-								(a.CD_EMP * FatorFilial + a.CD_FIL.Value) * FatorPessoa
-								+ c.SQ_PES_CRO))))));
+		return filtro is null
+			? query.Where(_ => false)
+			: query.Where(filtro);
+	}
+
+	/// <summary>
+	/// Junta duas condições com OR, usando o mesmo parâmetro de entrada.
+	/// </summary>
+	private static Expression<Func<T, bool>> Ou<T>(
+		Expression<Func<T, bool>> primeira,
+		Expression<Func<T, bool>> segunda)
+	{
+		var parametro = primeira.Parameters[0];
+
+		var corpoSegunda = new SubstituirParametro(segunda.Parameters[0], parametro)
+			.Visit(segunda.Body)!;
+
+		return Expression.Lambda<Func<T, bool>>(
+			Expression.OrElse(primeira.Body, corpoSegunda),
+			parametro);
+	}
+
+	/// <summary>
+	/// Troca o parâmetro de uma expressão por outro.
+	/// </summary>
+	private sealed class SubstituirParametro : ExpressionVisitor
+	{
+		private readonly ParameterExpression _de;
+		private readonly ParameterExpression _para;
+
+		public SubstituirParametro(ParameterExpression de, ParameterExpression para)
+		{
+			_de = de;
+			_para = para;
+		}
+
+		protected override Expression VisitParameter(ParameterExpression node)
+		{
+			return node == _de ? _para : base.VisitParameter(node);
+		}
 	}
 
 	/// <summary>
