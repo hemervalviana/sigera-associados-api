@@ -1,0 +1,95 @@
+
+
+1. Preparar a pasta do projeto
+No PowerShell, execute:
+
+Set-Location "D:\SIGERA_2026\SIGERA_ASSOCIADOS_API"
+
+Get-Location
+Get-ChildItem -Force
+
+
+2. Criar a solução
+
+dotnet new sln -n SigeraAssociados
+
+New-Item -ItemType Directory -Force src, tests
+
+dotnet new webapi --use-controllers -f net10.0 -n SigeraAssociados.Api -o src/SigeraAssociados.Api
+
+dotnet new classlib -f net10.0 -n SigeraAssociados.Domain -o src/SigeraAssociados.Domain
+
+dotnet new classlib -f net10.0 -n SigeraAssociados.Application -o src/SigeraAssociados.Application
+
+dotnet new classlib -f net10.0 -n SigeraAssociados.Infrastructure -o src/SigeraAssociados.Infrastructure
+
+dotnet new xunit -f net10.0 -n SigeraAssociados.UnitTests -o tests/SigeraAssociados.UnitTests
+
+dotnet new xunit -f net10.0 -n SigeraAssociados.IntegrationTests -o tests/SigeraAssociados.IntegrationTests
+
+
+3. Adicionar os projetos à solução
+
+
+dotnet sln add src/SigeraAssociados.Api/SigeraAssociados.Api.csproj
+dotnet sln add src/SigeraAssociados.Domain/SigeraAssociados.Domain.csproj
+dotnet sln add src/SigeraAssociados.Application/SigeraAssociados.Application.csproj
+dotnet sln add src/SigeraAssociados.Infrastructure/SigeraAssociados.Infrastructure.csproj
+dotnet sln add tests/SigeraAssociados.UnitTests/SigeraAssociados.UnitTests.csproj
+dotnet sln add tests/SigeraAssociados.IntegrationTests/SigeraAssociados.IntegrationTests.csproj
+
+Etapa 4 — Configurar as referências dos projetos
+
+
+Set-Location "D:\SIGERA_2026\SIGERA_ASSOCIADOS_API"
+
+dotnet add src/SigeraAssociados.Application/SigeraAssociados.Application.csproj reference src/SigeraAssociados.Domain/SigeraAssociados.Domain.csproj
+
+dotnet add src/SigeraAssociados.Infrastructure/SigeraAssociados.Infrastructure.csproj reference src/SigeraAssociados.Application/SigeraAssociados.Application.csproj
+
+dotnet add src/SigeraAssociados.Infrastructure/SigeraAssociados.Infrastructure.csproj reference src/SigeraAssociados.Domain/SigeraAssociados.Domain.csproj
+
+dotnet add src/SigeraAssociados.Api/SigeraAssociados.Api.csproj reference src/SigeraAssociados.Application/SigeraAssociados.Application.csproj
+
+dotnet add src/SigeraAssociados.Api/SigeraAssociados.Api.csproj reference src/SigeraAssociados.Infrastructure/SigeraAssociados.Infrastructure.csproj
+
+dotnet add tests/SigeraAssociados.UnitTests/SigeraAssociados.UnitTests.csproj reference src/SigeraAssociados.Domain/SigeraAssociados.Domain.csproj
+
+dotnet add tests/SigeraAssociados.UnitTests/SigeraAssociados.UnitTests.csproj reference src/SigeraAssociados.Application/SigeraAssociados.Application.csproj
+
+dotnet add tests/SigeraAssociados.IntegrationTests/SigeraAssociados.IntegrationTests.csproj reference src/SigeraAssociados.Api/SigeraAssociados.Api.csproj
+
+Etapa 5 — Compilar e executar os testes
+
+dotnet build .\SigeraAssociados.slnx
+dotnet test .\SigeraAssociados.slnx
+
+
+D:\SIGERA_2026\SIGERA_ASSOCIADOS_API\
++-- SigeraAssociados.sln
++-- src\
+¦   +-- SigeraAssociados.Api\
+¦   +-- SigeraAssociados.Application\
+¦   +-- SigeraAssociados.Domain\
+¦   +-- SigeraAssociados.Infrastructure\
++-- tests\
+    +-- SigeraAssociados.UnitTests\
+    +-- SigeraAssociados.IntegrationTests\
+	
+	
+Primeiro passo: criar o catálogo de sistemas
+New-Item -ItemType Directory -Force -Path "src\SigeraAssociados.Infrastructure\Systems"	
+
+Depois, crie o arquivo src\SigeraAssociados.Infrastructure\Systems\SigeraSystem.cs
+@'
+namespace SigeraAssociados.Infrastructure.Systems;
+
+public enum SigeraSystem
+{
+    PROASP = 1,
+    SONASP = 2,
+    ABSP = 3,
+    GSP = 4
+}
+'@ | Set-Content -Encoding utf8 "src\SigeraAssociados.Infrastructure\Systems\SigeraSystem.cs"
+

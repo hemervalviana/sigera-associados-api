@@ -1,0 +1,1769 @@
+{
+  "info": {
+    "_postman_id": "05799852-2095-4f13-8116-df7b26ba17fe",
+    "name": "SigeraAssociados API",
+    "description": "Coleção de testes da SigeraAssociados API.\n\n## Como começar\n1. Suba a API (`dotnet run --project src\\SigeraAssociados.Api --launch-profile https`).\n2. Clique no nome da coleção > aba **Variables** e preencha `email` e `senha` na coluna **Current value**.\n3. Rode **01 - Autenticação > 01.1 - Login**. O token é guardado sozinho.\n4. Use as outras pastas na ordem. Cada requisição tem um passo a passo na aba **Docs** (ícone de documento à direita).\n\n## Variáveis principais\n- `baseUrl`: endereço da API.\n- `sistema`: banco usado nas pastas 03 e 04 (1 PROASP, 2 SONASP, 3 ABSP, 4 GSP).\n- `token`, `usuarioId`, `acessoId`: preenchidas automaticamente pelos scripts.\n\n## Erro de certificado\nSe aparecer *SSL Error: self signed certificate*, desligue em **Settings > General > SSL certificate verification**.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Aviso quando falta o token em requisições que precisam dele.",
+          "const precisaToken = !pm.request.url.toString().includes('/api/auth/');",
+          "if (precisaToken && !pm.collectionVariables.get('token')) {",
+          "    console.warn('Sem token: rode primeiro 01 - Autenticação > 01.1 - Login.');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Autenticação (comece por aqui)",
+      "description": "Login e operações de conta que **não** precisam de token.\n\nComece sempre pelo **01.1 - Login**: ele guarda o token automaticamente na variável `token` da coleção, e todas as outras requisições usam esse token.",
+      "item": [
+        {
+          "name": "01.1 - Login: entrar e guardar o token automaticamente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "## O que faz\nAutentica com e-mail e senha e devolve um token JWT válido por 15 minutos.\n\n## Passo a passo\n1. Na coleção, aba **Variables**, preencha `email` e `senha` (coluna *Current value*).\n2. Clique em **Send**.\n3. O script da aba **Scripts > Post-response** grava o `accessToken` na variável `token`. Não precisa copiar nada.\n4. Quando o token vencer (401 nas outras chamadas), rode o login de novo.\n\n## Respostas\n- **200**: login feito, token salvo.\n- **401**: e-mail ou senha errados, ou e-mail ainda não confirmado.\n- **423**: conta bloqueada (5 tentativas erradas ou bloqueio pelo administrador).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"senha\": \"{{senha}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (pm.response.code === 200) {",
+                  "    const r = pm.response.json();",
+                  "    pm.collectionVariables.set(\"token\", r.accessToken);",
+                  "    console.log(\"Token salvo. Válido por \" + r.expiresIn + \" segundos.\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.2 - Confirmar e-mail com o token recebido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/confirmar-email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "confirmar-email"
+              ]
+            },
+            "description": "## O que faz\nConfirma o e-mail de um usuário novo usando o token que chegou por e-mail (quando o túnel do cloudflared não está ligado e o e-mail traz só o token).\n\n## Passo a passo\n1. Copie o token do e-mail de confirmação.\n2. No **Body**, troque `COLE_O_TOKEN_DO_EMAIL` pelo token e ajuste o e-mail.\n3. Clique em **Send**.\n\nCom o túnel ligado, o e-mail traz um botão e esta chamada não é necessária.\n\n## Respostas\n- **200**: e-mail confirmado (ou já estava).\n- **400**: token inválido ou expirado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{novoUsuarioEmail}}\",\n  \"token\": \"COLE_O_TOKEN_DO_EMAIL\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.3 - Esqueci a senha: pedir token de recuperação por e-mail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/solicitar-recuperacao-senha",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "solicitar-recuperacao-senha"
+              ]
+            },
+            "description": "## O que faz\nEnvia um token de redefinição de senha para o e-mail informado, se a conta existir e estiver confirmada.\n\nA resposta é sempre **202**, exista ou não a conta (para não revelar quem tem cadastro).\n\n## Próximo passo\nUse o token recebido em **01.4 - Redefinir senha**.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (202)\", () => pm.expect(pm.response.code).to.be.oneOf([202]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01.4 - Redefinir senha com o token recebido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/redefinir-senha",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "redefinir-senha"
+              ]
+            },
+            "description": "## O que faz\nTroca a senha usando o token enviado em **01.3**.\n\n## Passo a passo\n1. Cole o token do e-mail em `token`.\n2. Informe a nova senha duas vezes (mínimo 12 caracteres, com maiúscula, minúscula, número e símbolo).\n3. Clique em **Send**. Depois, atualize a variável `senha` da coleção.\n\n## Respostas\n- **200**: senha alterada.\n- **400**: token inválido/expirado ou senha fora das regras.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"token\": \"COLE_O_TOKEN_DO_EMAIL\",\n  \"novaSenha\": \"NovaSenhaForte#2026\",\n  \"confirmarNovaSenha\": \"NovaSenhaForte#2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Minha conta",
+      "description": "Dados do usuário logado. Precisa do token (rode o 01.1 antes).",
+      "item": [
+        {
+          "name": "02.1 - Ver meus dados, grupos e acessos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/conta",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "conta"
+              ]
+            },
+            "description": "## O que faz\nMostra quem está logado, os grupos, se tem acesso irrestrito (administrador) e quais sistemas, empresas, filiais e carteiras pode consultar.\n\n## Passo a passo\n1. Rode o **01.1 - Login**.\n2. Clique em **Send**.\n\n## Respostas\n- **200**: dados da conta.\n- **401**: token ausente ou vencido; rode o login de novo."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set(\"meuUsuarioId\", pm.response.json().usuario.id);",
+                  "    console.log(\"meuUsuarioId salvo (usado no teste 07.8).\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Diagnóstico dos bancos (somente administradores)",
+      "description": "Testa a conexão com o banco escolhido na variável `sistema`.\n\nEnvia o cabeçalho `X-Sigera-Sistema` (1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP).",
+      "item": [
+        {
+          "name": "03.1 - Testar conexão com o banco do sistema escolhido",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/diagnostico/conexao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "diagnostico",
+                "conexao"
+              ]
+            },
+            "description": "## O que faz\nAbre e fecha uma conexão com o banco do sistema escolhido e mostra o nome do banco e do servidor.\n\n## Passo a passo\n1. Na aba **Variables** da coleção, ajuste `sistema` (1 a 4).\n2. Clique em **Send**.\n3. Repita para os 4 sistemas para validar o login `usr_sisgera_api` em todas as bases.\n\n## Respostas\n- **200**: `status: conectado`.\n- **400**: cabeçalho de sistema ausente ou inválido.\n- **403**: usuário não é administrador.\n- **503**: falha de conexão (veja o log da API)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03.2 - Ver as 10 primeiras pessoas cadastradas (T000PESS)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/diagnostico/pessoas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "diagnostico",
+                "pessoas"
+              ]
+            },
+            "description": "## O que faz\nLê as 10 primeiras pessoas da tabela T000PESS do banco escolhido. Serve para confirmar que a leitura funciona.\n\n## Respostas\n- **200**: lista de pessoas.\n- **403**: usuário não é administrador."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Associados",
+      "description": "Consultas de associados no banco escolhido em `sistema`.\n\nO resultado respeita os acessos do usuário: administradores veem tudo; os demais só o que foi concedido na pasta 06.",
+      "item": [
+        {
+          "name": "04.1 - Listar os 10 primeiros associados",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados"
+              ]
+            },
+            "description": "## O que faz\nLista os 10 primeiros associados, ordenados por empresa e código, dentro dos acessos do usuário.\n\n## Respostas\n- **200**: lista (pode vir vazia se o usuário não tem acesso).\n- **403**: usuário sem acesso ao sistema escolhido."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.2 - Buscar associados com filtros, paginação e ordenação",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/consulta?pagina=1&tamanhoPagina=20&ordenarPor=nome&direcao=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "consulta"
+              ],
+              "query": [
+                {
+                  "key": "nome",
+                  "value": "SILVA",
+                  "description": "Trecho do nome do associado.",
+                  "disabled": true
+                },
+                {
+                  "key": "cdEmp",
+                  "value": "2",
+                  "description": "Código da empresa.",
+                  "disabled": true
+                },
+                {
+                  "key": "cdSitCli",
+                  "value": "1",
+                  "description": "Código da situação do associado.",
+                  "disabled": true
+                },
+                {
+                  "key": "pagina",
+                  "value": "1",
+                  "description": "Número da página (1 em diante)."
+                },
+                {
+                  "key": "tamanhoPagina",
+                  "value": "20",
+                  "description": "Registros por página (1 a 100)."
+                },
+                {
+                  "key": "ordenarPor",
+                  "value": "nome",
+                  "description": "nome, cdemp, sqpescli, cdsitcli, situacao ou dtcarteira."
+                },
+                {
+                  "key": "direcao",
+                  "value": "asc",
+                  "description": "asc ou desc."
+                }
+              ]
+            },
+            "description": "## O que faz\nBusca associados com filtros opcionais, paginação e ordenação.\n\n## Passo a passo\n1. Abra a aba **Params**.\n2. Marque os filtros que quiser usar (`nome`, `cdEmp`, `cdSitCli`) e preencha o valor.\n3. Ajuste `pagina` e `tamanhoPagina` (máximo 100).\n4. `ordenarPor` aceita: nome, cdemp, sqpescli, cdsitcli, situacao, dtcarteira. `direcao`: asc ou desc.\n\n## Respostas\n- **200**: página de associados com total de registros e de páginas.\n- **400**: parâmetro inválido (a mensagem diz qual)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.3 - Consultar um associado pela empresa e pelo código",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{cdEmp}}/{{sqPesCli}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{cdEmp}}",
+                "{{sqPesCli}}"
+              ]
+            },
+            "description": "## O que faz\nTraz um associado específico pela empresa (`cdEmp`) e pelo código da pessoa (`sqPesCli`).\n\n## Passo a passo\n1. Ajuste as variáveis `cdEmp` e `sqPesCli` na coleção (pegue um código real no 04.1 ou 04.2).\n2. Clique em **Send**.\n\n## Respostas\n- **200**: associado encontrado.\n- **404**: não existe ou está fora dos acessos do usuário."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 404)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Usuários (Administradores e Gestores)",
+      "description": "Criação e manutenção de usuários.\n\nOrdem sugerida para um teste completo: 05.1 → 05.2 → 05.3 → 05.4 → 05.6 → 05.7 → 05.8 → 05.9.\n\nRegras: ninguém altera a própria conta; Gestores não alteram administradores; o grupo Administradores não é concedido por aqui.",
+      "item": [
+        {
+          "name": "05.1 - Listar os grupos funcionais disponíveis",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/grupos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "grupos"
+              ]
+            },
+            "description": "## O que faz\nLista os 7 grupos oficiais: Administradores, Gestores, Coordenadora Adm. & Operacional, Corretores, Financeiro, Associados e Atendimento.\n\nUse um desses nomes ao criar usuário (05.2) ou trocar grupo (05.6)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.2 - Criar novo usuário (guarda o ID automaticamente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios"
+              ]
+            },
+            "description": "## O que faz\nCria a conta, coloca no grupo informado e envia o e-mail de confirmação.\n\n## Passo a passo\n1. Ajuste na coleção as variáveis `novoUsuarioEmail` e `novoUsuarioSenha`.\n2. Confira o `grupo` no **Body** (não pode ser Administradores).\n3. Clique em **Send**. O ID do usuário criado vai para a variável `usuarioId`, usada nos próximos passos.\n4. O usuário só consegue logar depois de confirmar o e-mail.\n\n## Respostas\n- **201**: criado.\n- **400**: dados inválidos ou senha fora das regras.\n- **409**: já existe conta com esse e-mail.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{novoUsuarioEmail}}\",\n  \"senha\": \"{{novoUsuarioSenha}}\",\n  \"confirmarSenha\": \"{{novoUsuarioSenha}}\",\n  \"grupo\": \"Corretores\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    const r = pm.response.json();",
+                  "    pm.collectionVariables.set(\"usuarioId\", r.usuario.id);",
+                  "    console.log(\"usuarioId salvo: \" + r.usuario.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.3 - Listar usuários (com filtro por e-mail e grupo)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios?pagina=1&tamanhoPagina=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios"
+              ],
+              "query": [
+                {
+                  "key": "busca",
+                  "value": "exemplo",
+                  "description": "Trecho do e-mail.",
+                  "disabled": true
+                },
+                {
+                  "key": "grupo",
+                  "value": "Corretores",
+                  "description": "Nome do grupo funcional.",
+                  "disabled": true
+                },
+                {
+                  "key": "pagina",
+                  "value": "1",
+                  "description": "Número da página."
+                },
+                {
+                  "key": "tamanhoPagina",
+                  "value": "20",
+                  "description": "Registros por página (1 a 100)."
+                }
+              ]
+            },
+            "description": "## O que faz\nLista os usuários com grupos, se o e-mail foi confirmado e se a conta está bloqueada.\n\n## Passo a passo\nNa aba **Params**, marque `busca` (trecho do e-mail) ou `grupo` para filtrar."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.4 - Consultar um usuário pelo ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}"
+              ]
+            },
+            "description": "## O que faz\nMostra os dados do usuário guardado em `usuarioId` (preenchido pelo 05.2, ou cole um ID do 05.3).\n\n## Respostas\n- **200**: dados do usuário.\n- **404**: ID não existe."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.5 - Reenviar o e-mail de confirmação",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/reenviar-confirmacao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "reenviar-confirmacao"
+              ]
+            },
+            "description": "## O que faz\nGera um novo token e reenvia o e-mail de confirmação.\n\nCom o túnel ligado (`scripts\\iniciar-tunel-cloudflared.ps1`), o e-mail vem com o botão **Confirmar e-mail**.\n\n## Respostas\n- **200**: e-mail enviado.\n- **400**: e-mail já confirmado.\n- **503**: falha no envio (veja a configuração do Gmail)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.6 - Trocar o grupo do usuário",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/grupo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "grupo"
+              ]
+            },
+            "description": "## O que faz\nSubstitui o grupo funcional do usuário pelo informado no **Body**.\n\nO novo grupo vale a partir do próximo login do usuário.\n\n## Respostas\n- **200**: grupo alterado.\n- **400**: grupo inválido ou Administradores.\n- **403**: própria conta ou, sendo Gestor, conta de administrador.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grupo\": \"Atendimento\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.7 - Bloquear o login do usuário",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/bloquear",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "bloquear"
+              ]
+            },
+            "description": "## O que faz\nBloqueia o login por tempo indeterminado. Tokens já emitidos continuam valendo até expirar (15 min).\n\n## Respostas\n- **200**: bloqueado.\n- **403**: própria conta ou conta de administrador (para Gestor)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.8 - Desbloquear o usuário",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/desbloquear",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "desbloquear"
+              ]
+            },
+            "description": "## O que faz\nRemove o bloqueio e zera as tentativas de login erradas.\n\n## Respostas\n- **200**: desbloqueado."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.9 - Excluir o usuário (apaga grupos e acessos)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}"
+              ]
+            },
+            "description": "## O que faz\nExclui a conta, os grupos e todos os acessos dela. **Não tem como desfazer.**\n\nConfira o `usuarioId` antes de enviar.\n\n## Respostas\n- **200**: excluído.\n- **403**: própria conta ou conta de administrador (para Gestor).\n- **404**: ID não existe."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - Acessos do usuário (somente administradores)",
+      "description": "Define o que cada usuário pode consultar nos 4 sistemas.\n\nComo funciona:\n- **Sistema inteiro**: só `sistema` preenchido.\n- **Empresa inteira**: `sistema` + `cdEmp`.\n- **Uma filial**: `sistema` + `cdEmp` + `cdFil`.\n- **Carteira de um corretor**: `sistema` + `cdEmp` + `sqPesCorretor` (opcionalmente `cdFil`).\n\nOs acessos se somam. As requisições usam o usuário em `usuarioId`.",
+      "item": [
+        {
+          "name": "06.1 - Conceder acesso a um sistema inteiro",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/acessos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "acessos"
+              ]
+            },
+            "description": "## O que faz\nLibera todos os associados do sistema informado (1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP).\n\nO ID do acesso criado vai para a variável `acessoId` (usada no 06.5).\n\n## Respostas\n- **201**: concedido.\n- **409**: esse acesso já existe.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sistema\": 2,\n  \"cdEmp\": null,\n  \"cdFil\": null,\n  \"sqPesCorretor\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"acessoId\", pm.response.json().acesso.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06.2 - Conceder acesso a uma empresa e filial",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/acessos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "acessos"
+              ]
+            },
+            "description": "## O que faz\nLibera só os associados da filial informada. Associados sem filial não aparecem para esse acesso.\n\nPara liberar a empresa inteira, apague o `cdFil` (deixe `null`).\n\n## Respostas\n- **201**: concedido.\n- **400**: filial sem empresa ou códigos fora da faixa.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sistema\": 2,\n  \"cdEmp\": 2,\n  \"cdFil\": 1,\n  \"sqPesCorretor\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"acessoId\", pm.response.json().acesso.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06.3 - Conceder acesso à carteira de um corretor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/acessos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "acessos"
+              ]
+            },
+            "description": "## O que faz\nLibera só os associados que têm contrato com o corretor informado (`sqPesCorretor` = código da pessoa do corretor).\n\n## Respostas\n- **201**: concedido.\n- **400**: corretor sem empresa.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sistema\": 2,\n  \"cdEmp\": 2,\n  \"cdFil\": null,\n  \"sqPesCorretor\": 12345\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"acessoId\", pm.response.json().acesso.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06.4 - Listar os acessos do usuário",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/acessos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "acessos"
+              ]
+            },
+            "description": "## O que faz\nLista todos os acessos do usuário, com o `id` de cada um (use no 06.5)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06.5 - Revogar um acesso",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/acessos/{{acessoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "acessos",
+                "{{acessoId}}"
+              ]
+            },
+            "description": "## O que faz\nRemove o acesso guardado em `acessoId` (preenchido pelos 06.1 a 06.3, ou cole um ID do 06.4). Vale na hora.\n\n## Respostas\n- **200**: revogado.\n- **404**: acesso não encontrado para esse usuário."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 - Testes de erro e segurança (todas devem ser recusadas)",
+      "description": "Cada requisição desta pasta **tenta algo proibido ou inválido**. O teste passa quando a API **recusa** com o status esperado.\n\nAntes de rodar: faça o **01.1 - Login**, o **02.1 - Minha conta** (guarda o seu ID) e o **05.2 - Criar usuário** (para o 07.10).\n\nPode rodar a pasta inteira com **Run folder**: nenhuma destas chamadas altera dados.",
+      "item": [
+        {
+          "name": "07.1 - Login com e-mail inexistente deve dar 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Confere que a API não revela se o e-mail existe e devolve 401.\n\nUsa um e-mail que não existe para **não** bloquear a sua conta (5 senhas erradas bloqueiam por 15 minutos).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nao.existe@exemplo.com\",\n  \"senha\": \"SenhaQualquer#2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (401)\", () => pm.expect(pm.response.code).to.be.oneOf([401]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.2 - Consultar associados sem token deve dar 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados"
+              ]
+            },
+            "description": "Confere que nenhuma consulta funciona sem login.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (401)\", () => pm.expect(pm.response.code).to.be.oneOf([401]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.3 - Consultar associados sem o cabeçalho X-Sigera-Sistema deve dar 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados"
+              ]
+            },
+            "description": "Confere que a API exige a escolha do sistema.\n\nEsta requisição **não** envia o cabeçalho de propósito."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (400)\", () => pm.expect(pm.response.code).to.be.oneOf([400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.4 - Consultar associados com sistema 9 deve dar 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "9",
+                "description": "Valor inválido de propósito."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados"
+              ]
+            },
+            "description": "Confere que só os sistemas 1 a 4 são aceitos."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (400)\", () => pm.expect(pm.response.code).to.be.oneOf([400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.5 - Buscar com tamanhoPagina 500 deve dar 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/consulta?tamanhoPagina=500",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "consulta"
+              ],
+              "query": [
+                {
+                  "key": "tamanhoPagina",
+                  "value": "500"
+                }
+              ]
+            },
+            "description": "Confere o limite de 100 registros por página."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (400)\", () => pm.expect(pm.response.code).to.be.oneOf([400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.6 - Buscar ordenando por campo inexistente deve dar 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP. Altere a variável sistema da coleção."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/consulta?ordenarPor=senha",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "consulta"
+              ],
+              "query": [
+                {
+                  "key": "ordenarPor",
+                  "value": "senha"
+                }
+              ]
+            },
+            "description": "Confere que a ordenação só aceita os campos permitidos. A resposta lista os campos válidos."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (400)\", () => pm.expect(pm.response.code).to.be.oneOf([400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.7 - Criar usuário no grupo Administradores deve dar 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios"
+              ]
+            },
+            "description": "Confere que ninguém vira administrador pelo cadastro comum.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tentativa.admin@exemplo.com\",\n  \"senha\": \"SenhaForte#2026\",\n  \"confirmarSenha\": \"SenhaForte#2026\",\n  \"grupo\": \"Administradores\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (400)\", () => pm.expect(pm.response.code).to.be.oneOf([400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.8 - Bloquear a própria conta deve dar 403",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{meuUsuarioId}}/bloquear",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{meuUsuarioId}}",
+                "bloquear"
+              ]
+            },
+            "description": "Confere que ninguém bloqueia, altera ou exclui a própria conta.\n\nPrecisa do **02.1** antes (ele guarda o `meuUsuarioId`)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (403)\", () => pm.expect(pm.response.code).to.be.oneOf([403]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.9 - Excluir a própria conta deve dar 403",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{meuUsuarioId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{meuUsuarioId}}"
+              ]
+            },
+            "description": "Mesma regra do 07.8, para exclusão."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (403)\", () => pm.expect(pm.response.code).to.be.oneOf([403]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.10 - Criar usuário com e-mail já cadastrado deve dar 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios"
+              ]
+            },
+            "description": "Confere que não existem duas contas com o mesmo e-mail.\n\nPrecisa do **05.2** antes, com o mesmo `novoUsuarioEmail`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{novoUsuarioEmail}}\",\n  \"senha\": \"{{novoUsuarioSenha}}\",\n  \"confirmarSenha\": \"{{novoUsuarioSenha}}\",\n  \"grupo\": \"Corretores\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (409)\", () => pm.expect(pm.response.code).to.be.oneOf([409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.11 - Trocar para grupo inexistente deve dar 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/grupo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "grupo"
+              ]
+            },
+            "description": "Confere que só os 7 grupos oficiais são aceitos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grupo\": \"Diretoria\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (400)\", () => pm.expect(pm.response.code).to.be.oneOf([400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.12 - Conceder acesso com filial sem empresa deve dar 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/acessos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "acessos"
+              ]
+            },
+            "description": "Confere a regra: para restringir por filial, a empresa é obrigatória.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sistema\": 2,\n  \"cdEmp\": null,\n  \"cdFil\": 1,\n  \"sqPesCorretor\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (400)\", () => pm.expect(pm.response.code).to.be.oneOf([400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.13 - Conceder acesso ao sistema 7 deve dar 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/acessos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "acessos"
+              ]
+            },
+            "description": "Confere que só os sistemas 1 a 4 são aceitos nos acessos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sistema\": 7,\n  \"cdEmp\": null,\n  \"cdFil\": null,\n  \"sqPesCorretor\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (400)\", () => pm.expect(pm.response.code).to.be.oneOf([400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.14 - Abrir link de confirmação com token inválido deve dar 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/confirmar-email?usuarioId=00000000-0000-0000-0000-000000000000&token=token-invalido",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "confirmar-email"
+              ],
+              "query": [
+                {
+                  "key": "usuarioId",
+                  "value": "00000000-0000-0000-0000-000000000000"
+                },
+                {
+                  "key": "token",
+                  "value": "token-invalido"
+                }
+              ]
+            },
+            "description": "Confere que um link adulterado não confirma a conta. A resposta é uma página HTML de erro.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (400)\", () => pm.expect(pm.response.code).to.be.oneOf([400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.15 - Consultar usuário inexistente deve dar 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            },
+            "description": "Confere a resposta para ID que não existe."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (404)\", () => pm.expect(pm.response.code).to.be.oneOf([404]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://localhost:7001",
+      "description": "Endereço da API. Com o túnel ligado, pode usar a URL https://xxxx.trycloudflare.com."
+    },
+    {
+      "key": "email",
+      "value": "hemerval@outlook.com",
+      "description": "E-mail usado no login (01.1)."
+    },
+    {
+      "key": "senha",
+      "value": "",
+      "description": "Senha do login. Preencha só em Current value."
+    },
+    {
+      "key": "sistema",
+      "value": "1",
+      "description": "1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+    },
+    {
+      "key": "token",
+      "value": "",
+      "description": "Preenchido pelo login."
+    },
+    {
+      "key": "novoUsuarioEmail",
+      "value": "teste.corretor@exemplo.com",
+      "description": "E-mail do usuário de teste criado no 05.2."
+    },
+    {
+      "key": "novoUsuarioSenha",
+      "value": "SenhaForte#2026",
+      "description": "Senha do usuário de teste (12+ caracteres, maiúscula, minúscula, número e símbolo)."
+    },
+    {
+      "key": "meuUsuarioId",
+      "value": "",
+      "description": "Seu próprio ID. Preenchido pelo 02.1 (usado nos testes 07.8 e 07.9)."
+    },
+    {
+      "key": "usuarioId",
+      "value": "",
+      "description": "Preenchido pelo 05.2 (ou cole um ID do 05.3)."
+    },
+    {
+      "key": "acessoId",
+      "value": "",
+      "description": "Preenchido pelos 06.1 a 06.3."
+    },
+    {
+      "key": "cdEmp",
+      "value": "2",
+      "description": "Empresa usada no 04.3."
+    },
+    {
+      "key": "sqPesCli",
+      "value": "1",
+      "description": "Código da pessoa do associado usado no 04.3."
+    }
+  ]
+}

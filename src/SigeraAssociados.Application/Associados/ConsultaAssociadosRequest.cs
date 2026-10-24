@@ -1,0 +1,22 @@
+﻿namespace SigeraAssociados.Application.Associados;
+
+/// <summary>
+/// Define os filtros, a paginação e a ordenação
+/// para consultar associados.
+/// </summary>
+public sealed class ConsultaAssociadosRequest
+{
+	public decimal? CdEmp { get; init; }
+
+	public string? Nome { get; init; }
+
+	public decimal? CdSitCli { get; init; }
+
+	public int Pagina { get; init; } = 1;
+
+	public int TamanhoPagina { get; init; } = 20;
+
+	public string OrdenarPor { get; init; } = "nome";
+
+	public string Direcao { get; init; } = "asc";
+}

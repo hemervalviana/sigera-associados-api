@@ -1,0 +1,15 @@
+# Normaliza finais de linha: CRLF no Windows, LF no repositório.
+* text=auto
+
+*.cs      text diff=csharp
+*.csproj  text
+*.slnx    text
+*.json    text
+*.md      text
+*.sql     text
+*.ps1     text eol=crlf
+*.http    text
+
+*.png     binary
+*.jpg     binary
+*.pfx     binary

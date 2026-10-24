@@ -1,0 +1,33 @@
+# ---- Build e IDE (.NET / Visual Studio / Rider / VS Code) ----
+[Bb]in/
+[Oo]bj/
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userprefs
+*.rsuser
+[Tt]est[Rr]esult*/
+*.trx
+coverage*.xml
+*.coverage
+publish/
+artifacts/
+
+# ---- Segredos e configurações locais (nunca versionar) ----
+# Senhas, chave JWT e Gmail ficam nos User Secrets, fora do projeto.
+appsettings.*.local.json
+*.local.json
+urlpublica.local.json
+.env
+*.pfx
+*.pem
+
+# ---- Sistema operacional ----
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ---- Logs ----
+*.log

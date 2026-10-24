@@ -1,0 +1,232 @@
+# SigeraAssociados API
+
+API REST em **C# / ASP.NET Core (.NET 10)** para consultar associados dos sistemas **PROASP, SONASP, ABSP e GSP**, com autenticação JWT, controle de acesso por sistema, empresa, filial e carteira do corretor, e gestão de usuários.
+
+Arquitetura em camadas (Clean Architecture): Api → Application ← Infrastructure, com Entity Framework Core e SQL Server.
+
+## Sumário
+
+- [Estrutura](#estrutura)
+- [Requisitos](#requisitos)
+- [Configuração](#configuração)
+- [Banco de dados](#banco-de-dados)
+- [Executar](#executar)
+- [Testes](#testes)
+- [Regra do associado](#regra-do-associado)
+- [Sistemas e permissões](#sistemas-e-permissões)
+- [Endpoints](#endpoints)
+- [Confirmação de e-mail pelo túnel](#confirmação-de-e-mail-pelo-túnel)
+- [Documentação](#documentação)
+
+## Estrutura
+
+```
+SIGERA_ASSOCIADOS_API/
+├── SigeraAssociados.slnx
+├── src/
+│   ├── SigeraAssociados.Api              Controllers, middleware, Swagger, rate limiting, e-mail
+│   ├── SigeraAssociados.Application      DTOs, interfaces, regras de serviço, grupos
+│   ├── SigeraAssociados.Domain           (reservado)
+│   └── SigeraAssociados.Infrastructure   EF Core, Identity, repositórios, acessos, usuários
+├── tests/
+│   ├── SigeraAssociados.UnitTests        Regras de escopo, grupos, acessos, gestão de usuários
+│   └── SigeraAssociados.IntegrationTests Endpoints, permissões por grupo, limites, confirmação
+├── scripts/
+│   ├── criar-login-usr_sisgera_api.sql   Login do SQL Server usado pela API
+│   └── iniciar-tunel-cloudflared.ps1     URL pública para o link de confirmação
+└── doc/                                   Pendências, fluxogramas, coleção do Postman
+```
+
+## Requisitos
+
+- .NET SDK 10
+- SQL Server com autenticação mista (SQL Server e Windows)
+- Bancos de negócio: `PROASP_SIG`, `SONASP_SIG`, `ABSP_SIG`, `GSP_SIG`
+- Banco de identidade: `SigeraIdentity`
+- Opcional: `cloudflared` (link de confirmação por e-mail) e Postman
+
+## Configuração
+
+Nenhuma senha fica no repositório. O `appsettings.json` tem só valores públicos; os segredos ficam nos **User Secrets** do projeto Api.
+
+```powershell
+$p = "src\SigeraAssociados.Api"
+
+# Bancos de negócio (usuário já vem do appsettings: usr_sisgera_api)
+dotnet user-secrets set "ConnectionSettings:Password" "<senha>" --project $p
+
+# Banco de identidade
+dotnet user-secrets set "IdentityConnectionSettings:Server" "127.0.0.1" --project $p
+dotnet user-secrets set "IdentityConnectionSettings:Port" "1433" --project $p
+dotnet user-secrets set "IdentityConnectionSettings:Database" "SigeraIdentity" --project $p
+dotnet user-secrets set "IdentityConnectionSettings:User" "usr_sisgera_api" --project $p
+dotnet user-secrets set "IdentityConnectionSettings:Password" "<senha>" --project $p
+dotnet user-secrets set "IdentityConnectionSettings:Encrypt" "true" --project $p
+dotnet user-secrets set "IdentityConnectionSettings:TrustServerCertificate" "true" --project $p
+
+# Chave JWT (64 bytes aleatórios em Base64)
+$bytes = New-Object byte[] 64
+[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+dotnet user-secrets set "Jwt:SigningKey" ([Convert]::ToBase64String($bytes)) --project $p
+
+# E-mail (Gmail com senha de app)
+dotnet user-secrets set "Email:Gmail:Host" "smtp.gmail.com" --project $p
+dotnet user-secrets set "Email:Gmail:Port" "587" --project $p
+dotnet user-secrets set "Email:Gmail:User" "<conta>@gmail.com" --project $p
+dotnet user-secrets set "Email:Gmail:Password" "<senha de app>" --project $p
+
+# Primeiro administrador (só em Development; desligue depois de criado)
+dotnet user-secrets set "SeedAdmin:Habilitado" "true" --project $p
+dotnet user-secrets set "SeedAdmin:Email" "<seu e-mail>" --project $p
+dotnet user-secrets set "SeedAdmin:Senha" "<senha forte>" --project $p
+```
+
+| Chave | Onde | Descrição |
+|---|---|---|
+| `ConnectionSettings:*` | appsettings + secrets | Servidor e login das 4 bases de negócio |
+| `IdentityConnectionSettings:*` | secrets | Banco de identidade (usuários, grupos, acessos) |
+| `Jwt:Issuer`, `Jwt:Audience`, `Jwt:AccessTokenMinutes` | appsettings | Emissor, público e validade do token (15 min) |
+| `Jwt:SigningKey` | secrets | Chave de assinatura (mínimo 32 bytes, Base64) |
+| `Email:Gmail:*` | secrets | SMTP para confirmação e recuperação de senha |
+| `SeedAdmin:*` | secrets | Criação do primeiro administrador |
+| `UrlPublica:BaseUrl` | `urlpublica.local.json` (gerado pelo script) | URL pública usada no link de confirmação |
+
+## Banco de dados
+
+1. Crie o login da API (execute como `sa`, depois de trocar a senha no script):
+
+   ```powershell
+   sqlcmd -S "127.0.0.1,1433" -U sa -C -i scripts\criar-login-usr_sisgera_api.sql
+   ```
+
+   Permissões: leitura nas 4 bases de negócio; leitura e escrita no `SigeraIdentity`.
+
+2. Crie as tabelas do banco de identidade:
+
+   ```powershell
+   dotnet tool install --global dotnet-ef
+   dotnet ef database update `
+       --project src\SigeraAssociados.Infrastructure `
+       --startup-project src\SigeraAssociados.Api `
+       --context SigeraIdentityDbContext
+   ```
+
+As 4 bases de negócio são legadas e somente lidas: a API não cria nem altera tabelas nelas.
+
+## Executar
+
+```powershell
+dotnet restore .\SigeraAssociados.slnx
+dotnet build .\SigeraAssociados.slnx
+dotnet run --project src\SigeraAssociados.Api --launch-profile https
+```
+
+- Swagger (somente Development): https://localhost:7001/swagger
+- Faça login em `POST /api/auth/login`, clique em **Authorize** e cole o `accessToken`.
+
+## Testes
+
+```powershell
+dotnet test .\SigeraAssociados.slnx
+```
+
+Os testes não precisam de banco: os unitários usam EF Core InMemory e os de integração usam autenticação simulada (`TesteAutenticacaoHandler`) e serviços falsos.
+
+## Regra do associado
+
+Todo associado é **pessoa física ou jurídica** e só é considerado pela API se tiver o cadastro completo:
+
+| Tipo (`T000PESS.TP_PES`) | Tabelas obrigatórias |
+|---|---|
+| `F` (física, quase todos) | `T000PESS` + `T000CLIE` + `T000PFIS` |
+| `J` (jurídica) | `T000PESS` + `T000CLIE` + `T000PJUR` |
+
+Equivale à consulta:
+
+```sql
+select * from t000pess a
+  inner join t000clie b on a.CD_EMP = b.CD_EMP and a.SQ_PES = b.SQ_PES_CLI
+  inner join T000PFIS c on a.CD_EMP = c.CD_EMP and a.SQ_PES = c.SQ_PES_FIS
+where a.TP_PES = 'F'
+union all
+select * from t000pess a
+  inner join t000clie b on a.CD_EMP = b.CD_EMP and a.SQ_PES = b.SQ_PES_CLI
+  inner join T000PJUR c on a.CD_EMP = c.CD_EMP and a.SQ_PES = c.SQ_PES_JUR
+where a.TP_PES = 'J'
+```
+
+Na API a regra fica em `AssociadosRepository.FiltrarCadastroCompleto` (com `EXISTS`, para não duplicar linhas) e vale para listar, consultar por código e a busca paginada. A resposta traz `tipoPessoa` (`F` ou `J`).
+
+## Sistemas e permissões
+
+Cada requisição de negócio informa o sistema no cabeçalho `X-Sigera-Sistema`:
+
+| Código | Sistema | Banco |
+|---|---|---|
+| 1 | PROASP | PROASP_SIG |
+| 2 | SONASP | SONASP_SIG |
+| 3 | ABSP | ABSP_SIG |
+| 4 | GSP | GSP_SIG |
+
+**Grupos:** Administradores, Gestores, Coordenadora Adm. & Operacional, Corretores, Financeiro, Associados e Atendimento.
+
+| Quem | Pode |
+|---|---|
+| Administradores | Tudo: todos os dados, usuários, acessos e diagnóstico |
+| Gestores | Criar e gerenciar usuários (exceto administradores) |
+| Demais grupos | Consultar associados dentro dos acessos concedidos |
+
+**Acessos** (tabela `UsuarioAcessos`, concedidos por administradores) se somam:
+
+- sistema inteiro;
+- empresa inteira;
+- empresa + filial (associados sem filial não aparecem);
+- carteira do corretor (associados com contrato com o corretor), na empresa ou na filial.
+
+Regras extras: ninguém altera a própria conta; o grupo Administradores não é concedido pelos endpoints; não há cadastro público.
+
+**Limite de requisições (429):** autenticação 10/min por IP; criar usuário e reenviar confirmação 5 a cada 10 min; geral 300/min por usuário.
+
+## Endpoints
+
+| Método | Rota | Quem |
+|---|---|---|
+| POST | `/api/auth/login` | Público |
+| POST / GET | `/api/auth/confirmar-email` | Público (GET = link do e-mail) |
+| POST | `/api/auth/solicitar-recuperacao-senha` | Público |
+| POST | `/api/auth/redefinir-senha` | Público |
+| GET | `/api/conta` | Usuário logado |
+| GET | `/api/associados` | Conforme acessos |
+| GET | `/api/associados/consulta` | Conforme acessos |
+| GET | `/api/associados/{cdEmp}/{sqPesCli}` | Conforme acessos |
+| GET | `/api/administracao/grupos` | Admin, Gestores |
+| POST | `/api/administracao/usuarios` | Admin, Gestores |
+| GET | `/api/administracao/usuarios` | Admin, Gestores |
+| GET / DELETE | `/api/administracao/usuarios/{id}` | Admin, Gestores |
+| PUT | `/api/administracao/usuarios/{id}/grupo` | Admin, Gestores |
+| POST | `/api/administracao/usuarios/{id}/bloquear` e `/desbloquear` | Admin, Gestores |
+| POST | `/api/administracao/usuarios/{id}/reenviar-confirmacao` | Admin, Gestores |
+| GET / POST | `/api/administracao/usuarios/{id}/acessos` | Admin |
+| DELETE | `/api/administracao/usuarios/{id}/acessos/{acessoId}` | Admin |
+| GET | `/api/diagnostico/conexao`, `/api/diagnostico/pessoas` | Admin |
+
+## Confirmação de e-mail pelo túnel
+
+Com a API rodando, em outra janela:
+
+```powershell
+winget install --id Cloudflare.cloudflared   # uma vez
+.\scripts\iniciar-tunel-cloudflared.ps1
+```
+
+O script grava a URL `https://xxxx.trycloudflare.com` em `src\SigeraAssociados.Api\urlpublica.local.json`. A API recarrega o arquivo sozinha e os e-mails passam a trazer o botão **Confirmar e-mail**. Ctrl+C fecha o túnel e apaga o arquivo. Sem o túnel, o e-mail traz o token para uso em `POST /api/auth/confirmar-email`.
+
+O túnel expõe a API na internet: use só em desenvolvimento.
+
+## Documentação
+
+- [Pendências gerais](doc/SigeraAssociados%20API%20%E2%80%94%20Pend%C3%AAncias%20gerais.md)
+- [Fluxogramas](doc/Fluxograma%20do%20projeto.md)
+- [Postman: passo a passo](doc/postman/Postman%20-%20passo%20a%20passo.md)
+- [Roteiro de testes](doc/postman/Roteiro%20de%20testes.md)
+- Coleção do Postman: `doc/postman/SigeraAssociados API.postman_collection.json`

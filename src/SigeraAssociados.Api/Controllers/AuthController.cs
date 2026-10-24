@@ -1,0 +1,509 @@
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Encodings.Web;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.IdentityModel.Tokens;
+using SigeraAssociados.Api.DTOs.Auth;
+using SigeraAssociados.Api.Seguranca;
+using SigeraAssociados.Api.Services;
+
+namespace SigeraAssociados.Api.Controllers;
+
+/// <summary>
+/// Gerencia autenticação, confirmação de e-mail e recuperação de senha.
+/// Não há cadastro público: novos usuários são criados somente por
+/// Administradores e Gestores em POST /api/administracao/usuarios.
+/// </summary>
+[ApiController]
+[Route("api/auth")]
+[EnableRateLimiting(LimiteRequisicoes.Autenticacao)]
+public sealed class AuthController : ControllerBase
+{
+	private readonly UserManager<IdentityUser> _userManager;
+	private readonly SignInManager<IdentityUser> _signInManager;
+	private readonly IConfiguration _configuration;
+	private readonly ILogger<AuthController> _logger;
+	private readonly GmailEmailService _emailService;
+	private readonly EmailConfirmacaoService _emailConfirmacao;
+
+	public AuthController(
+		UserManager<IdentityUser> userManager,
+		SignInManager<IdentityUser> signInManager,
+		IConfiguration configuration,
+		ILogger<AuthController> logger,
+		GmailEmailService emailService,
+		EmailConfirmacaoService emailConfirmacao)
+	{
+		_userManager = userManager;
+		_signInManager = signInManager;
+		_configuration = configuration;
+		_logger = logger;
+		_emailService = emailService;
+		_emailConfirmacao = emailConfirmacao;
+	}
+
+	/// <summary>
+	/// Autentica um usuário e emite um token JWT.
+	/// </summary>
+	[HttpPost("login")]
+	[ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+	[ProducesResponseType(StatusCodes.Status423Locked)]
+	public async Task<IActionResult> Login(
+		[FromBody] LoginRequest request,
+		CancellationToken cancellationToken)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+
+		var usuario = await _userManager.FindByEmailAsync(request.Email);
+
+		// Não revela se o e-mail existe.
+		if (usuario is null)
+		{
+			return Unauthorized(new
+			{
+				mensagem = "E-mail ou senha inválidos, ou conta ainda não confirmada."
+			});
+		}
+
+		// Verifica a senha e aplica a política de bloqueio do Identity.
+		var resultado = await _signInManager.CheckPasswordSignInAsync(
+			usuario,
+			request.Senha,
+			lockoutOnFailure: true);
+
+		if (resultado.IsLockedOut)
+		{
+			return StatusCode(
+				StatusCodes.Status423Locked,
+				new
+				{
+					mensagem = "Conta temporariamente bloqueada por excesso de tentativas. Tente novamente mais tarde."
+				});
+		}
+
+		if (resultado.IsNotAllowed || !usuario.EmailConfirmed)
+		{
+			return Unauthorized(new
+			{
+				mensagem = "E-mail ou senha inválidos, ou conta ainda não confirmada."
+			});
+		}
+
+		if (!resultado.Succeeded)
+		{
+			return Unauthorized(new
+			{
+				mensagem = "E-mail ou senha inválidos, ou conta ainda não confirmada."
+			});
+		}
+
+		var issuer = _configuration["Jwt:Issuer"]
+			?? throw new InvalidOperationException(
+				"A configuração Jwt:Issuer não foi definida.");
+
+		var audience = _configuration["Jwt:Audience"]
+			?? throw new InvalidOperationException(
+				"A configuração Jwt:Audience não foi definida.");
+
+		var signingKey = _configuration["Jwt:SigningKey"]
+			?? throw new InvalidOperationException(
+				"A chave de assinatura JWT não foi configurada.");
+
+		var minutos = _configuration.GetValue<int>(
+			"Jwt:AccessTokenMinutes");
+
+		if (minutos is < 1 or > 1440)
+		{
+			throw new InvalidOperationException(
+				"Jwt:AccessTokenMinutes deve estar entre 1 e 1440 minutos.");
+		}
+
+		var keyBytes = Convert.FromBase64String(signingKey);
+
+		if (keyBytes.Length < 32)
+		{
+			throw new InvalidOperationException(
+				"A chave JWT deve conter pelo menos 32 bytes.");
+		}
+
+		var agora = DateTime.UtcNow;
+		var expiracao = agora.AddMinutes(minutos);
+
+		var claims = new List<Claim>
+		{
+			new(JwtRegisteredClaimNames.Sub, usuario.Id),
+			new(ClaimTypes.NameIdentifier, usuario.Id),
+			new(JwtRegisteredClaimNames.Email, usuario.Email ?? string.Empty),
+			new(ClaimTypes.Email, usuario.Email ?? string.Empty),
+			new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+		};
+
+		// Inclui as funções cadastradas no Identity, quando existentes.
+		var funcoes = await _userManager.GetRolesAsync(usuario);
+
+		foreach (var funcao in funcoes)
+		{
+			claims.Add(new Claim(ClaimTypes.Role, funcao));
+		}
+
+		var chave = new SymmetricSecurityKey(keyBytes);
+
+		var credenciais = new SigningCredentials(
+			chave,
+			SecurityAlgorithms.HmacSha256);
+
+		var token = new JwtSecurityToken(
+			issuer: issuer,
+			audience: audience,
+			claims: claims,
+			notBefore: agora,
+			expires: expiracao,
+			signingCredentials: credenciais);
+
+		var tokenAssinado = new JwtSecurityTokenHandler()
+			.WriteToken(token);
+
+		_logger.LogInformation(
+			"Autenticação concluída para o usuário {UsuarioId}.",
+			usuario.Id);
+
+		return Ok(new LoginResponse
+		{
+			AccessToken = tokenAssinado,
+			TokenType = "Bearer",
+			ExpiresIn = checked(minutos * 60),
+			Email = usuario.Email ?? string.Empty
+		});
+	}
+
+	/// <summary>
+	/// Confirma o endereço de e-mail utilizando um token do Identity.
+	/// </summary>
+	[HttpPost("confirmar-email")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status400BadRequest)]
+	public async Task<IActionResult> ConfirmarEmail(
+		[FromBody] ConfirmarEmailRequest request,
+		CancellationToken cancellationToken)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+
+		var usuario = await _userManager.FindByEmailAsync(request.Email);
+
+		// A mesma resposta é utilizada para evitar revelar contas existentes.
+		if (usuario is null)
+		{
+			return BadRequest(new
+			{
+				mensagem = "Não foi possível confirmar o e-mail. Verifique os dados e o token informado."
+			});
+		}
+
+		if (usuario.EmailConfirmed)
+		{
+			return Ok(new
+			{
+				mensagem = "O endereço de e-mail já está confirmado."
+			});
+		}
+
+		var resultado = await _userManager.ConfirmEmailAsync(
+			usuario,
+			request.Token);
+
+		if (!resultado.Succeeded)
+		{
+			return BadRequest(new
+			{
+				mensagem = "Não foi possível confirmar o e-mail. Verifique os dados e o token informado."
+			});
+		}
+
+		_logger.LogInformation(
+			"Endereço de e-mail confirmado para o usuário {UsuarioId}.",
+			usuario.Id);
+
+		return Ok(new
+		{
+			mensagem = "E-mail confirmado com sucesso."
+		});
+	}
+
+	/// <summary>
+	/// Confirma o e-mail pelo link enviado na mensagem de cadastro.
+	/// O link aponta para a URL pública da API (cloudflared tunnel)
+	/// e traz o token codificado em Base64Url.
+	/// Devolve uma página HTML simples, pois é aberto no navegador.
+	/// </summary>
+	[HttpGet("confirmar-email")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status400BadRequest)]
+	public async Task<IActionResult> ConfirmarEmailPorLink(
+		[FromQuery] string? usuarioId,
+		[FromQuery] string? token,
+		CancellationToken cancellationToken)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+
+		const string mensagemFalha =
+			"Não foi possível confirmar o e-mail. O link pode estar incompleto " +
+			"ou expirado. Solicite um novo envio ao administrador do sistema.";
+
+		if (string.IsNullOrWhiteSpace(usuarioId)
+			|| string.IsNullOrWhiteSpace(token)
+			|| usuarioId.Length > 450
+			|| token.Length > 8192)
+		{
+			return PaginaResultado(
+				StatusCodes.Status400BadRequest,
+				"Link inválido",
+				mensagemFalha);
+		}
+
+		var tokenDecodificado = EmailConfirmacaoService.DecodificarToken(token);
+
+		if (tokenDecodificado is null)
+		{
+			return PaginaResultado(
+				StatusCodes.Status400BadRequest,
+				"Link inválido",
+				mensagemFalha);
+		}
+
+		var usuario = await _userManager.FindByIdAsync(usuarioId);
+
+		// A mesma resposta é utilizada para evitar revelar contas existentes.
+		if (usuario is null)
+		{
+			return PaginaResultado(
+				StatusCodes.Status400BadRequest,
+				"Link inválido",
+				mensagemFalha);
+		}
+
+		if (usuario.EmailConfirmed)
+		{
+			return PaginaResultado(
+				StatusCodes.Status200OK,
+				"E-mail já confirmado",
+				"Seu endereço de e-mail já estava confirmado. Você já pode fazer login.");
+		}
+
+		var resultado = await _userManager.ConfirmEmailAsync(
+			usuario,
+			tokenDecodificado);
+
+		if (!resultado.Succeeded)
+		{
+			return PaginaResultado(
+				StatusCodes.Status400BadRequest,
+				"Link inválido ou expirado",
+				mensagemFalha);
+		}
+
+		_logger.LogInformation(
+			"Endereço de e-mail confirmado pelo link para o usuário {UsuarioId}.",
+			usuario.Id);
+
+		return PaginaResultado(
+			StatusCodes.Status200OK,
+			"E-mail confirmado",
+			"Seu endereço de e-mail foi confirmado com sucesso. Você já pode fazer login na Sigera Associados.");
+	}
+
+	/// <summary>
+	/// Solicita a recuperação de senha e envia o token por e-mail.
+	/// A resposta não revela se a conta existe.
+	/// </summary>
+	[HttpPost("solicitar-recuperacao-senha")]
+	[ProducesResponseType(StatusCodes.Status202Accepted)]
+	public async Task<IActionResult> SolicitarRecuperacaoSenha(
+		[FromBody] SolicitarRecuperacaoSenhaRequest request,
+		CancellationToken cancellationToken)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+
+		var mensagem = new
+		{
+			mensagem = "Se existir uma conta elegível para recuperação com esse endereço, você receberá as instruções por e-mail."
+		};
+
+		var usuario = await _userManager.FindByEmailAsync(request.Email);
+
+		// Não envia tokens para contas inexistentes ou não confirmadas.
+		if (usuario is null || !usuario.EmailConfirmed)
+		{
+			return Accepted(mensagem);
+		}
+
+		try
+		{
+			// Gera um token específico para redefinição de senha.
+			var token = await _userManager.GeneratePasswordResetTokenAsync(
+				usuario);
+
+			var corpoHtml = CriarCorpoEmail(
+				"Recuperação de senha",
+				"Recebemos uma solicitação de recuperação de senha da sua conta Sigera Associados.",
+				"Se você solicitou a recuperação, utilize o token abaixo no endpoint POST /api/auth/redefinir-senha, pelo Swagger (/swagger) ou por outro cliente de API. Se não solicitou, ignore esta mensagem.",
+				token);
+
+			await _emailService.EnviarAsync(
+				usuario.Email!,
+				"Recuperação de senha - Sigera Associados",
+				corpoHtml,
+				cancellationToken);
+
+			_logger.LogInformation(
+				"Solicitação de recuperação de senha processada para o usuário {UsuarioId}.",
+				usuario.Id);
+		}
+		catch (OperationCanceledException)
+		{
+			throw;
+		}
+		catch (Exception ex)
+		{
+			// Mantém a resposta genérica para reduzir a exposição da conta.
+			_logger.LogError(
+				"Falha no envio de recuperação de senha para o usuário {UsuarioId}. Tipo de erro: {TipoErro}.",
+				usuario.Id,
+				ex.GetType().Name);
+		}
+
+		return Accepted(mensagem);
+	}
+
+	/// <summary>
+	/// Redefine a senha com um token válido do Identity.
+	/// </summary>
+	[HttpPost("redefinir-senha")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status400BadRequest)]
+	public async Task<IActionResult> RedefinirSenha(
+		[FromBody] RedefinirSenhaRequest request,
+		CancellationToken cancellationToken)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+
+		var usuario = await _userManager.FindByEmailAsync(request.Email);
+
+		if (usuario is null)
+		{
+			return BadRequest(new
+			{
+				mensagem = "Não foi possível redefinir a senha. Verifique os dados e o token informado."
+			});
+		}
+
+		var resultado = await _userManager.ResetPasswordAsync(
+			usuario,
+			request.Token,
+			request.NovaSenha);
+
+		if (!resultado.Succeeded)
+		{
+			// Não retorna detalhes internos nem informações sensíveis da conta.
+			return BadRequest(new
+			{
+				mensagem = "Não foi possível redefinir a senha. Verifique os dados e o token informado."
+			});
+		}
+
+		_logger.LogInformation(
+			"Senha redefinida para o usuário {UsuarioId}.",
+			usuario.Id);
+
+		return Ok(new
+		{
+			mensagem = "Senha redefinida com sucesso."
+		});
+	}
+
+	/// <summary>
+	/// Monta a página HTML exibida após o clique no link de confirmação.
+	/// </summary>
+	private static ContentResult PaginaResultado(
+		int statusCode,
+		string titulo,
+		string mensagem)
+	{
+		var codificador = HtmlEncoder.Default;
+
+		var tituloSeguro = codificador.Encode(titulo);
+		var mensagemSegura = codificador.Encode(mensagem);
+
+		return new ContentResult
+		{
+			StatusCode = statusCode,
+			ContentType = "text/html; charset=utf-8",
+			Content = $"""
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <meta name="robots" content="noindex">
+                    <title>{tituloSeguro} - Sigera Associados</title>
+                </head>
+                <body style="font-family: Arial, sans-serif; color: #222; line-height: 1.6; background: #f6f7f9;">
+                    <main style="max-width: 520px; margin: 64px auto; padding: 32px; background: #fff; border-radius: 8px;">
+                        <h1 style="font-size: 22px; margin-top: 0;">Sigera Associados</h1>
+                        <h2 style="font-size: 18px;">{tituloSeguro}</h2>
+                        <p>{mensagemSegura}</p>
+                    </main>
+                </body>
+                </html>
+                """
+		};
+	}
+
+	/// <summary>
+	/// Monta o corpo HTML do e-mail e codifica os dados dinâmicos
+	/// para evitar a inserção de HTML não confiável na mensagem.
+	/// </summary>
+	private static string CriarCorpoEmail(
+		string titulo,
+		string introducao,
+		string instrucoes,
+		string token)
+	{
+		var codificador = HtmlEncoder.Default;
+
+		var tituloSeguro = codificador.Encode(titulo);
+		var introducaoSegura = codificador.Encode(introducao);
+		var instrucoesSeguras = codificador.Encode(instrucoes);
+		var tokenSeguro = codificador.Encode(token);
+
+		return $"""
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>{tituloSeguro}</title>
+            </head>
+            <body style="font-family: Arial, sans-serif; color: #222; line-height: 1.6;">
+                <main style="max-width: 600px; margin: 0 auto; padding: 24px;">
+                    <h1 style="font-size: 24px;">Sigera Associados</h1>
+                    <h2 style="font-size: 20px;">{tituloSeguro}</h2>
+                    <p>{introducaoSegura}</p>
+                    <p>{instrucoesSeguras}</p>
+                    <div style="padding: 16px; background: #f3f4f6; border-radius: 8px; overflow-wrap: anywhere;">
+                        <strong>Seu token:</strong>
+                        <pre style="white-space: pre-wrap; overflow-wrap: anywhere;">{tokenSeguro}</pre>
+                    </div>
+                    <p style="font-size: 13px; color: #555;">
+                        Por segurança, não compartilhe este token com outras pessoas.
+                        Se você não solicitou esta operação, ignore esta mensagem.
+                    </p>
+                </main>
+            </body>
+            </html>
+            """;
+	}
+}

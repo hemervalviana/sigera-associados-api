@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SigeraAssociados.Api/SigeraAssociados.Api.csproj" />
+    <Project Path="src/SigeraAssociados.Application/SigeraAssociados.Application.csproj" />
+    <Project Path="src/SigeraAssociados.Domain/SigeraAssociados.Domain.csproj" />
+    <Project Path="src/SigeraAssociados.Infrastructure/SigeraAssociados.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SigeraAssociados.IntegrationTests/SigeraAssociados.IntegrationTests.csproj" />
+    <Project Path="tests/SigeraAssociados.UnitTests/SigeraAssociados.UnitTests.csproj" />
+  </Folder>
+</Solution>

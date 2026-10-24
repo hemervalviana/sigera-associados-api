@@ -1,0 +1,92 @@
+# Chamadas de teste da SigeraAssociados API (Visual Studio / VS Code REST Client).
+# 1. Execute o login e copie o accessToken para @token.
+# 2. X-Sigera-Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP.
+
+@host = https://localhost:7001
+@token = COLE_O_ACCESS_TOKEN_AQUI
+@sistema = 1
+
+### Login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "hemerval@outlook.com",
+  "senha": "SUA_SENHA"
+}
+
+### Minha conta e acessos
+GET {{host}}/api/conta
+Authorization: Bearer {{token}}
+
+### Testar conexão com o banco do sistema
+GET {{host}}/api/diagnostico/conexao
+Authorization: Bearer {{token}}
+X-Sigera-Sistema: {{sistema}}
+
+### Consultar associados (filtros, paginação e ordenação)
+GET {{host}}/api/associados/consulta?nome=SILVA&pagina=1&tamanhoPagina=20&ordenarPor=nome&direcao=asc
+Authorization: Bearer {{token}}
+X-Sigera-Sistema: {{sistema}}
+
+### Consultar associado por empresa e pessoa
+GET {{host}}/api/associados/2/12345
+Authorization: Bearer {{token}}
+X-Sigera-Sistema: {{sistema}}
+
+### Listar grupos funcionais
+GET {{host}}/api/administracao/grupos
+Authorization: Bearer {{token}}
+
+### Criar usuário
+POST {{host}}/api/administracao/usuarios
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "email": "novo.usuario@exemplo.com",
+  "senha": "SenhaForte#2026",
+  "confirmarSenha": "SenhaForte#2026",
+  "grupo": "Corretores"
+}
+
+### Listar usuários
+GET {{host}}/api/administracao/usuarios?busca=&grupo=&pagina=1&tamanhoPagina=20
+Authorization: Bearer {{token}}
+
+### Trocar grupo
+PUT {{host}}/api/administracao/usuarios/ID_DO_USUARIO/grupo
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "grupo": "Atendimento"
+}
+
+### Bloquear / desbloquear usuário
+POST {{host}}/api/administracao/usuarios/ID_DO_USUARIO/bloquear
+Authorization: Bearer {{token}}
+
+###
+POST {{host}}/api/administracao/usuarios/ID_DO_USUARIO/desbloquear
+Authorization: Bearer {{token}}
+
+### Reenviar confirmação de e-mail
+POST {{host}}/api/administracao/usuarios/ID_DO_USUARIO/reenviar-confirmacao
+Authorization: Bearer {{token}}
+
+### Conceder acesso (sistema 2, empresa 2, filial 1)
+POST {{host}}/api/administracao/usuarios/ID_DO_USUARIO/acessos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sistema": 2,
+  "cdEmp": 2,
+  "cdFil": 1,
+  "sqPesCorretor": null
+}
+
+### Listar acessos do usuário
+GET {{host}}/api/administracao/usuarios/ID_DO_USUARIO/acessos
+Authorization: Bearer {{token}}
