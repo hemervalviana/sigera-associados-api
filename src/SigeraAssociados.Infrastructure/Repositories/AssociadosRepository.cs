@@ -355,8 +355,9 @@ public sealed class AssociadosRepository : IAssociadosRepository
 			"dtcarteira" =>
 				query.OrderBy(a => a.DT_CARTEIRA),
 
-			_ => throw new ArgumentException(
-				"Campo de ordenação inválido.")
+			// Inalcançável: o AssociadosService já validou o campo.
+			_ => throw new InvalidOperationException(
+				$"Campo de ordenação não suportado: {campo}.")
 		};
 
 		// Mantém os critérios de desempate para estabilizar a paginação.

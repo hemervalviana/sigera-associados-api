@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SigeraAssociados.Api.Erros;
 using Microsoft.EntityFrameworkCore;
 using SigeraAssociados.Api.Services;
 using SigeraAssociados.Application.Usuarios;
@@ -65,14 +66,10 @@ public sealed class DiagnosticController : ControllerBase
 				"Falha ao conectar ao banco do sistema {SystemCode}.",
 				Request.Headers["X-Sigera-Sistema"].ToString());
 
-			return StatusCode(
+			return this.Erro(
 				StatusCodes.Status503ServiceUnavailable,
-				new
-				{
-					status = "falha_na_conexao",
-					mensagem =
-						"Não foi possível conectar ao banco selecionado. Consulte o log da API."
-				});
+				"Não foi possível conectar ao banco selecionado. Consulte o log da API.",
+				"falha_na_conexao");
 		}
 	}
 
@@ -85,48 +82,29 @@ public sealed class DiagnosticController : ControllerBase
 	public async Task<IActionResult> ConsultarPessoas(
 		CancellationToken cancellationToken)
 	{
-		try
-		{
-			await using var dbContext =
-				_databaseService.CreateDbContext();
+		await using var dbContext =
+			_databaseService.CreateDbContext();
 
-			var pessoas = await dbContext.Pessoas
-				.AsNoTracking()
-				.OrderBy(p => p.CD_EMP)
-				.ThenBy(p => p.SQ_PES)
-				.Take(10)
-				.Select(p => new
-				{
-					p.CD_EMP,
-					p.SQ_PES,
-					p.TP_PES,
-					p.NM_PES,
-					p.DT_CAD
-				})
-				.ToListAsync(cancellationToken);
-
-			return Ok(new
+		var pessoas = await dbContext.Pessoas
+			.AsNoTracking()
+			.OrderBy(p => p.CD_EMP)
+			.ThenBy(p => p.SQ_PES)
+			.Take(10)
+			.Select(p => new
 			{
-				status = "sucesso",
-				quantidade = pessoas.Count,
-				pessoas
-			});
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(
-				ex,
-				"Falha ao consultar T000PESS no sistema {SystemCode}.",
-				Request.Headers["X-Sigera-Sistema"].ToString());
+				p.CD_EMP,
+				p.SQ_PES,
+				p.TP_PES,
+				p.NM_PES,
+				p.DT_CAD
+			})
+			.ToListAsync(cancellationToken);
 
-			return StatusCode(
-				StatusCodes.Status503ServiceUnavailable,
-				new
-				{
-					status = "falha_na_consulta",
-					mensagem =
-						"Não foi possível consultar T000PESS. Consulte o log da API."
-				});
-		}
+		return Ok(new
+		{
+			status = "sucesso",
+			quantidade = pessoas.Count,
+			pessoas
+		});
 	}
 }

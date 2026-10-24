@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using SigeraAssociados.Api;
+using SigeraAssociados.Api.Erros;
 using SigeraAssociados.Api.Middlewares;
 using SigeraAssociados.Api.Seguranca;
 using SigeraAssociados.Api.Services;
@@ -79,6 +80,17 @@ if (jwtKeyBytes.Length < 32)
 
 // Registra suporte a controllers da API REST.
 builder.Services.AddControllers();
+
+// Formato único de erro: ProblemDetails (application/problem+json)
+// com título em português, codigo e traceId.
+builder.Services.AddProblemDetails(options =>
+{
+	options.CustomizeProblemDetails = contexto =>
+		RespostasErro.Completar(contexto.ProblemDetails, contexto.HttpContext);
+});
+
+// Converte exceções em ProblemDetails e registra no log as falhas não previstas.
+builder.Services.AddExceptionHandler<TratadorExcecoes>();
 
 // Registra o Swagger (Swashbuckle): documento e tela de testes.
 builder.Services.AddEndpointsApiExplorer();
@@ -205,6 +217,14 @@ await using (var scope = app.Services.CreateAsyncScope())
 		app.Configuration, 
 		app.Environment.IsDevelopment()); 
 }
+
+// Trata exceções não capturadas (500 em ProblemDetails, com log).
+// Fica no início para cobrir todo o pipeline.
+app.UseExceptionHandler();
+
+// Respostas de erro sem corpo (401, 403, 404, 405...) também
+// recebem o corpo ProblemDetails.
+app.UseStatusCodePages();
 
 // Disponibiliza o Swagger somente em desenvolvimento,
 // em /swagger (tela) e /swagger/v1/swagger.json (documento).

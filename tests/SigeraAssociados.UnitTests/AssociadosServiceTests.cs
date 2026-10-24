@@ -1,4 +1,5 @@
-﻿using SigeraAssociados.Application.Acesso;
+﻿using SigeraAssociados.Application.Erros;
+using SigeraAssociados.Application.Acesso;
 using SigeraAssociados.Application.Associados;
 using SigeraAssociados.Application.Interfaces.Acesso;
 using SigeraAssociados.Application.Interfaces.Repositories;
@@ -132,7 +133,7 @@ public sealed class AssociadosServiceTests
             Direcao = "asc"
         };
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        await Assert.ThrowsAsync<DadosInvalidosException>(
             () => servico.ConsultarPaginadoAsync(request));
 
         Assert.Equal(0, repositorio.ChamadasConsultaPaginada);
@@ -150,7 +151,7 @@ public sealed class AssociadosServiceTests
             Direcao = "asc"
         };
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        await Assert.ThrowsAsync<DadosInvalidosException>(
             () => servico.ConsultarPaginadoAsync(request));
 
         Assert.Equal(0, repositorio.ChamadasConsultaPaginada);
@@ -168,7 +169,7 @@ public sealed class AssociadosServiceTests
             Direcao = "asc"
         };
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        await Assert.ThrowsAsync<DadosInvalidosException>(
             () => servico.ConsultarPaginadoAsync(request));
 
         Assert.Equal(0, repositorio.ChamadasConsultaPaginada);
@@ -186,7 +187,7 @@ public sealed class AssociadosServiceTests
             Direcao = "asc"
         };
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        await Assert.ThrowsAsync<DadosInvalidosException>(
             () => servico.ConsultarPaginadoAsync(request));
 
         Assert.Equal(0, repositorio.ChamadasConsultaPaginada);
@@ -204,7 +205,7 @@ public sealed class AssociadosServiceTests
             Direcao = "aleatoria"
         };
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        await Assert.ThrowsAsync<DadosInvalidosException>(
             () => servico.ConsultarPaginadoAsync(request));
 
         Assert.Equal(0, repositorio.ChamadasConsultaPaginada);
@@ -233,7 +234,7 @@ public sealed class AssociadosServiceTests
             TamanhoPagina = 20
         };
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        await Assert.ThrowsAsync<DadosInvalidosException>(
             () => servico.ConsultarPaginadoAsync(request));
 
         Assert.Equal(0, repositorio.ChamadasConsultaPaginada);

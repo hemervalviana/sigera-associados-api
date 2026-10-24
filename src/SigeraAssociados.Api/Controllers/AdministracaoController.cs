@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using SigeraAssociados.Api.Erros;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SigeraAssociados.Api.DTOs.Administracao;
@@ -86,12 +87,10 @@ public sealed class AdministracaoController : ControllerBase
 		if (grupoPermitido is null ||
 			grupoPermitido == Grupos.Administradores)
 		{
-			return BadRequest(new
-			{
-				mensagem =
-					"Informe um grupo funcional válido. " +
-					"A atribuição do grupo Administradores exige um processo separado."
-			});
+			return this.Erro(
+				StatusCodes.Status400BadRequest,
+				"Informe um grupo funcional válido. " +
+					"A atribuição do grupo Administradores exige um processo separado.");
 		}
 
 		// Impede duplicidade de contas.
@@ -99,10 +98,9 @@ public sealed class AdministracaoController : ControllerBase
 
 		if (usuarioExistente is not null)
 		{
-			return Conflict(new
-			{
-				mensagem = "Já existe uma conta cadastrada com esse e-mail."
-			});
+			return this.Erro(
+				StatusCodes.Status409Conflict,
+				"Já existe uma conta cadastrada com esse e-mail.");
 		}
 
 		// Verifica se o grupo já foi provisionado no Identity.
@@ -114,13 +112,9 @@ public sealed class AdministracaoController : ControllerBase
 				"O grupo funcional {Grupo} não foi encontrado no Identity.",
 				grupoPermitido);
 
-			return StatusCode(
+			return this.Erro(
 				StatusCodes.Status500InternalServerError,
-				new
-				{
-					mensagem =
-						"O grupo solicitado ainda não foi provisionado no sistema."
-				});
+				"O grupo solicitado ainda não foi provisionado no sistema.");
 		}
 
 		// Cria a conta sem confirmar automaticamente o e-mail.
@@ -141,13 +135,11 @@ public sealed class AdministracaoController : ControllerBase
 				.Select(erro => erro.Code)
 				.ToArray();
 
-			return BadRequest(new
-			{
-				mensagem =
-					"Não foi possível criar a conta. " +
-					"Verifique os dados e os requisitos de senha.",
-				codigosErro
-			});
+			return this.Erro(
+				StatusCodes.Status400BadRequest,
+				"Não foi possível criar a conta. Verifique os dados e os requisitos de senha.",
+				"cadastro_recusado",
+				new Dictionary<string, object?> { ["codigosErro"] = codigosErro });
 		}
 
 		// Atribui exclusivamente o grupo funcional autorizado.
@@ -173,13 +165,9 @@ public sealed class AdministracaoController : ControllerBase
 					"Falha ao atribuir grupo. A conta recém-criada foi removida.");
 			}
 
-			return StatusCode(
+			return this.Erro(
 				StatusCodes.Status500InternalServerError,
-				new
-				{
-					mensagem =
-						"Não foi possível concluir a criação da conta."
-				});
+				"Não foi possível concluir a criação da conta.");
 		}
 
 		// A conta e o grupo já foram persistidos.
@@ -233,18 +221,16 @@ public sealed class AdministracaoController : ControllerBase
 
 		if (usuario is null)
 		{
-			return NotFound(new
-			{
-				mensagem = "Usuário não encontrado."
-			});
+			return this.Erro(
+				StatusCodes.Status404NotFound,
+				"Usuário não encontrado.");
 		}
 
 		if (usuario.EmailConfirmed)
 		{
-			return BadRequest(new
-			{
-				mensagem = "O endereço de e-mail deste usuário já está confirmado."
-			});
+			return this.Erro(
+				StatusCodes.Status400BadRequest,
+				"O endereço de e-mail deste usuário já está confirmado.");
 		}
 
 		var emailEnviado = await TentarEnviarConfirmacaoAsync(
@@ -253,14 +239,10 @@ public sealed class AdministracaoController : ControllerBase
 
 		if (!emailEnviado)
 		{
-			return StatusCode(
+			return this.Erro(
 				StatusCodes.Status503ServiceUnavailable,
-				new
-				{
-					mensagem =
-						"Não foi possível enviar o e-mail de confirmação. " +
-						"Verifique a configuração do serviço de e-mail e tente novamente."
-				});
+				"Não foi possível enviar o e-mail de confirmação. " +
+						"Verifique a configuração do serviço de e-mail e tente novamente.");
 		}
 
 		return Ok(new

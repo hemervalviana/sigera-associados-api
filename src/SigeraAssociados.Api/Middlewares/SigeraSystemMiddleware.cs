@@ -1,4 +1,5 @@
-﻿using SigeraAssociados.Application.Interfaces.Acesso;
+﻿using SigeraAssociados.Api.Erros;
+using SigeraAssociados.Application.Interfaces.Acesso;
 using SigeraAssociados.Infrastructure.Systems;
 
 namespace SigeraAssociados.Api.Middlewares;
@@ -83,17 +84,16 @@ public sealed class SigeraSystemMiddleware
 		await _next(context);
 	}
 
-	private static async Task EscreverErroAsync(
+	private static Task EscreverErroAsync(
 		HttpContext context,
 		int statusCode,
 		string mensagem)
 	{
-		context.Response.StatusCode = statusCode;
-
-		await context.Response.WriteAsJsonAsync(new
-		{
-			erro = mensagem
-		});
+		return RespostasErro.EscreverAsync(
+			context,
+			statusCode,
+			mensagem,
+			statusCode == StatusCodes.Status400BadRequest ? "sistema_invalido" : "sistema_sem_acesso");
 	}
 
 	/// <summary>

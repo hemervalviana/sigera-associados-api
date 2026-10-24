@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using SigeraAssociados.Api.Erros;
 
 namespace SigeraAssociados.Api.Seguranca;
 
@@ -89,13 +90,15 @@ public static class LimiteRequisicoes
 						contexto.HttpContext.Request.Method,
 						contexto.HttpContext.Request.Path.Value);
 
-				await resposta.WriteAsJsonAsync(
-					new
+				await RespostasErro.EscreverAsync(
+					contexto.HttpContext,
+					StatusCodes.Status429TooManyRequests,
+					"Muitas requisições em pouco tempo. Aguarde e tente novamente.",
+					"limite_excedido",
+					new Dictionary<string, object?>
 					{
-						mensagem = "Muitas requisições em pouco tempo. Aguarde e tente novamente.",
-						tenteNovamenteEmSegundos = segundos
-					},
-					cancellationToken);
+						["tenteNovamenteEmSegundos"] = segundos
+					});
 			};
 		});
 

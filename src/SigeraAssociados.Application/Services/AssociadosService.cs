@@ -1,5 +1,6 @@
 ﻿using SigeraAssociados.Application.Acesso;
 using SigeraAssociados.Application.Associados;
+using SigeraAssociados.Application.Erros;
 using SigeraAssociados.Application.Interfaces.Acesso;
 using SigeraAssociados.Application.Interfaces.Associados;
 using SigeraAssociados.Application.Interfaces.Repositories;
@@ -84,13 +85,13 @@ public sealed class AssociadosService : IAssociadosService
 
 		if (request.Pagina < 1)
 		{
-			throw new ArgumentException(
+			throw new DadosInvalidosException(
 				"A página deve ser maior ou igual a 1.");
 		}
 
 		if (request.TamanhoPagina < 1 || request.TamanhoPagina > 100)
 		{
-			throw new ArgumentException(
+			throw new DadosInvalidosException(
 				"O tamanho da página deve estar entre 1 e 100.");
 		}
 
@@ -104,13 +105,17 @@ public sealed class AssociadosService : IAssociadosService
 
 		if (!CamposPermitidos.Contains(campo))
 		{
-			throw new ArgumentException(
-				"Campo de ordenação inválido.");
+			throw new DadosInvalidosException(
+				"Campo de ordenação inválido.",
+				new Dictionary<string, object?>
+				{
+					["camposPermitidos"] = CamposPermitidos
+				});
 		}
 
 		if (direcao is not ("asc" or "desc"))
 		{
-			throw new ArgumentException(
+			throw new DadosInvalidosException(
 				"A direção deve ser 'asc' ou 'desc'.");
 		}
 

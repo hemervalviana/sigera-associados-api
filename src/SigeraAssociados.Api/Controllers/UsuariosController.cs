@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SigeraAssociados.Api.Erros;
 using SigeraAssociados.Api.DTOs.Usuarios;
 using SigeraAssociados.Application.Interfaces.Usuarios;
 using SigeraAssociados.Application.Usuarios;
@@ -42,35 +43,29 @@ public sealed class UsuariosController : ControllerBase
 		[FromQuery] int tamanhoPagina = 20,
 		CancellationToken cancellationToken = default)
 	{
-		try
-		{
-			var resultado = await _gestaoUsuarios.ListarAsync(
-				new ConsultaUsuariosRequest
-				{
-					Busca = busca,
-					Grupo = grupo,
-					Pagina = pagina,
-					TamanhoPagina = tamanhoPagina
-				},
-				cancellationToken);
-
-			return Ok(new
+		// Filtros inválidos viram 400 pelo tratador global (DadosInvalidosException).
+		var resultado = await _gestaoUsuarios.ListarAsync(
+			new ConsultaUsuariosRequest
 			{
-				paginacao = new
-				{
-					pagina = resultado.Pagina,
-					tamanhoPagina = resultado.TamanhoPagina,
-					totalRegistros = resultado.TotalRegistros,
-					totalPaginas = resultado.TotalPaginas
-				},
-				quantidade = resultado.Usuarios.Count,
-				usuarios = resultado.Usuarios
-			});
-		}
-		catch (ArgumentException ex)
+				Busca = busca,
+				Grupo = grupo,
+				Pagina = pagina,
+				TamanhoPagina = tamanhoPagina
+			},
+			cancellationToken);
+
+		return Ok(new
 		{
-			return BadRequest(new { mensagem = ex.Message });
-		}
+			paginacao = new
+			{
+				pagina = resultado.Pagina,
+				tamanhoPagina = resultado.TamanhoPagina,
+				totalRegistros = resultado.TotalRegistros,
+				totalPaginas = resultado.TotalPaginas
+			},
+			quantidade = resultado.Usuarios.Count,
+			usuarios = resultado.Usuarios
+		});
 	}
 
 	/// <summary>
@@ -86,7 +81,9 @@ public sealed class UsuariosController : ControllerBase
 		var usuario = await _gestaoUsuarios.ObterAsync(id, cancellationToken);
 
 		return usuario is null
-			? NotFound(new { mensagem = "Usuário não encontrado." })
+			? this.Erro(
+				StatusCodes.Status404NotFound,
+				"Usuário não encontrado.")
 			: Ok(usuario);
 	}
 
@@ -188,14 +185,16 @@ public sealed class UsuariosController : ControllerBase
 			});
 		}
 
-		var corpo = new { mensagem = resultado.Mensagem };
-
-		return resultado.Status switch
+		var status = resultado.Status switch
 		{
-			StatusGestaoUsuario.UsuarioNaoEncontrado => NotFound(corpo),
-			StatusGestaoUsuario.Proibido => StatusCode(StatusCodes.Status403Forbidden, corpo),
-			StatusGestaoUsuario.Invalido => BadRequest(corpo),
-			_ => StatusCode(StatusCodes.Status500InternalServerError, corpo)
+			StatusGestaoUsuario.UsuarioNaoEncontrado => StatusCodes.Status404NotFound,
+			StatusGestaoUsuario.Proibido => StatusCodes.Status403Forbidden,
+			StatusGestaoUsuario.Invalido => StatusCodes.Status400BadRequest,
+			_ => StatusCodes.Status500InternalServerError
 		};
+
+		return this.Erro(
+			status,
+			resultado.Mensagem ?? RespostasErro.Titulo(status));
 	}
 }

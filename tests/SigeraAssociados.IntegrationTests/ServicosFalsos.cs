@@ -18,6 +18,12 @@ public sealed class GestaoUsuariosFalso : IGestaoUsuariosService
 	/// </summary>
 	public ResultadoGestaoUsuario ProximoResultado { get; set; } = Sucesso();
 
+	/// <summary>
+	/// Quando preenchida, a listagem lança esta exceção
+	/// (simula uma falha inesperada).
+	/// </summary>
+	public Exception? ExcecaoAoListar { get; set; }
+
 	public static UsuarioResumoDto Usuario(string id = "usuario-alvo") => new()
 	{
 		Id = id,
@@ -33,6 +39,11 @@ public sealed class GestaoUsuariosFalso : IGestaoUsuariosService
 		ConsultaUsuariosRequest request,
 		CancellationToken cancellationToken = default)
 	{
+		if (ExcecaoAoListar is not null)
+		{
+			throw ExcecaoAoListar;
+		}
+
 		return Task.FromResult(new ConsultaUsuariosResultado
 		{
 			Pagina = request.Pagina,

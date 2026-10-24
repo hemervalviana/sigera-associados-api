@@ -106,8 +106,8 @@ Os testes cobrem bem o filtro de escopo e a validação de parâmetros; autentic
 A separação em camadas existe, mas o projeto Domain está vazio e há código duplicado entre as camadas.
 
 - [ ] **Projeto Domain vazio** (o `Class1.cs` já foi removido). As entidades estão em Infrastructure. Decidir se o Domain ganha modelos ou se é removido.
-- [ ] **Validação duplicada.** Página, tamanho, campo e direção são validados no `AssociadosController` e de novo no `AssociadosService`. Deixar só no serviço.
-- [ ] **Tratamento de erros padronizado.** Cada controller faz `try/catch` genérico e devolve 503, e os formatos variam (`erro`, `mensagem`, `status`). Usar um handler global com `ProblemDetails`.
+- [x] **Validação duplicada removida:** o `AssociadosController` não valida mais; a validação fica só no `AssociadosService`.
+- [x] **Erros padronizados em ProblemDetails** (`application/problem+json`) com título em português, `codigo` e `traceId`; tratador global registra no log e responde 500 sem detalhes internos; 401/403/404 sem corpo também recebem ProblemDetails. Erros de entrada usam `DadosInvalidosException` (não mais `ArgumentException`). Testes em `RespostasErroTests`.
 - [ ] **Registro de serviços espalhado.** `AssociadosService` e `SigeraSystemContext` são registrados no `Program.cs`. Criar um `AddApplication()` e mover o contexto para `AddSigeraInfrastructure`.
 - [ ] **`SigeraDatabaseService` duplica a criação de contexto** do `AssociadosRepository`. Unificar.
 - [x] **Grupos funcionais centralizados** em `Application/Usuarios/Grupos.cs`, usados por `SeedData`, `UsuarioAtual` e pelos `[Authorize]` dos controllers.

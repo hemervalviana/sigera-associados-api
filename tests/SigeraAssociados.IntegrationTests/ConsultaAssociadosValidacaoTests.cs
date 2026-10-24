@@ -28,9 +28,9 @@ public sealed class ConsultaAssociadosValidacaoTests : IClassFixture<SigeraApiFa
     {
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        Assert.Contains(
-            "application/json",
-            response.Content.Headers.ContentType?.MediaType ?? "");
+        Assert.Equal(
+            "application/problem+json",
+            response.Content.Headers.ContentType?.MediaType);
 
         var conteudo = await response.Content.ReadAsStringAsync();
 
@@ -116,7 +116,7 @@ public sealed class ConsultaAssociadosValidacaoTests : IClassFixture<SigeraApiFa
         using var documento = JsonDocument.Parse(conteudo);
 
         Assert.True(documento.RootElement.TryGetProperty(
-            "erro",
+            "detail",
             out var erro));
 
         Assert.Contains(
@@ -144,7 +144,7 @@ public sealed class ConsultaAssociadosValidacaoTests : IClassFixture<SigeraApiFa
         using var documento = JsonDocument.Parse(conteudo);
 
         Assert.True(documento.RootElement.TryGetProperty(
-            "erro",
+            "detail",
             out _));
     }
 
@@ -205,7 +205,7 @@ public sealed class ConsultaAssociadosValidacaoTests : IClassFixture<SigeraApiFa
         using var documento = JsonDocument.Parse(conteudo);
 
         Assert.True(documento.RootElement.TryGetProperty(
-            "mensagem",
+            "detail",
             out var mensagem));
 
         Assert.Contains(

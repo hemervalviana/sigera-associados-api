@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using SigeraAssociados.Application.Interfaces.Acesso;
+using SigeraAssociados.Application.Erros;
 using SigeraAssociados.Application.Interfaces.Usuarios;
 using SigeraAssociados.Application.Usuarios;
 using SigeraAssociados.Infrastructure.Acesso;
@@ -42,12 +43,12 @@ public sealed class GestaoUsuariosService : IGestaoUsuariosService
 
 		if (request.Pagina < 1)
 		{
-			throw new ArgumentException("A página deve ser maior ou igual a 1.");
+			throw new DadosInvalidosException("A página deve ser maior ou igual a 1.");
 		}
 
 		if (request.TamanhoPagina < 1 || request.TamanhoPagina > 100)
 		{
-			throw new ArgumentException("O tamanho da página deve estar entre 1 e 100.");
+			throw new DadosInvalidosException("O tamanho da página deve estar entre 1 e 100.");
 		}
 
 		var query = _identityDb.Users.AsNoTracking();
@@ -64,7 +65,7 @@ public sealed class GestaoUsuariosService : IGestaoUsuariosService
 		if (!string.IsNullOrWhiteSpace(request.Grupo))
 		{
 			var grupo = Grupos.Normalizar(request.Grupo)
-				?? throw new ArgumentException("Grupo funcional inválido.");
+				?? throw new DadosInvalidosException("Grupo funcional inválido.");
 
 			var grupoId = await _identityDb.Roles
 				.Where(r => r.Name == grupo)

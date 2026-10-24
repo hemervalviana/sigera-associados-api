@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using SigeraAssociados.Api.Erros;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using SigeraAssociados.Api.DTOs.Auth;
@@ -63,10 +64,9 @@ public sealed class AuthController : ControllerBase
 		// Não revela se o e-mail existe.
 		if (usuario is null)
 		{
-			return Unauthorized(new
-			{
-				mensagem = "E-mail ou senha inválidos, ou conta ainda não confirmada."
-			});
+			return this.Erro(
+				StatusCodes.Status401Unauthorized,
+				"E-mail ou senha inválidos, ou conta ainda não confirmada.");
 		}
 
 		// Verifica a senha e aplica a política de bloqueio do Identity.
@@ -77,28 +77,23 @@ public sealed class AuthController : ControllerBase
 
 		if (resultado.IsLockedOut)
 		{
-			return StatusCode(
+			return this.Erro(
 				StatusCodes.Status423Locked,
-				new
-				{
-					mensagem = "Conta temporariamente bloqueada por excesso de tentativas. Tente novamente mais tarde."
-				});
+				"Conta temporariamente bloqueada por excesso de tentativas. Tente novamente mais tarde.");
 		}
 
 		if (resultado.IsNotAllowed || !usuario.EmailConfirmed)
 		{
-			return Unauthorized(new
-			{
-				mensagem = "E-mail ou senha inválidos, ou conta ainda não confirmada."
-			});
+			return this.Erro(
+				StatusCodes.Status401Unauthorized,
+				"E-mail ou senha inválidos, ou conta ainda não confirmada.");
 		}
 
 		if (!resultado.Succeeded)
 		{
-			return Unauthorized(new
-			{
-				mensagem = "E-mail ou senha inválidos, ou conta ainda não confirmada."
-			});
+			return this.Erro(
+				StatusCodes.Status401Unauthorized,
+				"E-mail ou senha inválidos, ou conta ainda não confirmada.");
 		}
 
 		var issuer = _configuration["Jwt:Issuer"]
@@ -197,10 +192,9 @@ public sealed class AuthController : ControllerBase
 		// A mesma resposta é utilizada para evitar revelar contas existentes.
 		if (usuario is null)
 		{
-			return BadRequest(new
-			{
-				mensagem = "Não foi possível confirmar o e-mail. Verifique os dados e o token informado."
-			});
+			return this.Erro(
+				StatusCodes.Status400BadRequest,
+				"Não foi possível confirmar o e-mail. Verifique os dados e o token informado.");
 		}
 
 		if (usuario.EmailConfirmed)
@@ -217,10 +211,9 @@ public sealed class AuthController : ControllerBase
 
 		if (!resultado.Succeeded)
 		{
-			return BadRequest(new
-			{
-				mensagem = "Não foi possível confirmar o e-mail. Verifique os dados e o token informado."
-			});
+			return this.Erro(
+				StatusCodes.Status400BadRequest,
+				"Não foi possível confirmar o e-mail. Verifique os dados e o token informado.");
 		}
 
 		_logger.LogInformation(
@@ -394,10 +387,9 @@ public sealed class AuthController : ControllerBase
 
 		if (usuario is null)
 		{
-			return BadRequest(new
-			{
-				mensagem = "Não foi possível redefinir a senha. Verifique os dados e o token informado."
-			});
+			return this.Erro(
+				StatusCodes.Status400BadRequest,
+				"Não foi possível redefinir a senha. Verifique os dados e o token informado.");
 		}
 
 		var resultado = await _userManager.ResetPasswordAsync(
@@ -408,10 +400,9 @@ public sealed class AuthController : ControllerBase
 		if (!resultado.Succeeded)
 		{
 			// Não retorna detalhes internos nem informações sensíveis da conta.
-			return BadRequest(new
-			{
-				mensagem = "Não foi possível redefinir a senha. Verifique os dados e o token informado."
-			});
+			return this.Erro(
+				StatusCodes.Status400BadRequest,
+				"Não foi possível redefinir a senha. Verifique os dados e o token informado.");
 		}
 
 		_logger.LogInformation(

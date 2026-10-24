@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using SigeraAssociados.Application.Erros;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SigeraAssociados.Application.Interfaces.Acesso;
@@ -139,7 +140,7 @@ public sealed class GestaoUsuariosServiceTests : IAsyncLifetime
 	{
 		ComoAdministrador();
 
-		await Assert.ThrowsAsync<ArgumentException>(() =>
+		await Assert.ThrowsAsync<DadosInvalidosException>(() =>
 			_servico.ListarAsync(new ConsultaUsuariosRequest { Grupo = "Diretoria" }));
 	}
 
@@ -151,7 +152,7 @@ public sealed class GestaoUsuariosServiceTests : IAsyncLifetime
 	{
 		ComoAdministrador();
 
-		await Assert.ThrowsAsync<ArgumentException>(() =>
+		await Assert.ThrowsAsync<DadosInvalidosException>(() =>
 			_servico.ListarAsync(new ConsultaUsuariosRequest { Pagina = pagina, TamanhoPagina = tamanho }));
 	}
 

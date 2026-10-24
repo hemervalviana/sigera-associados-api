@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SigeraAssociados.Api.Erros;
 using SigeraAssociados.Api.DTOs.Acessos;
 using SigeraAssociados.Application.Acesso;
 using SigeraAssociados.Application.Interfaces.Acesso;
@@ -43,7 +44,9 @@ public sealed class UsuarioAcessosController : ControllerBase
 
 		if (acessos is null)
 		{
-			return NotFound(new { mensagem = "Usuário não encontrado." });
+			return this.Erro(
+				StatusCodes.Status404NotFound,
+				"Usuário não encontrado.");
 		}
 
 		return Ok(new
@@ -134,14 +137,16 @@ public sealed class UsuarioAcessosController : ControllerBase
 
 	private IActionResult ParaResposta(ResultadoGestaoAcesso resultado)
 	{
-		var corpo = new { mensagem = resultado.Mensagem };
-
-		return resultado.Status switch
+		var status = resultado.Status switch
 		{
-			StatusGestaoAcesso.UsuarioNaoEncontrado => NotFound(corpo),
-			StatusGestaoAcesso.AcessoNaoEncontrado => NotFound(corpo),
-			StatusGestaoAcesso.Duplicado => Conflict(corpo),
-			_ => BadRequest(corpo)
+			StatusGestaoAcesso.UsuarioNaoEncontrado => StatusCodes.Status404NotFound,
+			StatusGestaoAcesso.AcessoNaoEncontrado => StatusCodes.Status404NotFound,
+			StatusGestaoAcesso.Duplicado => StatusCodes.Status409Conflict,
+			_ => StatusCodes.Status400BadRequest
 		};
+
+		return this.Erro(
+			status,
+			resultado.Mensagem ?? RespostasErro.Titulo(status));
 	}
 }

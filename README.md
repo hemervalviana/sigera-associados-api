@@ -14,6 +14,7 @@ Arquitetura em camadas (Clean Architecture): Api → Application ← Infrastruct
 - [Testes](#testes)
 - [Regra do associado](#regra-do-associado)
 - [Sistemas e permissões](#sistemas-e-permissões)
+- [Respostas de erro](#respostas-de-erro)
 - [Endpoints](#endpoints)
 - [Confirmação de e-mail pelo túnel](#confirmação-de-e-mail-pelo-túnel)
 - [Documentação](#documentação)
@@ -186,6 +187,35 @@ Cada requisição de negócio informa o sistema no cabeçalho `X-Sigera-Sistema`
 Regras extras: ninguém altera a própria conta; o grupo Administradores não é concedido pelos endpoints; não há cadastro público.
 
 **Limite de requisições (429):** autenticação 10/min por IP; criar usuário e reenviar confirmação 5 a cada 10 min; geral 300/min por usuário.
+
+## Respostas de erro
+
+Todo erro da API usa o mesmo formato, **ProblemDetails** (RFC 9457), com `Content-Type: application/problem+json`:
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+  "title": "Requisição inválida",
+  "status": 400,
+  "detail": "O tamanho da página deve estar entre 1 e 100.",
+  "instance": "/api/associados/consulta",
+  "codigo": "parametro_invalido",
+  "traceId": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+}
+```
+
+| Campo | Uso |
+|---|---|
+| `title` | Resumo em português do status (Requisição inválida, Não autenticado, Acesso negado...) |
+| `detail` | Mensagem para o usuário |
+| `codigo` | Identificador estável para o cliente tratar o erro (`parametro_invalido`, `validacao`, `sistema_invalido`, `sistema_sem_acesso`, `limite_excedido`, `erro_interno`...) |
+| `traceId` | Localiza a requisição no log da API |
+| `errors` | Só em `validacao`: campos inválidos e mensagens |
+| extras | Ex.: `camposPermitidos` (ordenação), `tenteNovamenteEmSegundos` (429), `codigosErro` (cadastro) |
+
+Falhas inesperadas viram **500** com `codigo: erro_interno`, sem detalhes internos, e ficam registradas no log com o `traceId`. Em Development a resposta também traz `excecao` e `mensagemExcecao`.
+
+Implementação: `Api/Erros/RespostasErro.cs` (formato e títulos), `Api/Erros/TratadorExcecoes.cs` (exceções) e `Application/Erros/DadosInvalidosException.cs` (erros de entrada lançados pelos serviços).
 
 ## Endpoints
 
