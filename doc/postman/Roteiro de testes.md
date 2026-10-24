@@ -93,6 +93,19 @@ Use o usuário de teste. O túnel precisa estar aberto (`.\scripts\iniciar-tunel
 | [ ] | — | Reusar o link | Clique de novo no mesmo botão do e-mail | "Link inválido ou expirado" |
 | [ ] | 01.1 | Login com a senha nova | Atualize a senha do usuário de teste nas variáveis | **200** |
 
+## Parte 6c — Sessão: renovar token e logout
+
+| OK | Nº | O que testar | Como | Esperado |
+|---|---|---|---|---|
+| [ ] | 01.1 | Login | — | **200** com `accessToken` e `refreshToken` |
+| [ ] | 01.5 | Renovar sem senha | — | **200**, tokens novos guardados |
+| [ ] | 01.5 | Reusar um refreshToken antigo | Copie o `refreshToken` antes do 01.5, rode o 01.5 e depois cole o antigo de volta na variável e rode de novo | **401**; todas as sessões encerradas (02.1 também dá **401**) |
+| [ ] | 01.1 | Login de novo | — | **200** |
+| [ ] | 01.6 | Logout desta sessão | — | **200** |
+| [ ] | 02.1 | Usar a API depois do logout | Cole em `token` o token antigo, se quiser testar | **401** na hora (sem esperar 15 min) |
+| [ ] | 05.7 | Bloqueio vale na hora | Logado como restrito em outra aba, bloqueie-o como admin e chame o 08.6 | **401** imediato para o restrito |
+| [ ] | 05.6 | Troca de grupo sem novo login | Troque o grupo do restrito; ele roda o 01.5 (renovar) | Token novo já com o grupo novo |
+
 ## Parte 6b — Usuário restrito automatizado (pasta 08)
 
 Confere que um usuário sem acesso irrestrito só vê a empresa e a filial liberadas. Também valida a correção do nível de compatibilidade 100: a consulta deve sair com `IN (...)`, sem `OPENJSON`.

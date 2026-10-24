@@ -21,6 +21,18 @@ public sealed class LoginResponse
     public int ExpiresIn { get; init; }
 
     /// <summary>
+    /// Token de renovação: use em POST /api/auth/renovar para obter
+    /// um novo token de acesso sem informar a senha. É de uso único:
+    /// cada renovação devolve um novo refreshToken.
+    /// </summary>
+    public string RefreshToken { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Data e hora (UTC) em que o refreshToken expira.
+    /// </summary>
+    public DateTimeOffset RefreshTokenExpiraEm { get; init; }
+
+    /// <summary>
     /// E-mail do usuário autenticado.
     /// </summary>
     public string Email { get; init; } = string.Empty;

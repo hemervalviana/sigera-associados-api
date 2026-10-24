@@ -220,6 +220,56 @@ namespace SigeraAssociados.Infrastructure.Persistence.Identity.Migrations
                     b.ToTable("UsuarioTokens", (string)null);
                 });
 
+            modelBuilder.Entity("SigeraAssociados.Infrastructure.Persistence.Identity.TokenRenovacao", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiraEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MotivoRevogacao")
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<DateTime?>("RevogadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SubstituidoPorHash")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("UsuarioId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("UX_TokensRenovacao_TokenHash");
+
+                    b.HasIndex("UsuarioId", "RevogadoEmUtc")
+                        .HasDatabaseName("IX_TokensRenovacao_Usuario_Ativos");
+
+                    b.ToTable("TokensRenovacao", (string)null);
+                });
+
             modelBuilder.Entity("SigeraAssociados.Infrastructure.Persistence.Identity.UsuarioAcesso", b =>
                 {
                     b.Property<int>("Id")
@@ -319,6 +369,17 @@ namespace SigeraAssociados.Infrastructure.Persistence.Identity.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("SigeraAssociados.Infrastructure.Persistence.Identity.TokenRenovacao", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("SigeraAssociados.Infrastructure.Persistence.Identity.UsuarioAcesso", b =>

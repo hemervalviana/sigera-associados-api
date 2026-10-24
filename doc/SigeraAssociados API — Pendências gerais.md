@@ -76,11 +76,12 @@ A gestão de usuários está incompleta: hoje só é possível criar contas e co
 
 - [x] **Listar e consultar usuários:** `GET /api/administracao/usuarios?busca=&grupo=&pagina=&tamanhoPagina=` e `GET /api/administracao/usuarios/{id}`, com grupos, confirmação de e-mail e bloqueio.
 - [x] **Trocar grupo, bloquear/desbloquear e excluir:** `PUT .../{id}/grupo`, `POST .../{id}/bloquear`, `POST .../{id}/desbloquear`, `DELETE .../{id}`. Regras: ninguém altera a própria conta; Gestores não mexem em contas de administradores; o grupo Administradores não é concedido por esses endpoints.
-- [ ] **Bloqueio e troca de grupo valem no próximo login.** O token JWT já emitido continua válido até expirar (15 min). Resolver junto com refresh token/revogação.
+- [x] **Bloqueio e troca de grupo valem na hora** (carimbo de segurança no token).
 - [ ] **Gestores devem conceder acessos?** Hoje Gestores criam e gerenciam usuários, mas conceder e revogar acessos (`/acessos`) continua só para administradores.
 - [ ] **Processo para conceder o grupo Administradores.** O código recusa esse grupo no cadastro e diz que "exige um processo separado", mas esse processo não existe.
 - [x] **Swagger instalado** (Swashbuckle.AspNetCore 10.3.1) no lugar do Microsoft.AspNetCore.OpenApi. Em Development: tela em `/swagger`, botão **Authorize** para o token JWT, campo `X-Sigera-Sistema` nas rotas de associados e diagnóstico, e descrições vindas dos comentários `///`.
-- [ ] **Refresh token e logout.** O token dura 15 minutos e não há renovação nem revogação. Troca de grupo só vale após o token expirar.
+- [x] **Refresh token e logout:** login devolve `refreshToken` (7 dias, uso único, hash no banco); `POST /api/auth/renovar` e `POST /api/auth/logout` (sessão atual ou todos os dispositivos). Carimbo de segurança conferido a cada requisição: bloqueio, troca de grupo e senha nova valem na hora.
+- [ ] **Gerar e aplicar a migration `TokensRenovacao`** no banco `SigeraIdentity`.
 - [x] **Link de confirmação de e-mail.** Feito com o cloudflared tunnel (seção acima).
 - [x] **Link de redefinição de senha:** o e-mail de recuperação traz o botão **Redefinir senha** (com o túnel); o link abre um formulário da própria API (`GET /api/auth/redefinir-senha`), que só aparece se o token for válido, e o envio (`POST /api/auth/redefinir-senha/formulario`) troca a senha e zera as tentativas erradas.
 - [ ] **Auditoria persistida.** Concessão e revogação de acesso ficam só no log. Gravar quem fez, quando e o quê numa tabela.

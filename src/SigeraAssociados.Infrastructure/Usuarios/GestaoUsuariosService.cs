@@ -21,17 +21,23 @@ public sealed class GestaoUsuariosService : IGestaoUsuariosService
 	private readonly UserManager<IdentityUser> _userManager;
 	private readonly IUsuarioAtual _usuarioAtual;
 	private readonly IMemoryCache _cache;
+	private readonly ITokensRenovacaoService _tokensRenovacao;
+	private readonly ISessoesService _sessoes;
 
 	public GestaoUsuariosService(
 		SigeraIdentityDbContext identityDb,
 		UserManager<IdentityUser> userManager,
 		IUsuarioAtual usuarioAtual,
-		IMemoryCache cache)
+		IMemoryCache cache,
+		ITokensRenovacaoService tokensRenovacao,
+		ISessoesService sessoes)
 	{
 		_identityDb = identityDb;
 		_userManager = userManager;
 		_usuarioAtual = usuarioAtual;
 		_cache = cache;
+		_tokensRenovacao = tokensRenovacao;
+		_sessoes = sessoes;
 	}
 
 	/// <inheritdoc />
@@ -211,6 +217,11 @@ public sealed class GestaoUsuariosService : IGestaoUsuariosService
 			}
 		}
 
+		// Novo carimbo: o token de acesso atual deixa de valer na hora.
+		// O usuário continua logado: a próxima renovação traz o grupo novo.
+		await _userManager.UpdateSecurityStampAsync(usuario!);
+		_sessoes.InvalidarCache(usuario!.Id);
+
 		return await SucessoAsync(usuario!);
 	}
 
@@ -248,10 +259,18 @@ public sealed class GestaoUsuariosService : IGestaoUsuariosService
 			return Falha("Não foi possível bloquear o usuário.");
 		}
 
-		// Invalida tokens de confirmação e redefinição de senha pendentes.
+		// Novo carimbo: tokens de acesso, confirmação e redefinição de senha
+		// pendentes deixam de valer na hora.
 		await _userManager.UpdateSecurityStampAsync(usuario);
 
+		// Encerra as sessões: os tokens de renovação são revogados.
+		await _tokensRenovacao.RevogarTodosAsync(
+			usuario.Id,
+			MotivosRevogacao.Bloqueio,
+			cancellationToken);
+
 		_cache.Remove(EscopoAcessoService.ChaveCache(usuario.Id));
+		_sessoes.InvalidarCache(usuario.Id);
 
 		return await SucessoAsync(usuario);
 	}
@@ -305,6 +324,7 @@ public sealed class GestaoUsuariosService : IGestaoUsuariosService
 		}
 
 		_cache.Remove(EscopoAcessoService.ChaveCache(usuarioId));
+		_sessoes.InvalidarCache(usuarioId);
 
 		return new ResultadoGestaoUsuario(
 			StatusGestaoUsuario.Sucesso,

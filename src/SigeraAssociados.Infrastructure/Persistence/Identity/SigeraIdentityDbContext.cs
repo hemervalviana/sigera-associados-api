@@ -23,6 +23,11 @@ public sealed class SigeraIdentityDbContext
     public DbSet<UsuarioAcesso> UsuarioAcessos => Set<UsuarioAcesso>();
 
     /// <summary>
+    /// Tokens de renovação (refresh tokens), gravados como hash.
+    /// </summary>
+    public DbSet<TokenRenovacao> TokensRenovacao => Set<TokenRenovacao>();
+
+    /// <summary>
     /// Configura o modelo do ASP.NET Core Identity.
     /// As tabelas serão criadas somente após a geração e aplicação
     /// explícita das migrações do banco SigeraIdentity.
@@ -87,6 +92,42 @@ public sealed class SigeraIdentityDbContext
             entidade.HasOne(a => a.Usuario)
                 .WithMany()
                 .HasForeignKey(a => a.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<TokenRenovacao>(entidade =>
+        {
+            entidade.ToTable("TokensRenovacao");
+
+            entidade.HasKey(t => t.Id);
+
+            entidade.Property(t => t.UsuarioId)
+                .HasMaxLength(450)
+                .IsRequired();
+
+            entidade.Property(t => t.TokenHash)
+                .HasMaxLength(64)
+                .IsUnicode(false)
+                .IsRequired();
+
+            entidade.Property(t => t.SubstituidoPorHash)
+                .HasMaxLength(64)
+                .IsUnicode(false);
+
+            entidade.Property(t => t.MotivoRevogacao)
+                .HasMaxLength(30)
+                .IsUnicode(false);
+
+            entidade.HasIndex(t => t.TokenHash)
+                .IsUnique()
+                .HasDatabaseName("UX_TokensRenovacao_TokenHash");
+
+            entidade.HasIndex(t => new { t.UsuarioId, t.RevogadoEmUtc })
+                .HasDatabaseName("IX_TokensRenovacao_Usuario_Ativos");
+
+            entidade.HasOne(t => t.Usuario)
+                .WithMany()
+                .HasForeignKey(t => t.UsuarioId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

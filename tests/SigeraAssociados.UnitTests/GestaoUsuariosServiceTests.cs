@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SigeraAssociados.Application.Interfaces.Acesso;
 using SigeraAssociados.Application.Interfaces.Usuarios;
 using SigeraAssociados.Application.Usuarios;
+using SigeraAssociados.Infrastructure.Acesso;
 using SigeraAssociados.Infrastructure.Persistence.Identity;
 using SigeraAssociados.Infrastructure.Usuarios;
 using Xunit;
@@ -51,6 +52,10 @@ public sealed class GestaoUsuariosServiceTests : IAsyncLifetime
 
 		services.AddSingleton<IUsuarioAtual>(_executor);
 		services.AddScoped<IGestaoUsuariosService, GestaoUsuariosService>();
+		services.AddSingleton<TimeProvider>(TimeProvider.System);
+		services.AddOptions<OpcoesSessao>();
+		services.AddScoped<ITokensRenovacaoService, TokensRenovacaoService>();
+		services.AddScoped<ISessoesService, SessoesService>();
 
 		_provider = services.BuildServiceProvider();
 		_escopo = _provider.CreateScope();
@@ -268,5 +273,32 @@ public sealed class GestaoUsuariosServiceTests : IAsyncLifetime
 			(await _servico.BloquearAsync("nao-existe")).Status);
 		Assert.Equal(StatusGestaoUsuario.UsuarioNaoEncontrado,
 			(await _servico.ExcluirAsync("nao-existe")).Status);
+	}
+
+	[Fact]
+	public async Task AlterarGrupo_DeveTrocarOCarimboDeSeguranca()
+	{
+		ComoAdministrador();
+		var usuario = await _userManager.FindByIdAsync(_corretorId);
+		var carimboAntes = await _userManager.GetSecurityStampAsync(usuario!);
+
+		await _servico.AlterarGrupoAsync(_corretorId, Grupos.Atendimento);
+
+		Assert.NotEqual(carimboAntes, await _userManager.GetSecurityStampAsync(usuario!));
+	}
+
+	[Fact]
+	public async Task Bloquear_DeveRevogarOsTokensDeRenovacao()
+	{
+		ComoAdministrador();
+		var tokens = _escopo.ServiceProvider.GetRequiredService<ITokensRenovacaoService>();
+		await tokens.EmitirAsync(_corretorId);
+
+		await _servico.BloquearAsync(_corretorId);
+
+		var db = _escopo.ServiceProvider.GetRequiredService<SigeraIdentityDbContext>();
+		Assert.All(
+			db.TokensRenovacao.Where(t => t.UsuarioId == _corretorId),
+			t => Assert.Equal(MotivosRevogacao.Bloqueio, t.MotivoRevogacao));
 	}
 }

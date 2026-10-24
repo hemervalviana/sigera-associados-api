@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using SigeraAssociados.Application.Interfaces.Acesso;
 using SigeraAssociados.Application.Interfaces.Repositories;
@@ -122,6 +123,15 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Consulta e manutenção das contas de usuário.
         services.AddScoped<IGestaoUsuariosService, GestaoUsuariosService>();
+
+        // Sessões: tokens de renovação, carimbo de segurança e logout.
+        services.AddOptions<OpcoesSessao>()
+            .Bind(configuration.GetSection(OpcoesSessao.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<ITokensRenovacaoService, TokensRenovacaoService>();
+        services.AddScoped<ISessoesService, SessoesService>();
 
         return services;
     }

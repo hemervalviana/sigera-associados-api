@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using Microsoft.OpenApi;
 using SigeraAssociados.Api;
 using SigeraAssociados.Api.Erros;
@@ -160,6 +161,39 @@ builder.Services
 		// Limita a tolerância de diferença entre relógios.
 		ClockSkew = TimeSpan.FromSeconds(30)
 	};
+
+	// Depois de validar assinatura e validade, confere se a sessão ainda vale:
+	// usuário existe e não está bloqueado, carimbo de segurança atual
+	// (muda ao bloquear, trocar grupo, trocar senha) e token sem logout.
+	options.Events = new JwtBearerEvents
+	{
+		OnTokenValidated = async contexto =>
+		{
+			var principal = contexto.Principal;
+			var usuarioId = principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+			var carimbo = principal?.FindFirstValue(GeradorTokenAcesso.ClaimCarimbo);
+			var tokenId = contexto.SecurityToken?.Id;
+
+			contexto.HttpContext.Items[SessaoAtual.ChaveTokenId] = tokenId;
+			contexto.HttpContext.Items[SessaoAtual.ChaveExpiracao] =
+				contexto.SecurityToken is null
+					? null
+					: new DateTimeOffset(contexto.SecurityToken.ValidTo, TimeSpan.Zero);
+
+			var sessoes = contexto.HttpContext.RequestServices
+				.GetRequiredService<ISessoesService>();
+
+			if (string.IsNullOrWhiteSpace(usuarioId)
+				|| !await sessoes.SessaoValidaAsync(
+					usuarioId,
+					carimbo,
+					tokenId,
+					contexto.HttpContext.RequestAborted))
+			{
+				contexto.Fail("Sessão encerrada ou inválida. Faça login novamente.");
+			}
+		}
+	};
 });
 
 
@@ -195,6 +229,9 @@ builder.Services.AddTransient<GmailEmailService>();
 // O link usa a URL pública da chave UrlPublica:BaseUrl
 // (gravada pelo script scripts/iniciar-tunel-cloudflared.ps1).
 builder.Services.AddTransient<EmailConfirmacaoService>();
+
+// Gera os tokens de acesso (JWT) com grupos e carimbo de segurança.
+builder.Services.AddScoped<GeradorTokenAcesso>();
 
 // O cloudflared tunnel recebe a requisição em HTTPS e a repassa
 // para a API local em HTTP, informando o esquema original

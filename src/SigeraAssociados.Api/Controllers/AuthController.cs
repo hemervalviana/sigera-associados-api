@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using SigeraAssociados.Api.Erros;
@@ -10,6 +11,9 @@ using Microsoft.IdentityModel.Tokens;
 using SigeraAssociados.Api.DTOs.Auth;
 using SigeraAssociados.Api.Seguranca;
 using SigeraAssociados.Api.Services;
+using SigeraAssociados.Application.Acesso;
+using SigeraAssociados.Application.Interfaces.Acesso;
+using SigeraAssociados.Infrastructure.Acesso;
 
 namespace SigeraAssociados.Api.Controllers;
 
@@ -29,6 +33,9 @@ public sealed class AuthController : ControllerBase
 	private readonly ILogger<AuthController> _logger;
 	private readonly GmailEmailService _emailService;
 	private readonly EmailConfirmacaoService _emailConfirmacao;
+	private readonly GeradorTokenAcesso _geradorToken;
+	private readonly ITokensRenovacaoService _tokensRenovacao;
+	private readonly ISessoesService _sessoes;
 
 	public AuthController(
 		UserManager<IdentityUser> userManager,
@@ -36,8 +43,14 @@ public sealed class AuthController : ControllerBase
 		IConfiguration configuration,
 		ILogger<AuthController> logger,
 		GmailEmailService emailService,
-		EmailConfirmacaoService emailConfirmacao)
+		EmailConfirmacaoService emailConfirmacao,
+		GeradorTokenAcesso geradorToken,
+		ITokensRenovacaoService tokensRenovacao,
+		ISessoesService sessoes)
 	{
+		_geradorToken = geradorToken;
+		_tokensRenovacao = tokensRenovacao;
+		_sessoes = sessoes;
 		_userManager = userManager;
 		_signInManager = signInManager;
 		_configuration = configuration;
@@ -96,83 +109,180 @@ public sealed class AuthController : ControllerBase
 				"E-mail ou senha inválidos, ou conta ainda não confirmada.");
 		}
 
-		var issuer = _configuration["Jwt:Issuer"]
-			?? throw new InvalidOperationException(
-				"A configuração Jwt:Issuer não foi definida.");
-
-		var audience = _configuration["Jwt:Audience"]
-			?? throw new InvalidOperationException(
-				"A configuração Jwt:Audience não foi definida.");
-
-		var signingKey = _configuration["Jwt:SigningKey"]
-			?? throw new InvalidOperationException(
-				"A chave de assinatura JWT não foi configurada.");
-
-		var minutos = _configuration.GetValue<int>(
-			"Jwt:AccessTokenMinutes");
-
-		if (minutos is < 1 or > 1440)
-		{
-			throw new InvalidOperationException(
-				"Jwt:AccessTokenMinutes deve estar entre 1 e 1440 minutos.");
-		}
-
-		var keyBytes = Convert.FromBase64String(signingKey);
-
-		if (keyBytes.Length < 32)
-		{
-			throw new InvalidOperationException(
-				"A chave JWT deve conter pelo menos 32 bytes.");
-		}
-
-		var agora = DateTime.UtcNow;
-		var expiracao = agora.AddMinutes(minutos);
-
-		var claims = new List<Claim>
-		{
-			new(JwtRegisteredClaimNames.Sub, usuario.Id),
-			new(ClaimTypes.NameIdentifier, usuario.Id),
-			new(JwtRegisteredClaimNames.Email, usuario.Email ?? string.Empty),
-			new(ClaimTypes.Email, usuario.Email ?? string.Empty),
-			new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-		};
-
-		// Inclui as funções cadastradas no Identity, quando existentes.
-		var funcoes = await _userManager.GetRolesAsync(usuario);
-
-		foreach (var funcao in funcoes)
-		{
-			claims.Add(new Claim(ClaimTypes.Role, funcao));
-		}
-
-		var chave = new SymmetricSecurityKey(keyBytes);
-
-		var credenciais = new SigningCredentials(
-			chave,
-			SecurityAlgorithms.HmacSha256);
-
-		var token = new JwtSecurityToken(
-			issuer: issuer,
-			audience: audience,
-			claims: claims,
-			notBefore: agora,
-			expires: expiracao,
-			signingCredentials: credenciais);
-
-		var tokenAssinado = new JwtSecurityTokenHandler()
-			.WriteToken(token);
+		var resposta = await CriarRespostaDeLoginAsync(usuario, cancellationToken);
 
 		_logger.LogInformation(
 			"Autenticação concluída para o usuário {UsuarioId}.",
 			usuario.Id);
 
+		return Ok(resposta);
+	}
+
+	/// <summary>
+	/// Troca o refreshToken por um novo token de acesso e um novo
+	/// refreshToken, sem pedir a senha. O refreshToken usado deixa de valer.
+	/// </summary>
+	[HttpPost("renovar")]
+	[ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+	public async Task<IActionResult> Renovar(
+		[FromBody] RenovarTokenRequest request,
+		CancellationToken cancellationToken)
+	{
+		var resultado = await _tokensRenovacao.RenovarAsync(
+			request.RefreshToken,
+			cancellationToken);
+
+		if (resultado.Status != StatusRenovacao.Sucesso)
+		{
+			if (resultado.Status == StatusRenovacao.Reutilizado)
+			{
+				_logger.LogWarning(
+					"Reuso de refreshToken detectado para o usuário {UsuarioId}. Todas as sessões foram encerradas.",
+					resultado.UsuarioId);
+
+				if (resultado.UsuarioId is not null)
+				{
+					var afetado = await _userManager.FindByIdAsync(resultado.UsuarioId);
+
+					if (afetado is not null)
+					{
+						await _userManager.UpdateSecurityStampAsync(afetado);
+						_sessoes.InvalidarCache(afetado.Id);
+					}
+				}
+			}
+
+			return this.Erro(
+				StatusCodes.Status401Unauthorized,
+				"Sessão expirada ou inválida. Faça login novamente.",
+				"sessao_invalida");
+		}
+
+		var usuario = await _userManager.FindByIdAsync(resultado.UsuarioId!);
+
+		if (usuario is null)
+		{
+			return this.Erro(
+				StatusCodes.Status401Unauthorized,
+				"Sessão expirada ou inválida. Faça login novamente.",
+				"sessao_invalida");
+		}
+
+		var tokenAcesso = await _geradorToken.GerarAsync(usuario);
+
 		return Ok(new LoginResponse
 		{
-			AccessToken = tokenAssinado,
+			AccessToken = tokenAcesso.Token,
 			TokenType = "Bearer",
-			ExpiresIn = checked(minutos * 60),
+			ExpiresIn = tokenAcesso.ExpiraEmSegundos,
+			RefreshToken = resultado.NovoToken!.Token,
+			RefreshTokenExpiraEm = resultado.NovoToken.ExpiraEm,
 			Email = usuario.Email ?? string.Empty
 		});
+	}
+
+	/// <summary>
+	/// Encerra a sessão: o token de acesso atual deixa de valer na hora
+	/// e o refreshToken informado é revogado. Com todosOsDispositivos = true,
+	/// encerra todas as sessões do usuário.
+	/// </summary>
+	[HttpPost("logout")]
+	[Authorize]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+	public async Task<IActionResult> Logout(
+		[FromBody] LogoutRequest? request,
+		CancellationToken cancellationToken)
+	{
+		var usuarioId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+		if (string.IsNullOrWhiteSpace(usuarioId))
+		{
+			return this.Erro(StatusCodes.Status401Unauthorized, "Sessão inválida.");
+		}
+
+		if (request?.TodosOsDispositivos == true)
+		{
+			var usuario = await _userManager.FindByIdAsync(usuarioId);
+
+			if (usuario is not null)
+			{
+				// Novo carimbo: todos os tokens de acesso deixam de valer.
+				await _userManager.UpdateSecurityStampAsync(usuario);
+			}
+
+			await _tokensRenovacao.RevogarTodosAsync(
+				usuarioId,
+				MotivosRevogacao.LogoutTodos,
+				cancellationToken);
+
+			_sessoes.InvalidarCache(usuarioId);
+
+			_logger.LogInformation(
+				"Logout de todos os dispositivos do usuário {UsuarioId}.",
+				usuarioId);
+
+			return Ok(new { mensagem = "Sessões encerradas em todos os dispositivos." });
+		}
+
+		// Encerra só o token de acesso desta requisição.
+		var tokenId = SessaoAtual.TokenId(HttpContext);
+		var expiracao = SessaoAtual.Expiracao(HttpContext);
+
+		if (!string.IsNullOrWhiteSpace(tokenId) && expiracao is not null)
+		{
+			_sessoes.EncerrarTokenAcesso(tokenId, expiracao.Value);
+		}
+
+		if (!string.IsNullOrWhiteSpace(request?.RefreshToken))
+		{
+			await _tokensRenovacao.RevogarAsync(
+				request.RefreshToken,
+				usuarioId,
+				cancellationToken);
+		}
+
+		_logger.LogInformation("Logout do usuário {UsuarioId}.", usuarioId);
+
+		return Ok(new { mensagem = "Sessão encerrada." });
+	}
+
+	/// <summary>
+	/// Monta a resposta de login: token de acesso + token de renovação.
+	/// </summary>
+	private async Task<LoginResponse> CriarRespostaDeLoginAsync(
+		IdentityUser usuario,
+		CancellationToken cancellationToken)
+	{
+		var tokenAcesso = await _geradorToken.GerarAsync(usuario);
+		var renovacao = await _tokensRenovacao.EmitirAsync(usuario.Id, cancellationToken);
+
+		return new LoginResponse
+		{
+			AccessToken = tokenAcesso.Token,
+			TokenType = "Bearer",
+			ExpiresIn = tokenAcesso.ExpiraEmSegundos,
+			RefreshToken = renovacao.Token,
+			RefreshTokenExpiraEm = renovacao.ExpiraEm,
+			Email = usuario.Email ?? string.Empty
+		};
+	}
+
+	/// <summary>
+	/// Senha nova: encerra as sessões abertas com a senha antiga.
+	/// O ResetPasswordAsync já troca o carimbo de segurança.
+	/// </summary>
+	private async Task EncerrarSessoesAposNovaSenhaAsync(
+		IdentityUser usuario,
+		CancellationToken cancellationToken)
+	{
+		await _tokensRenovacao.RevogarTodosAsync(
+			usuario.Id,
+			MotivosRevogacao.SenhaRedefinida,
+			cancellationToken);
+
+		_sessoes.InvalidarCache(usuario.Id);
 	}
 
 	/// <summary>
@@ -484,6 +594,8 @@ public sealed class AuthController : ControllerBase
 		// Senha nova: zera as tentativas erradas de login.
 		await _userManager.ResetAccessFailedCountAsync(usuario);
 
+		await EncerrarSessoesAposNovaSenhaAsync(usuario, cancellationToken);
+
 		_logger.LogInformation(
 			"Senha redefinida pelo link de recuperação para o usuário {UsuarioId}.",
 			usuario.Id);
@@ -527,6 +639,8 @@ public sealed class AuthController : ControllerBase
 				StatusCodes.Status400BadRequest,
 				"Não foi possível redefinir a senha. Verifique os dados e o token informado.");
 		}
+
+		await EncerrarSessoesAposNovaSenhaAsync(usuario, cancellationToken);
 
 		_logger.LogInformation(
 			"Senha redefinida para o usuário {UsuarioId}.",

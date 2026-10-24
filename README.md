@@ -188,6 +188,14 @@ Regras extras: ninguém altera a própria conta; o grupo Administradores não é
 
 **Limite de requisições (429):** autenticação 10/min por IP; criar usuário e reenviar confirmação 5 a cada 10 min; geral 300/min por usuário.
 
+## Sessão: token de acesso e de renovação
+
+- O login devolve `accessToken` (15 min) e `refreshToken` (7 dias, `Jwt:RefreshTokenDias`).
+- `POST /api/auth/renovar` troca o `refreshToken` por um novo par de tokens, sem senha. O `refreshToken` é de uso único; reuso de um token já trocado encerra todas as sessões do usuário.
+- O banco guarda só o hash SHA-256 do `refreshToken` (tabela `TokensRenovacao` no `SigeraIdentity`).
+- A cada requisição, a API confere o carimbo de segurança gravado no token. Bloquear, trocar de grupo, redefinir a senha ou sair de todos os dispositivos troca o carimbo e o token antigo para de valer **na hora**.
+- `POST /api/auth/logout` encerra a sessão atual na hora; com `"todosOsDispositivos": true`, encerra todas.
+
 ## Respostas de erro
 
 Todo erro da API usa o mesmo formato, **ProblemDetails** (RFC 9457), com `Content-Type: application/problem+json`:
@@ -222,6 +230,8 @@ Implementação: `Api/Erros/RespostasErro.cs` (formato e títulos), `Api/Erros/T
 | Método | Rota | Quem |
 |---|---|---|
 | POST | `/api/auth/login` | Público |
+| POST | `/api/auth/renovar` | Público (com refreshToken) |
+| POST | `/api/auth/logout` | Usuário logado |
 | POST / GET | `/api/auth/confirmar-email` | Público (GET = link do e-mail) |
 | POST | `/api/auth/solicitar-recuperacao-senha` | Público |
 | POST | `/api/auth/redefinir-senha` | Público |

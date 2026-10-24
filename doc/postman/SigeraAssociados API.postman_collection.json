@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "403ac004-a12d-4e6d-9cc3-ec3cd8e179a0",
+    "_postman_id": "f7817c98-ec98-45d6-8651-ac32089dcd45",
     "name": "SigeraAssociados API",
     "description": "Coleção de testes da SigeraAssociados API.\n\n## Como começar\n1. Suba a API (`dotnet run --project src\\SigeraAssociados.Api --launch-profile https`).\n2. Clique no nome da coleção > aba **Variables** e preencha `email` e `senha` na coluna **Current value**.\n3. Rode **01 - Autenticação > 01.1 - Login**. O token é guardado sozinho.\n4. Use as outras pastas na ordem. Cada requisição tem um passo a passo na aba **Docs** (ícone de documento à direita).\n\n## Variáveis principais\n- `baseUrl`: endereço da API.\n- `sistema`: banco usado nas pastas 03 e 04 (1 PROASP, 2 SONASP, 3 ABSP, 4 GSP).\n- `token`, `usuarioId`, `acessoId`: preenchidas automaticamente pelos scripts.\n\n## Erro de certificado\nSe aparecer *SSL Error: self signed certificate*, desligue em **Settings > General > SSL certificate verification**.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -157,7 +157,7 @@
                 "solicitar-recuperacao-senha"
               ]
             },
-            "description": "## O que faz\nEnvia um token de redefinição de senha para o e-mail informado, se a conta existir e estiver confirmada.\n\nA resposta é sempre **202**, exista ou não a conta (para não revelar quem tem cadastro).\n\n## Próximo passo\nUse o token recebido em **01.4 - Redefinir senha**.",
+            "description": "## O que faz\nEnvia um token de redefinição de senha para o e-mail informado, se a conta existir e estiver confirmada.\n\nA resposta é sempre **202**, exista ou não a conta (para não revelar quem tem cadastro).\n\n## Com o túnel ligado (recomendado)\n1. Rode `scripts\\iniciar-tunel-cloudflared.ps1`.\n2. Envie esta requisição.\n3. O e-mail chega com o botão **Redefinir senha**: ele abre uma página com o formulário de nova senha.\n4. Preencha a nova senha duas vezes e clique em **Salvar nova senha**. O link vale 24 horas e só funciona uma vez.\n\n## Sem o túnel\nO e-mail traz só o token: use-o em **01.4 - Redefinir senha**.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{email}}\"\n}",
