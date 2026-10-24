@@ -69,4 +69,71 @@ public sealed class AuthEndpointsTests : IClassFixture<SigeraApiFactory>
 
 		Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
 	}
+
+	// ----- Redefinição de senha pelo link do e-mail -----
+
+	[Fact]
+	public async Task FormularioRedefinicao_SemParametros_DeveMostrarLinkInvalido()
+	{
+		using var cliente = _factory.CreateClient();
+
+		using var resposta = await cliente.GetAsync("/api/auth/redefinir-senha");
+		var conteudo = await resposta.Content.ReadAsStringAsync();
+
+		Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+		Assert.Equal("text/html", resposta.Content.Headers.ContentType?.MediaType);
+		Assert.Contains("Link inv", conteudo);
+	}
+
+	[Fact]
+	public async Task FormularioRedefinicao_ComTokenMalformado_DeveMostrarLinkInvalido()
+	{
+		using var cliente = _factory.CreateClient();
+
+		using var resposta = await cliente.GetAsync(
+			"/api/auth/redefinir-senha?usuarioId=qualquer&token=!!!");
+
+		Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+	}
+
+	[Fact]
+	public async Task EnvioDoFormulario_ComSenhasDiferentes_DeveMostrarOFormularioComErro()
+	{
+		using var cliente = _factory.CreateClient();
+
+		using var resposta = await cliente.PostAsync(
+			"/api/auth/redefinir-senha/formulario",
+			new FormUrlEncodedContent(new Dictionary<string, string>
+			{
+				["usuarioId"] = "qualquer",
+				["token"] = "dG9rZW4",
+				["novaSenha"] = "SenhaForte#2026",
+				["confirmarNovaSenha"] = "OutraSenha#2026"
+			}));
+		var conteudo = await resposta.Content.ReadAsStringAsync();
+
+		Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+		Assert.Contains("coincidem", conteudo);
+		Assert.Contains("name=\"novaSenha\"", conteudo);
+	}
+
+	[Fact]
+	public async Task EnvioDoFormulario_ComSenhaCurta_DeveMostrarOFormularioComErro()
+	{
+		using var cliente = _factory.CreateClient();
+
+		using var resposta = await cliente.PostAsync(
+			"/api/auth/redefinir-senha/formulario",
+			new FormUrlEncodedContent(new Dictionary<string, string>
+			{
+				["usuarioId"] = "qualquer",
+				["token"] = "dG9rZW4",
+				["novaSenha"] = "Curta#1",
+				["confirmarNovaSenha"] = "Curta#1"
+			}));
+		var conteudo = await resposta.Content.ReadAsStringAsync();
+
+		Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+		Assert.Contains("12 e 128", conteudo);
+	}
 }

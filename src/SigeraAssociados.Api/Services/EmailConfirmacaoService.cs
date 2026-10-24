@@ -26,6 +26,11 @@ public sealed class EmailConfirmacaoService
 	/// </summary>
 	public const string RotaConfirmacao = "api/auth/confirmar-email";
 
+	/// <summary>
+	/// Rota do endpoint GET que abre o formulário de nova senha.
+	/// </summary>
+	public const string RotaRedefinicaoSenha = "api/auth/redefinir-senha";
+
 	private readonly UserManager<IdentityUser> _userManager;
 	private readonly GmailEmailService _emailService;
 	private readonly IConfiguration _configuration;
@@ -91,7 +96,16 @@ public sealed class EmailConfirmacaoService
 	/// com segurança na query string.
 	/// Retorna null quando a URL pública não está configurada.
 	/// </summary>
-	public string? CriarLink(string usuarioId, string token)
+	public string? CriarLink(string usuarioId, string token) =>
+		CriarLink(RotaConfirmacao, usuarioId, token);
+
+	/// <summary>
+	/// Monta um link público para a rota informada, com o usuário
+	/// e o token do Identity (codificado em Base64Url) na query string.
+	/// Usado na confirmação de e-mail e na redefinição de senha.
+	/// Retorna null quando a URL pública não está configurada.
+	/// </summary>
+	public string? CriarLink(string rota, string usuarioId, string token)
 	{
 		var urlPublica = ObterUrlPublica();
 
@@ -104,7 +118,7 @@ public sealed class EmailConfirmacaoService
 			Encoding.UTF8.GetBytes(token));
 
 		return QueryHelpers.AddQueryString(
-			new Uri(urlPublica, RotaConfirmacao).ToString(),
+			new Uri(urlPublica, rota).ToString(),
 			new Dictionary<string, string?>
 			{
 				["usuarioId"] = usuarioId,

@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "4be1ca97-8aea-45c2-be9e-604099b98f99",
+    "_postman_id": "403ac004-a12d-4e6d-9cc3-ec3cd8e179a0",
     "name": "SigeraAssociados API",
     "description": "Coleção de testes da SigeraAssociados API.\n\n## Como começar\n1. Suba a API (`dotnet run --project src\\SigeraAssociados.Api --launch-profile https`).\n2. Clique no nome da coleção > aba **Variables** e preencha `email` e `senha` na coluna **Current value**.\n3. Rode **01 - Autenticação > 01.1 - Login**. O token é guardado sozinho.\n4. Use as outras pastas na ordem. Cada requisição tem um passo a passo na aba **Docs** (ícone de documento à direita).\n\n## Variáveis principais\n- `baseUrl`: endereço da API.\n- `sistema`: banco usado nas pastas 03 e 04 (1 PROASP, 2 SONASP, 3 ABSP, 4 GSP).\n- `token`, `usuarioId`, `acessoId`: preenchidas automaticamente pelos scripts.\n\n## Erro de certificado\nSe aparecer *SSL Error: self signed certificate*, desligue em **Settings > General > SSL certificate verification**.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -990,7 +990,7 @@
                 "acessos"
               ]
             },
-            "description": "## O que faz\nLibera só os associados que têm contrato com o corretor informado (`sqPesCorretor` = código da pessoa do corretor).\n\n## Respostas\n- **201**: concedido.\n- **400**: corretor sem empresa.",
+            "description": "## O que faz\nLibera só os associados que têm contrato com o corretor informado (`sqPesCorretor` = código da pessoa do corretor).\n\n## Passo a passo\nTroque `12345` no **Body** pelo código de um corretor **real**: a API confere se ele existe em T000PESS e tem contratos em T009CTRT na empresa.\n\nPara achar um código: `SELECT DISTINCT TOP 10 SQ_PES_CRO FROM T009CTRT WHERE CD_EMP = 2;`\n\n## Respostas\n- **201**: concedido.\n- **400**: corretor sem empresa, ou corretor inexistente/sem contratos na empresa.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"sistema\": 2,\n  \"cdEmp\": 2,\n  \"cdFil\": null,\n  \"sqPesCorretor\": 12345\n}",
@@ -1605,6 +1605,100 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"sistema\": 7,\n  \"cdEmp\": null,\n  \"cdFil\": null,\n  \"sqPesCorretor\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (400)\", () => pm.expect(pm.response.code).to.be.oneOf([400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.13b - Conceder acesso a empresa inexistente no sistema deve dar 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/acessos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "acessos"
+              ]
+            },
+            "description": "Confere que a API recusa empresa que não existe no banco do sistema (T009EMPS). No SONASP só existe a empresa 2.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sistema\": 2,\n  \"cdEmp\": 99,\n  \"cdFil\": null,\n  \"sqPesCorretor\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (400)\", () => pm.expect(pm.response.code).to.be.oneOf([400]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07.13c - Conceder carteira de corretor inexistente deve dar 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/acessos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "acessos"
+              ]
+            },
+            "description": "Confere que a API recusa corretor que não existe em T000PESS ou não tem contratos em T009CTRT na empresa.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sistema\": 2,\n  \"cdEmp\": 2,\n  \"cdFil\": null,\n  \"sqPesCorretor\": 9999999\n}",
               "options": {
                 "raw": {
                   "language": "json"

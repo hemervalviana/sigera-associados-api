@@ -78,6 +78,21 @@ Antes de começar:
 | [ ] | 05.3 | Corretor tenta listar usuários | — | **403** |
 | [ ] | 01.1 | Voltar para o seu login | Restaure `email`/`senha` e rode o login | **200** |
 
+## Parte 6a — Recuperação de senha pelo link
+
+Use o usuário de teste. O túnel precisa estar aberto (`.\scripts\iniciar-tunel-cloudflared.ps1`).
+
+| OK | Nº | O que testar | Como | Esperado |
+|---|---|---|---|---|
+| [ ] | 01.3 | Pedir recuperação | Body com o e-mail do usuário de teste | **202** |
+| [ ] | — | E-mail recebido | Abra a caixa de entrada | Botão **Redefinir senha** |
+| [ ] | — | Abrir o link | Clique no botão | Página com o formulário "Redefinir senha" |
+| [ ] | — | Senhas diferentes | Digite duas senhas diferentes e salve | Formulário de novo, com "A senha e a confirmação não coincidem." |
+| [ ] | — | Senha fraca | Ex.: `senhafraca12345` (sem maiúscula e símbolo) | Formulário de novo, com o que falta na senha |
+| [ ] | — | Senha válida | Senha forte nas duas caixas | Página "Senha redefinida" |
+| [ ] | — | Reusar o link | Clique de novo no mesmo botão do e-mail | "Link inválido ou expirado" |
+| [ ] | 01.1 | Login com a senha nova | Atualize a senha do usuário de teste nas variáveis | **200** |
+
 ## Parte 6b — Usuário restrito automatizado (pasta 08)
 
 Confere que um usuário sem acesso irrestrito só vê a empresa e a filial liberadas. Também valida a correção do nível de compatibilidade 100: a consulta deve sair com `IN (...)`, sem `OPENJSON`.

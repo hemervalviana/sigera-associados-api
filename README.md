@@ -225,6 +225,8 @@ Implementação: `Api/Erros/RespostasErro.cs` (formato e títulos), `Api/Erros/T
 | POST / GET | `/api/auth/confirmar-email` | Público (GET = link do e-mail) |
 | POST | `/api/auth/solicitar-recuperacao-senha` | Público |
 | POST | `/api/auth/redefinir-senha` | Público |
+| GET | `/api/auth/redefinir-senha` | Público (link do e-mail: abre o formulário de nova senha) |
+| POST | `/api/auth/redefinir-senha/formulario` | Público (envio do formulário) |
 | GET | `/api/conta` | Usuário logado |
 | GET | `/api/associados` | Conforme acessos |
 | GET | `/api/associados/consulta` | Conforme acessos |
@@ -249,7 +251,7 @@ winget install --id Cloudflare.cloudflared   # uma vez
 .\scripts\iniciar-tunel-cloudflared.ps1
 ```
 
-O script grava a URL `https://xxxx.trycloudflare.com` em `src\SigeraAssociados.Api\urlpublica.local.json`. A API recarrega o arquivo sozinha e os e-mails passam a trazer o botão **Confirmar e-mail**. Ctrl+C fecha o túnel e apaga o arquivo. Sem o túnel, o e-mail traz o token para uso em `POST /api/auth/confirmar-email`.
+O script grava a URL `https://xxxx.trycloudflare.com` em `src\SigeraAssociados.Api\urlpublica.local.json`. A API recarrega o arquivo sozinha e os e-mails passam a trazer os botões **Confirmar e-mail** (cadastro) e **Redefinir senha** (recuperação). Ctrl+C fecha o túnel e apaga o arquivo. Sem o túnel, o e-mail traz o token para uso em `POST /api/auth/confirmar-email`.
 
 O túnel expõe a API na internet: use só em desenvolvimento.
 

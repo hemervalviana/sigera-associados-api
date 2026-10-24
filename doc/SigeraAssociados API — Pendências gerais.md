@@ -48,7 +48,7 @@ Pendências desta parte:
 - [ ] **URL fixa.** A URL do quick tunnel muda a cada execução, e e-mails enviados antes deixam de funcionar quando o túnel fecha. Para uso contínuo, criar um túnel nomeado (`cloudflared tunnel create`) com um domínio próprio e gravar essa URL na chave.
 - [ ] **O túnel expõe a API inteira na internet**, não só a confirmação. Usar só em desenvolvimento até existir rate limiting (item abaixo) e, se possível, limitar as rotas expostas pelo túnel.
 - [x] **Testes da confirmação por link:** `EmailConfirmacaoServiceTests` (montagem do link e token) e `AuthEndpointsTests` (link inválido).
-- [ ] **Link também na recuperação de senha.** Hoje só a confirmação de cadastro usa link; a redefinição de senha ainda envia o token.
+- [x] **Link também na recuperação de senha** (ver item da prioridade média).
 
 ## Prioridade alta — segurança e correção
 
@@ -64,7 +64,7 @@ São pontos que podem expor dados ou quebrar a consulta em produção.
 - [x] **Filtro com usuário restrito validado (24/10/2026):** pasta 08 do Postman toda aprovada; usuário restrito vê só empresa 2 + filial 1, recebe 403 em outro sistema e 404 em associado de outra filial.
 - [x] **Filtro de escopo validado contra o SQL real** (pasta 08 do Postman, bases em compatibilidade 100).
 - [x] **Usuário `sa` trocado por `usr_sisgera_api`** no `appsettings.json`. O script `scripts\criar-login-usr_sisgera_api.sql` cria o login com leitura nas 4 bases e leitura/escrita no banco de identidade.
-- [ ] **Executar o script do login e atualizar os User Secrets** (`ConnectionSettings:Password`, `IdentityConnectionSettings:User` e `IdentityConnectionSettings:Password`).
+- [x] **Login `usr_sisgera_api` em uso:** script executado, User Secrets atualizados e política de senha religada (`CHECK_POLICY = ON`) em 24/10/2026.
 - [ ] **Certificado do SQL Server.** `TrustServerCertificate = true` está no appsettings base. Deixar só em Development e usar certificado válido nos demais ambientes.
 - [x] **Concessão de acesso conferida no banco do sistema:** empresa precisa existir em `T009EMPS`; filial precisa ter associado ou contrato; corretor precisa existir em `T000PESS` e ter contrato em `T009CTRT` na empresa. Senão, **400** com a mensagem. Testes em `ConcessaoAcessoTests`; Postman 07.13b e 07.13c.
 - [ ] **Tabela de filiais:** se existir uma tabela própria de filiais, trocar a conferência de filial (hoje por associados/contratos) para ela.
@@ -82,7 +82,7 @@ A gestão de usuários está incompleta: hoje só é possível criar contas e co
 - [x] **Swagger instalado** (Swashbuckle.AspNetCore 10.3.1) no lugar do Microsoft.AspNetCore.OpenApi. Em Development: tela em `/swagger`, botão **Authorize** para o token JWT, campo `X-Sigera-Sistema` nas rotas de associados e diagnóstico, e descrições vindas dos comentários `///`.
 - [ ] **Refresh token e logout.** O token dura 15 minutos e não há renovação nem revogação. Troca de grupo só vale após o token expirar.
 - [x] **Link de confirmação de e-mail.** Feito com o cloudflared tunnel (seção acima).
-- [ ] **Link de redefinição de senha.** Ainda envia o token para uso manual no `POST /api/auth/redefinir-senha`.
+- [x] **Link de redefinição de senha:** o e-mail de recuperação traz o botão **Redefinir senha** (com o túnel); o link abre um formulário da própria API (`GET /api/auth/redefinir-senha`), que só aparece se o token for válido, e o envio (`POST /api/auth/redefinir-senha/formulario`) troca a senha e zera as tentativas erradas.
 - [ ] **Auditoria persistida.** Concessão e revogação de acesso ficam só no log. Gravar quem fez, quando e o quê numa tabela.
 - [x] **Endpoint "meus acessos":** `GET /api/conta` devolve o usuário, os grupos, se tem acesso irrestrito e as linhas de acesso.
 - [ ] **Mais dados do associado.** O DTO traz só empresa, código, nome, situação, filial e data da carteira. Definir se a API vai expor contratos, dependentes ou outros dados.

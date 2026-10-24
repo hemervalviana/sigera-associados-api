@@ -71,4 +71,21 @@ public sealed class EmailConfirmacaoServiceTests
 	{
 		Assert.Null(EmailConfirmacaoService.DecodificarToken("!!!"));
 	}
+
+	[Fact]
+	public void CriarLink_DeRedefinicaoDeSenha_DeveUsarARotaDoFormulario()
+	{
+		var link = Criar("https://abc.trycloudflare.com").CriarLink(
+			EmailConfirmacaoService.RotaRedefinicaoSenha,
+			"usuario-1",
+			TokenIdentity);
+
+		Assert.StartsWith("https://abc.trycloudflare.com/api/auth/redefinir-senha?", link);
+
+		var parametros = QueryHelpers.ParseQuery(new Uri(link!).Query);
+
+		Assert.Equal(
+			TokenIdentity,
+			EmailConfirmacaoService.DecodificarToken(parametros["token"].ToString()));
+	}
 }

@@ -339,11 +339,25 @@ public sealed class AuthController : ControllerBase
 			var token = await _userManager.GeneratePasswordResetTokenAsync(
 				usuario);
 
-			var corpoHtml = CriarCorpoEmail(
-				"Recuperação de senha",
-				"Recebemos uma solicitação de recuperação de senha da sua conta Sigera Associados.",
-				"Se você solicitou a recuperação, utilize o token abaixo no endpoint POST /api/auth/redefinir-senha, pelo Swagger (/swagger) ou por outro cliente de API. Se não solicitou, ignore esta mensagem.",
+			// Com a URL pública (cloudflared), o e-mail traz o botão
+			// "Redefinir senha"; sem ela, traz o token para uso manual.
+			var link = _emailConfirmacao.CriarLink(
+				EmailConfirmacaoService.RotaRedefinicaoSenha,
+				usuario.Id,
 				token);
+
+			var corpoHtml = link is not null
+				? CriarCorpoEmailComBotao(
+					"Recuperação de senha",
+					"Recebemos uma solicitação de recuperação de senha da sua conta Sigera Associados.",
+					"Para criar uma nova senha, clique no botão abaixo. O link vale por 24 horas e só pode ser usado uma vez. Se você não pediu a recuperação, ignore esta mensagem.",
+					"Redefinir senha",
+					link)
+				: CriarCorpoEmail(
+					"Recuperação de senha",
+					"Recebemos uma solicitação de recuperação de senha da sua conta Sigera Associados.",
+					"Se você solicitou a recuperação, utilize o token abaixo no endpoint POST /api/auth/redefinir-senha, pelo Swagger (/swagger) ou por outro cliente de API. Se não solicitou, ignore esta mensagem.",
+					token);
 
 			await _emailService.EnviarAsync(
 				usuario.Email!,
@@ -369,6 +383,115 @@ public sealed class AuthController : ControllerBase
 		}
 
 		return Accepted(mensagem);
+	}
+
+	/// <summary>
+	/// Abre o formulário de nova senha a partir do link do e-mail
+	/// de recuperação. Só mostra o formulário se o link for válido.
+	/// </summary>
+	[HttpGet("redefinir-senha")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status400BadRequest)]
+	public async Task<IActionResult> FormularioRedefinicaoSenha(
+		[FromQuery] string? usuarioId,
+		[FromQuery] string? token,
+		CancellationToken cancellationToken)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+
+		if (!LinkComFormatoValido(usuarioId, token, out _))
+		{
+			return PaginaLinkInvalido();
+		}
+
+		var usuario = await ObterUsuarioComTokenDeSenhaValidoAsync(usuarioId!, token!);
+
+		if (usuario is null)
+		{
+			return PaginaLinkInvalido();
+		}
+
+		return PaginaFormularioSenha(StatusCodes.Status200OK, usuarioId!, token!, null);
+	}
+
+	/// <summary>
+	/// Recebe o formulário de nova senha (enviado pela página do GET
+	/// redefinir-senha) e troca a senha. Responde com páginas HTML.
+	/// </summary>
+	[HttpPost("redefinir-senha/formulario")]
+	[Consumes("application/x-www-form-urlencoded")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status400BadRequest)]
+	public async Task<IActionResult> RedefinirSenhaPorFormulario(
+		[FromForm] string? usuarioId,
+		[FromForm] string? token,
+		[FromForm] string? novaSenha,
+		[FromForm] string? confirmarNovaSenha,
+		CancellationToken cancellationToken)
+	{
+		cancellationToken.ThrowIfCancellationRequested();
+
+		if (!LinkComFormatoValido(usuarioId, token, out var tokenDecodificado))
+		{
+			return PaginaLinkInvalido();
+		}
+
+		// Regras básicas antes de consultar o banco.
+		if (string.IsNullOrEmpty(novaSenha) || novaSenha != confirmarNovaSenha)
+		{
+			return PaginaFormularioSenha(
+				StatusCodes.Status400BadRequest,
+				usuarioId!,
+				token!,
+				"A senha e a confirmação não coincidem.");
+		}
+
+		if (novaSenha.Length is < 12 or > 128)
+		{
+			return PaginaFormularioSenha(
+				StatusCodes.Status400BadRequest,
+				usuarioId!,
+				token!,
+				"A senha deve ter entre 12 e 128 caracteres.");
+		}
+
+		var usuario = await _userManager.FindByIdAsync(usuarioId!);
+
+		if (usuario is null)
+		{
+			return PaginaLinkInvalido();
+		}
+
+		var resultado = await _userManager.ResetPasswordAsync(
+			usuario,
+			tokenDecodificado!,
+			novaSenha);
+
+		if (!resultado.Succeeded)
+		{
+			if (resultado.Errors.Any(e => e.Code == "InvalidToken"))
+			{
+				return PaginaLinkInvalido();
+			}
+
+			return PaginaFormularioSenha(
+				StatusCodes.Status400BadRequest,
+				usuarioId!,
+				token!,
+				TraduzirErrosDeSenha(resultado.Errors));
+		}
+
+		// Senha nova: zera as tentativas erradas de login.
+		await _userManager.ResetAccessFailedCountAsync(usuario);
+
+		_logger.LogInformation(
+			"Senha redefinida pelo link de recuperação para o usuário {UsuarioId}.",
+			usuario.Id);
+
+		return PaginaResultado(
+			StatusCodes.Status200OK,
+			"Senha redefinida",
+			"Sua senha foi alterada com sucesso. Você já pode fazer login com a nova senha.");
 	}
 
 	/// <summary>
@@ -416,17 +539,153 @@ public sealed class AuthController : ControllerBase
 	}
 
 	/// <summary>
-	/// Monta a página HTML exibida após o clique no link de confirmação.
+	/// Confere o formato do link (sem acessar o banco) e decodifica o token.
+	/// </summary>
+	private static bool LinkComFormatoValido(
+		string? usuarioId,
+		string? token,
+		out string? tokenDecodificado)
+	{
+		tokenDecodificado = null;
+
+		if (string.IsNullOrWhiteSpace(usuarioId)
+			|| string.IsNullOrWhiteSpace(token)
+			|| usuarioId.Length > 450
+			|| token.Length > 8192)
+		{
+			return false;
+		}
+
+		tokenDecodificado = EmailConfirmacaoService.DecodificarToken(token);
+
+		return tokenDecodificado is not null;
+	}
+
+	/// <summary>
+	/// Devolve o usuário quando o token de redefinição ainda é válido
+	/// (não expirou e não foi usado). Não troca a senha.
+	/// </summary>
+	private async Task<IdentityUser?> ObterUsuarioComTokenDeSenhaValidoAsync(
+		string usuarioId,
+		string tokenCodificado)
+	{
+		var token = EmailConfirmacaoService.DecodificarToken(tokenCodificado);
+		var usuario = await _userManager.FindByIdAsync(usuarioId);
+
+		if (usuario is null || token is null)
+		{
+			return null;
+		}
+
+		var valido = await _userManager.VerifyUserTokenAsync(
+			usuario,
+			_userManager.Options.Tokens.PasswordResetTokenProvider,
+			UserManager<IdentityUser>.ResetPasswordTokenPurpose,
+			token);
+
+		return valido ? usuario : null;
+	}
+
+	/// <summary>
+	/// Converte os erros de senha do Identity em mensagens em português.
+	/// </summary>
+	private static string TraduzirErrosDeSenha(IEnumerable<IdentityError> erros)
+	{
+		var mensagens = erros
+			.Select(erro => erro.Code switch
+			{
+				"PasswordTooShort" => "A senha deve ter pelo menos 12 caracteres.",
+				"PasswordRequiresDigit" => "A senha precisa ter pelo menos um número.",
+				"PasswordRequiresLower" => "A senha precisa ter pelo menos uma letra minúscula.",
+				"PasswordRequiresUpper" => "A senha precisa ter pelo menos uma letra maiúscula.",
+				"PasswordRequiresNonAlphanumeric" => "A senha precisa ter pelo menos um símbolo (ex.: ! @ # $).",
+				"PasswordRequiresUniqueChars" => "A senha precisa ter mais caracteres diferentes.",
+				_ => "Não foi possível redefinir a senha."
+			})
+			.Distinct()
+			.ToArray();
+
+		return string.Join(" ", mensagens);
+	}
+
+	private static ContentResult PaginaLinkInvalido()
+	{
+		return PaginaResultado(
+			StatusCodes.Status400BadRequest,
+			"Link inválido ou expirado",
+			"Este link de recuperação de senha é inválido, expirou ou já foi usado. Peça uma nova recuperação de senha.");
+	}
+
+	/// <summary>
+	/// Página com o formulário de nova senha.
+	/// O usuário e o token seguem em campos ocultos para o POST.
+	/// </summary>
+	private static ContentResult PaginaFormularioSenha(
+		int statusCode,
+		string usuarioId,
+		string tokenCodificado,
+		string? erro)
+	{
+		var codificador = HtmlEncoder.Default;
+
+		var usuarioSeguro = codificador.Encode(usuarioId);
+		var tokenSeguro = codificador.Encode(tokenCodificado);
+
+		var blocoErro = erro is null
+			? string.Empty
+			: $"""<p style="background: #fdecea; color: #a50e0e; padding: 12px; border-radius: 6px;">{codificador.Encode(erro)}</p>""";
+
+		var corpo = $"""
+            {blocoErro}
+            <form method="post" action="/api/auth/redefinir-senha/formulario">
+                <input type="hidden" name="usuarioId" value="{usuarioSeguro}">
+                <input type="hidden" name="token" value="{tokenSeguro}">
+                <p>
+                    <label for="novaSenha"><strong>Nova senha</strong></label><br>
+                    <input id="novaSenha" name="novaSenha" type="password" required minlength="12" maxlength="128"
+                           autocomplete="new-password" style="width: 100%; padding: 10px; box-sizing: border-box;">
+                </p>
+                <p>
+                    <label for="confirmarNovaSenha"><strong>Confirme a nova senha</strong></label><br>
+                    <input id="confirmarNovaSenha" name="confirmarNovaSenha" type="password" required minlength="12" maxlength="128"
+                           autocomplete="new-password" style="width: 100%; padding: 10px; box-sizing: border-box;">
+                </p>
+                <p style="font-size: 13px; color: #555;">
+                    Mínimo de 12 caracteres, com letra maiúscula, letra minúscula, número e símbolo.
+                </p>
+                <button type="submit"
+                        style="background: #1f6feb; color: #fff; padding: 12px 24px; border: 0; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                    Salvar nova senha
+                </button>
+            </form>
+            """;
+
+		return PaginaHtml(statusCode, "Redefinir senha", corpo);
+	}
+
+	/// <summary>
+	/// Monta a página HTML de resultado (confirmação de e-mail e senha).
 	/// </summary>
 	private static ContentResult PaginaResultado(
 		int statusCode,
 		string titulo,
 		string mensagem)
 	{
-		var codificador = HtmlEncoder.Default;
+		var mensagemSegura = HtmlEncoder.Default.Encode(mensagem);
 
-		var tituloSeguro = codificador.Encode(titulo);
-		var mensagemSegura = codificador.Encode(mensagem);
+		return PaginaHtml(statusCode, titulo, $"<p>{mensagemSegura}</p>");
+	}
+
+	/// <summary>
+	/// Layout comum das páginas HTML da API.
+	/// O corpo já deve chegar com os dados dinâmicos codificados.
+	/// </summary>
+	private static ContentResult PaginaHtml(
+		int statusCode,
+		string titulo,
+		string corpoSeguro)
+	{
+		var tituloSeguro = HtmlEncoder.Default.Encode(titulo);
 
 		return new ContentResult
 		{
@@ -445,12 +704,60 @@ public sealed class AuthController : ControllerBase
                     <main style="max-width: 520px; margin: 64px auto; padding: 32px; background: #fff; border-radius: 8px;">
                         <h1 style="font-size: 22px; margin-top: 0;">Sigera Associados</h1>
                         <h2 style="font-size: 18px;">{tituloSeguro}</h2>
-                        <p>{mensagemSegura}</p>
+                        {corpoSeguro}
                     </main>
                 </body>
                 </html>
                 """
 		};
+	}
+
+	/// <summary>
+	/// Corpo HTML do e-mail com um botão de ação (link público).
+	/// </summary>
+	private static string CriarCorpoEmailComBotao(
+		string titulo,
+		string introducao,
+		string instrucoes,
+		string textoBotao,
+		string link)
+	{
+		var codificador = HtmlEncoder.Default;
+
+		var tituloSeguro = codificador.Encode(titulo);
+		var introducaoSegura = codificador.Encode(introducao);
+		var instrucoesSeguras = codificador.Encode(instrucoes);
+		var textoBotaoSeguro = codificador.Encode(textoBotao);
+		var linkSeguro = codificador.Encode(link);
+
+		return $"""
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>{tituloSeguro}</title>
+            </head>
+            <body style="font-family: Arial, sans-serif; color: #222; line-height: 1.6;">
+                <main style="max-width: 600px; margin: 0 auto; padding: 24px;">
+                    <h1 style="font-size: 24px;">Sigera Associados</h1>
+                    <h2 style="font-size: 20px;">{tituloSeguro}</h2>
+                    <p>{introducaoSegura}</p>
+                    <p>{instrucoesSeguras}</p>
+                    <p style="margin: 24px 0;">
+                        <a href="{linkSeguro}"
+                           style="background: #1f6feb; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+                            {textoBotaoSeguro}
+                        </a>
+                    </p>
+                    <p style="font-size: 13px; color: #555;">
+                        Se o botão não funcionar, copie e cole este endereço no navegador:<br>
+                        <span style="overflow-wrap: anywhere;">{linkSeguro}</span>
+                    </p>
+                </main>
+            </body>
+            </html>
+            """;
 	}
 
 	/// <summary>
