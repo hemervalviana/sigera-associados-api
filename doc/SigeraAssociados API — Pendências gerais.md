@@ -140,7 +140,8 @@ O projeto não tem Git, README nem configuração de produção.
 - [ ] **CORS**, quando houver frontend.
 - [ ] **E-mail em produção.** Gmail com senha de app serve para desenvolvimento; avaliar um provedor transacional.
 - [ ] **Cache de acessos em mais de uma instância.** O cache é em memória; com duas instâncias, uma revogação só vale na instância que a recebeu (até 5 min nas outras). Aceitável com uma instância só.
-- [ ] **Definir onde a API vai rodar** (IIS, serviço Windows, container) e o processo de publicação.
+- [x] **Onde a API vai rodar:** Kestrel como serviço do Windows (decisão de 24/10/2026). Scripts `instalar-servico-windows.ps1` e `remover-servico-windows.ps1`; passo a passo em `doc/Implantação em produção.md`.
+- [ ] **Instalar no servidor de produção:** certificado HTTPS, `appsettings.Production.json` (servidor SQL e nome do certificado) e `instalar-servico-windows.ps1 -ConfigurarVariaveis`.
 
 ## Decisões em aberto
 

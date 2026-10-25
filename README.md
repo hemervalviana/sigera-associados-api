@@ -35,7 +35,9 @@ SIGERA_ASSOCIADOS_API/
 ├── scripts/
 │   ├── criar-login-usr_sisgera_api.sql   Login do SQL Server usado pela API
 │   ├── criar-indice-nome-t000pess.sql    Índice de nome em T000PESS (busca por nome)
-│   └── iniciar-tunel-cloudflared.ps1     URL pública para o link de confirmação
+│   ├── iniciar-tunel-cloudflared.ps1     URL pública para o link de confirmação (dev)
+│   ├── instalar-servico-windows.ps1      Publica e instala a API como serviço do Windows
+│   └── remover-servico-windows.ps1       Remove o serviço do Windows
 └── doc/                                   Pendências, fluxogramas, coleção do Postman
 ```
 
@@ -138,6 +140,16 @@ dotnet run --project src\SigeraAssociados.Api --launch-profile https
 
 - Swagger (somente Development): https://localhost:7001/swagger
 - Faça login em `POST /api/auth/login`, clique em **Authorize** e cole o `accessToken`.
+
+## Produção
+
+A API roda no Kestrel como **serviço do Windows** (`SigeraAssociadosApi`), com início automático e reinício em caso de falha. Instalação no servidor, como Administrador:
+
+```powershell
+.\scripts\instalar-servico-windows.ps1 -ConfigurarVariaveis
+```
+
+Passo a passo completo, variáveis de ambiente e checklist: [Implantação em produção](doc/Implanta%C3%A7%C3%A3o%20em%20produ%C3%A7%C3%A3o.md).
 
 ## Testes
 

@@ -1,6 +1,6 @@
 # SigeraAssociados API — Implantação em produção
 
-Guia para levar a API do computador de desenvolvimento para um servidor. A parte que depende do tipo de servidor (IIS, serviço do Windows ou container) está no fim e será completada quando o destino for definido.
+Guia para levar a API do computador de desenvolvimento para um servidor Windows, onde ela roda no Kestrel como serviço do Windows (seção 8).
 
 ## 1. Como a configuração funciona em produção
 
@@ -96,6 +96,62 @@ Use `/health` no monitoramento de "processo vivo" e `/health/pronto` para saber 
 - [ ] Primeiro administrador criado
 - [ ] Rate limiting conferido atrás do proxy (IP real do cliente)
 
-## 8. Servidor (a definir)
+## 8. Servidor: serviço do Windows com Kestrel
 
-Destino ainda não escolhido: IIS, serviço do Windows ou container. Esta seção trará os passos de instalação, a configuração de HTTPS e de proxy reverso e como definir as variáveis de ambiente em cada caso.
+Decisão (24/10/2026): a API roda no **Kestrel**, como em desenvolvimento, instalada como **serviço do Windows**. Assim ela inicia com o servidor, sem ninguém logado, e o Windows a reinicia se cair. Não há IIS.
+
+| | Desenvolvimento | Produção |
+|---|---|---|
+| Como inicia | `dotnet run` (janela aberta) | Serviço `SigeraAssociadosApi`, início automático |
+| Executável | Compilado na hora | `C:\SigeraAssociados\api\SigeraAssociados.Api.exe` (publicado) |
+| Ambiente | `Development` | `Production` |
+| Configuração secreta | User Secrets | Variáveis de ambiente do serviço |
+| HTTPS | Certificado de desenvolvimento, porta 7001 | Certificado real do servidor, porta 443 |
+| Logs | Console | Visualizador de Eventos > Aplicativo |
+| Swagger | Ligado | Desligado |
+
+### 8.1 Pré-requisitos no servidor
+
+1. Windows Server com acesso ao SQL Server.
+2. **.NET SDK 10** (para publicar no próprio servidor) ou, se publicar em outra máquina, o **ASP.NET Core Runtime 10** (Hosting Bundle).
+3. **Certificado HTTPS** do endereço público (ex.: `api.suaempresa.com.br`) instalado em *Certificados do Computador Local > Pessoal*.
+4. Em `src\SigeraAssociados.Api\appsettings.Production.json`, preencha:
+   - `ConnectionSettings:Server` e `IdentityConnectionSettings:Server` (ou informe no script);
+   - `Kestrel:Endpoints:Https:Certificate:Subject` com o nome do certificado (ex.: `api.suaempresa.com.br`).
+
+### 8.2 Instalar (primeira vez)
+
+Em um PowerShell **como Administrador**, na pasta do projeto:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\instalar-servico-windows.ps1 -ConfigurarVariaveis
+```
+
+O script pede: servidor SQL, senha do `usr_sisgera_api`, URL pública, conta e senha de e-mail e a chave JWT (em branco gera uma nova). Depois publica, cria o serviço, grava as variáveis, configura o reinício automático, libera a porta 443 no firewall, inicia e mostra o resultado do `/health` e do `/health/pronto`.
+
+### 8.3 Atualizar para uma nova versão
+
+```powershell
+git pull
+.\scripts\instalar-servico-windows.ps1
+```
+
+Sem `-ConfigurarVariaveis`, as senhas e chaves já gravadas são mantidas. Se houver migration nova, aplique antes (seção 4).
+
+### 8.4 Operação
+
+| Ação | Comando |
+|---|---|
+| Ver estado | `Get-Service SigeraAssociadosApi` |
+| Parar / iniciar / reiniciar | `Stop-Service` / `Start-Service` / `Restart-Service SigeraAssociadosApi` |
+| Ver erros | Visualizador de Eventos > Logs do Windows > Aplicativo |
+| Trocar uma senha | `.\scripts\instalar-servico-windows.ps1 -ConfigurarVariaveis` |
+| Remover | `.\scripts\remover-servico-windows.ps1` |
+
+### 8.5 Observações
+
+- As variáveis ficam no registro do serviço (`HKLM\SYSTEM\CurrentControlSet\Services\SigeraAssociadosApi`, valor `Environment`), que só administradores leem.
+- O serviço roda como `LocalSystem`, que consegue ler o certificado do computador local.
+- Sem proxy na frente, o Kestrel recebe o IP real do cliente, e o limite de tentativas funciona por IP.
+- O túnel do cloudflared é só para desenvolvimento. Em produção, o link dos e-mails usa `UrlPublica__BaseUrl`.

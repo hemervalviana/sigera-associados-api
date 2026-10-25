@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using Microsoft.OpenApi;
@@ -19,7 +20,23 @@ using System.Text;
 // Cria o construtor da aplicação ASP.NET Core.
 // A configuração carrega appsettings.json, User Secrets
 // em ambiente de desenvolvimento e variáveis de ambiente.
-var builder = WebApplication.CreateBuilder(args);
+// Como serviço do Windows, a pasta de trabalho é C:\Windows\System32;
+// a pasta de conteúdo passa a ser a do executável, para achar os appsettings.
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+	Args = args,
+	ContentRootPath = WindowsServiceHelpers.IsWindowsService()
+		? AppContext.BaseDirectory
+		: default
+});
+
+// Permite rodar como serviço do Windows (produção). Fora de um serviço,
+// como no dotnet run, não muda nada. Os logs vão também para o
+// Visualizador de Eventos do Windows (log Aplicativo).
+builder.Services.AddWindowsService(options =>
+{
+	options.ServiceName = "SigeraAssociadosApi";
+});
 
 // URL pública do cloudflared tunnel (chave UrlPublica:BaseUrl).
 // O arquivo é criado e apagado pelo script scripts/iniciar-tunel-cloudflared.ps1
