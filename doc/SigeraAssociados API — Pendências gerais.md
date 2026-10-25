@@ -65,7 +65,7 @@ São pontos que podem expor dados ou quebrar a consulta em produção.
 - [x] **Filtro de escopo validado contra o SQL real** (pasta 08 do Postman, bases em compatibilidade 100).
 - [x] **Usuário `sa` trocado por `usr_sisgera_api`** no `appsettings.json`. O script `scripts\criar-login-usr_sisgera_api.sql` cria o login com leitura nas 4 bases e leitura/escrita no banco de identidade.
 - [x] **Login `usr_sisgera_api` em uso:** script executado, User Secrets atualizados e política de senha religada (`CHECK_POLICY = ON`) em 24/10/2026.
-- [ ] **Certificado do SQL Server.** `TrustServerCertificate = true` está no appsettings base. Deixar só em Development e usar certificado válido nos demais ambientes.
+- [x] **Certificado do SQL Server:** `TrustServerCertificate = false` em produção (`appsettings.Production.json`); orientação em `doc/Implantação em produção.md`.
 - [x] **Concessão de acesso conferida no banco do sistema:** empresa precisa existir em `T009EMPS`; filial precisa ter associado ou contrato; corretor precisa existir em `T000PESS` e ter contrato em `T009CTRT` na empresa. Senão, **400** com a mensagem. Testes em `ConcessaoAcessoTests`; Postman 07.13b e 07.13c.
 - [ ] **Tabela de filiais:** se existir uma tabela própria de filiais, trocar a conferência de filial (hoje por associados/contratos) para ela.
 - [ ] **Escopo corretor + empresa inteira.** Hoje um acesso com empresa e sem corretor libera a empresa toda. Conferir na tela de administração que corretores nunca recebam esse tipo de acesso por engano.
@@ -135,8 +135,8 @@ O projeto não tem Git, README nem configuração de produção.
 
 - [x] **Git e GitHub (24/10/2026):** repositório privado https://github.com/hemervalviana/sigera-associados-api, branch `main`, com `.gitignore` e `.gitattributes`.
 - [x] **README.md** na raiz: estrutura, configuração dos User Secrets, banco e migrations, execução, testes, sistemas e permissões, endpoints, túnel e links da documentação.
-- [ ] **`appsettings.Production.json`** e definição de onde ficarão os segredos em produção.
-- [ ] **Health checks** (`/health`) para o banco de identidade e as 4 bases.
+- [x] **`appsettings.Production.json`** criado (sem senhas; servidor e URL a configurar). Segredos por variáveis de ambiente: ver `doc/Implantação em produção.md`.
+- [x] **Health checks:** `GET /health` (API no ar) e `GET /health/pronto` (SigeraIdentity + 4 bases; 503 se algum falhar).
 - [ ] **CORS**, quando houver frontend.
 - [ ] **E-mail em produção.** Gmail com senha de app serve para desenvolvimento; avaliar um provedor transacional.
 - [ ] **Cache de acessos em mais de uma instância.** O cache é em memória; com duas instâncias, uma revogação só vale na instância que a recebeu (até 5 min nas outras). Aceitável com uma instância só.

@@ -6,6 +6,7 @@ using Microsoft.OpenApi;
 using SigeraAssociados.Api;
 using SigeraAssociados.Api.Erros;
 using SigeraAssociados.Api.Middlewares;
+using SigeraAssociados.Api.Saude;
 using SigeraAssociados.Api.Seguranca;
 using SigeraAssociados.Api.Services;
 using SigeraAssociados.Api.Swagger;
@@ -233,6 +234,9 @@ builder.Services.AddTransient<EmailConfirmacaoService>();
 // Gera os tokens de acesso (JWT) com grupos e carimbo de segurança.
 builder.Services.AddScoped<GeradorTokenAcesso>();
 
+// Health checks: /health (API no ar) e /health/pronto (bancos).
+builder.Services.AddVerificacoesSaude();
+
 // O cloudflared tunnel recebe a requisição em HTTPS e a repassa
 // para a API local em HTTP, informando o esquema original
 // em X-Forwarded-Proto. Somente proxies locais (loopback) são aceitos.
@@ -283,6 +287,12 @@ if (app.Environment.IsDevelopment())
 // do túnel chegaria como HTTP e seria redirecionada para a porta local.
 app.UseForwardedHeaders();
 
+// Fora de desenvolvimento, orienta o navegador a usar sempre HTTPS (HSTS).
+if (!app.Environment.IsDevelopment())
+{
+	app.UseHsts();
+}
+
 // Redireciona requisições HTTP para HTTPS quando configurado.
 app.UseHttpsRedirection();
 
@@ -308,6 +318,9 @@ app.UseWhen(
 
 // Mapeia os endpoints definidos nos controllers.
 app.MapControllers();
+
+// Health checks (públicos, sem detalhes de erro).
+app.MapVerificacoesSaude();
 
 // Inicia a aplicação.
 app.Run();

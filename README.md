@@ -265,6 +265,8 @@ Implementação: `Api/Erros/RespostasErro.cs` (formato e títulos), `Api/Erros/T
 | GET / POST | `/api/administracao/usuarios/{id}/acessos` | Admin |
 | DELETE | `/api/administracao/usuarios/{id}/acessos/{acessoId}` | Admin |
 | GET | `/api/diagnostico/conexao`, `/api/diagnostico/pessoas` | Admin |
+| GET | `/health` | Público (API no ar) |
+| GET | `/health/pronto` | Público (bancos acessíveis: 200 ou 503) |
 
 ## Confirmação de e-mail pelo túnel
 
@@ -283,6 +285,7 @@ O túnel expõe a API na internet: use só em desenvolvimento.
 
 - [Pendências gerais](doc/SigeraAssociados%20API%20%E2%80%94%20Pend%C3%AAncias%20gerais.md)
 - [Fluxogramas](doc/Fluxograma%20do%20projeto.md)
+- [Implantação em produção](doc/Implanta%C3%A7%C3%A3o%20em%20produ%C3%A7%C3%A3o.md)
 - [Postman: passo a passo](doc/postman/Postman%20-%20passo%20a%20passo.md)
 - [Roteiro de testes](doc/postman/Roteiro%20de%20testes.md)
 - Coleção do Postman: `doc/postman/SigeraAssociados API.postman_collection.json`
