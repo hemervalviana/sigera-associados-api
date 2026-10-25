@@ -119,12 +119,26 @@ public sealed class AssociadosService : IAssociadosService
 				"A direção deve ser 'asc' ou 'desc'.");
 		}
 
+		string? cpf = null;
+
+		if (!string.IsNullOrWhiteSpace(request.Cpf))
+		{
+			cpf = DocumentoCpf.SomenteDigitos(request.Cpf);
+
+			if (!DocumentoCpf.Valido(cpf))
+			{
+				throw new DadosInvalidosException(
+					"CPF inválido. Informe os 11 números do CPF, com ou sem pontuação.");
+			}
+		}
+
 		// Encaminha a consulta com os valores normalizados.
 		var consultaNormalizada = new ConsultaAssociadosRequest
 		{
 			CdEmp = request.CdEmp,
 			Nome = request.Nome,
 			CdSitCli = request.CdSitCli,
+			Cpf = cpf,
 			Pagina = request.Pagina,
 			TamanhoPagina = request.TamanhoPagina,
 			OrdenarPor = campo,

@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "853e6db9-c6ff-4212-b2a1-df451d66f666",
+    "_postman_id": "7110bc6d-78fe-4d5c-93bf-57d0b1d0652a",
     "name": "SigeraAssociados API",
     "description": "Coleção de testes da SigeraAssociados API.\n\n## Como começar\n1. Suba a API (`dotnet run --project src\\SigeraAssociados.Api --launch-profile https`).\n2. Clique no nome da coleção > aba **Variables** e preencha `email` e `senha` na coluna **Current value**.\n3. Rode **01 - Autenticação > 01.1 - Login**. O token é guardado sozinho.\n4. Use as outras pastas na ordem. Cada requisição tem um passo a passo na aba **Docs** (ícone de documento à direita).\n\n## Variáveis principais\n- `baseUrl`: endereço da API.\n- `sistema`: banco usado nas pastas 03 e 04 (1 PROASP, 2 SONASP, 3 ABSP, 4 GSP).\n- `token`, `usuarioId`, `acessoId`: preenchidas automaticamente pelos scripts.\n\n## Erro de certificado\nSe aparecer *SSL Error: self signed certificate*, desligue em **Settings > General > SSL certificate verification**.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -571,8 +571,8 @@
               "query": [
                 {
                   "key": "nome",
-                  "value": "SILVA",
-                  "description": "Trecho do nome do associado.",
+                  "value": "MARIA",
+                  "description": "Começo do nome (MARIA encontra MARIA DA SILVA, mas não ANA MARIA).",
                   "disabled": true
                 },
                 {

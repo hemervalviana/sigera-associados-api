@@ -73,6 +73,7 @@ public sealed class AssociadosController : ControllerBase
 	/// <summary>
 	/// Consulta associados com filtros, paginação e ordenação.
 	/// nome: começo do nome (ex.: "MARIA" encontra "MARIA DA SILVA").
+	/// cpf: CPF completo, com ou sem pontuação (busca exata; só pessoa física).
 	/// ordenarPor: nome, cdemp, sqpescli, cdsitcli, situacao ou dtcarteira.
 	/// direcao: asc ou desc. tamanhoPagina: 1 a 100.
 	/// </summary>
@@ -83,6 +84,7 @@ public sealed class AssociadosController : ControllerBase
 		[FromQuery] decimal? cdEmp,
 		[FromQuery] string? nome,
 		[FromQuery] decimal? cdSitCli,
+		[FromQuery] string? cpf,
 		[FromQuery] int pagina = 1,
 		[FromQuery] int tamanhoPagina = 20,
 		[FromQuery] string ordenarPor = "nome",
@@ -95,6 +97,7 @@ public sealed class AssociadosController : ControllerBase
 				CdEmp = cdEmp,
 				Nome = nome,
 				CdSitCli = cdSitCli,
+				Cpf = cpf,
 				Pagina = pagina,
 				TamanhoPagina = tamanhoPagina,
 				OrdenarPor = ordenarPor,
@@ -109,7 +112,9 @@ public sealed class AssociadosController : ControllerBase
 			{
 				cdEmp,
 				nome,
-				cdSitCli
+				cdSitCli,
+				// Não devolve o CPF pesquisado, só se o filtro foi usado.
+				cpfInformado = !string.IsNullOrWhiteSpace(cpf)
 			},
 			paginacao = new
 			{

@@ -16,6 +16,12 @@ public sealed class ConsultaAssociadosRequest
 
 	public decimal? CdSitCli { get; init; }
 
+	/// <summary>
+	/// CPF completo, com ou sem pontuação. Busca exata.
+	/// Depois da validação no serviço, contém só os 11 números.
+	/// </summary>
+	public string? Cpf { get; init; }
+
 	public int Pagina { get; init; } = 1;
 
 	public int TamanhoPagina { get; init; } = 20;

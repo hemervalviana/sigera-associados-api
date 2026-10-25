@@ -6,7 +6,7 @@ namespace SigeraAssociados.Infrastructure.Persistence.Entities;
 /// <summary>
 /// Mapeamento parcial (somente leitura) da tabela legada dbo.T000PFIS,
 /// cadastro complementar da pessoa física.
-/// Contém apenas a chave, usada para validar o cadastro do associado:
+/// Contém a chave (validação do cadastro do associado) e o CPF:
 /// pessoa com TP_PES = 'F' precisa existir nesta tabela.
 /// Não cria nem modifica a tabela existente.
 /// </summary>
@@ -27,4 +27,12 @@ public sealed class T000PFIS
 	[Column("SQ_PES_FIS", TypeName = "numeric(7, 0)")]
 	[Precision(7, 0)]
 	public decimal SQ_PES_FIS { get; set; }
+
+	/// <summary>
+	/// CPF, só números, sem os zeros à esquerda. SQL Server: numeric(11,0), NULL.
+	/// Dado pessoal: a API devolve somente mascarado.
+	/// </summary>
+	[Column("NR_CPF", TypeName = "numeric(11, 0)")]
+	[Precision(11, 0)]
+	public decimal? NR_CPF { get; set; }
 }

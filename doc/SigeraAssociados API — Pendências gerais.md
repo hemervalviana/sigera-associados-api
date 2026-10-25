@@ -72,6 +72,8 @@ São pontos que podem expor dados ou quebrar a consulta em produção.
 
 ## Prioridade média — funcionalidades faltando
 
+- [x] **Filtro por CPF** em `GET /api/associados/consulta?cpf=` (busca exata em `T000PFIS.NR_CPF`, com validação dos dígitos; só pessoa física). Os associados passam a trazer `cpf` mascarado (`***.456.789-**`). Testes em `CpfTests`.
+
 A gestão de usuários está incompleta: hoje só é possível criar contas e conceder acessos.
 
 - [x] **Listar e consultar usuários:** `GET /api/administracao/usuarios?busca=&grupo=&pagina=&tamanhoPagina=` e `GET /api/administracao/usuarios/{id}`, com grupos, confirmação de e-mail e bloqueio.

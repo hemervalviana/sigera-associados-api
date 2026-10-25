@@ -55,7 +55,8 @@ public sealed class AssociadosRepository : IAssociadosRepository
 	/// Não expõe campos sensíveis do cadastro legado.
 	/// </summary>
 	private static IQueryable<AssociadoDto> ProjetarAssociados(
-		IQueryable<T000CLIE> query)
+		IQueryable<T000CLIE> query,
+		IQueryable<T000PFIS> pessoasFisicas)
 	{
 		return query.Select(a => new AssociadoDto
 		{
@@ -63,6 +64,11 @@ public sealed class AssociadosRepository : IAssociadosRepository
 			SQPesCli = a.SQ_PES_CLI,
 			Nome = a.Pessoa != null ? a.Pessoa.NM_PES : null,
 			TipoPessoa = a.Pessoa != null ? a.Pessoa.TP_PES : null,
+			// O CPF sai do banco e é mascarado antes de chegar à resposta.
+			Cpf = DocumentoCpf.Mascarar(pessoasFisicas
+				.Where(f => f.CD_EMP == a.CD_EMP && f.SQ_PES_FIS == a.SQ_PES_CLI)
+				.Select(f => f.NR_CPF)
+				.FirstOrDefault()),
 			CDSitCli = a.CD_SIT_CLI,
 			Situacao = a.Situacao != null
 				? a.Situacao.DE_SIT_CLI
@@ -96,6 +102,29 @@ public sealed class AssociadosRepository : IAssociadosRepository
 				|| (p.TP_PES == TipoPessoaJuridica
 					&& pessoasJuridicas.Any(j =>
 						j.CD_EMP == a.CD_EMP && j.SQ_PES_JUR == a.SQ_PES_CLI)))));
+	}
+
+	/// <summary>
+	/// Filtra pelo CPF exato (T000PFIS.NR_CPF). O CPF chega validado
+	/// pelo AssociadosService, só com os 11 números.
+	/// Associados pessoa jurídica não têm CPF e ficam de fora.
+	/// </summary>
+	internal static IQueryable<T000CLIE> FiltrarPorCpf(
+		IQueryable<T000CLIE> query,
+		IQueryable<T000PFIS> pessoasFisicas,
+		string? cpf)
+	{
+		if (string.IsNullOrWhiteSpace(cpf))
+		{
+			return query;
+		}
+
+		var numero = decimal.Parse(cpf, System.Globalization.CultureInfo.InvariantCulture);
+
+		return query.Where(a => pessoasFisicas.Any(f =>
+			f.CD_EMP == a.CD_EMP
+			&& f.SQ_PES_FIS == a.SQ_PES_CLI
+			&& f.NR_CPF == numero));
 	}
 
 	/// <summary>
@@ -269,7 +298,8 @@ public sealed class AssociadosRepository : IAssociadosRepository
 		return await ProjetarAssociados(
 				query
 					.OrderBy(a => a.CD_EMP)
-					.ThenBy(a => a.SQ_PES_CLI))
+					.ThenBy(a => a.SQ_PES_CLI),
+				dbContext.PessoasFisicas.AsNoTracking())
 			.Take(10)
 			.ToListAsync(cancellationToken);
 	}
@@ -294,7 +324,7 @@ public sealed class AssociadosRepository : IAssociadosRepository
 			dbContext.Contratos.AsNoTracking(),
 			escopo);
 
-		return await ProjetarAssociados(query)
+		return await ProjetarAssociados(query, dbContext.PessoasFisicas.AsNoTracking())
 			.SingleOrDefaultAsync(cancellationToken);
 	}
 
@@ -327,6 +357,7 @@ public sealed class AssociadosRepository : IAssociadosRepository
 		}
 
 		query = FiltrarPorNome(query, request.Nome);
+		query = FiltrarPorCpf(query, dbContext.PessoasFisicas.AsNoTracking(), request.Cpf);
 
 		if (request.CdSitCli.HasValue)
 		{
@@ -378,7 +409,8 @@ public sealed class AssociadosRepository : IAssociadosRepository
 		var associados = await ProjetarAssociados(
 				ordenada
 					.ThenBy(a => a.CD_EMP)
-					.ThenBy(a => a.SQ_PES_CLI))
+					.ThenBy(a => a.SQ_PES_CLI),
+				dbContext.PessoasFisicas.AsNoTracking())
 			.Skip((request.Pagina - 1) * request.TamanhoPagina)
 			.Take(request.TamanhoPagina)
 			.ToListAsync(cancellationToken);

@@ -518,4 +518,26 @@ public sealed class AssociadosServiceTests
 
         Assert.Same(escopo, repositorio.UltimoEscopo);
     }
+
+    [Theory]
+    [InlineData("123.456.789-00")]
+    [InlineData("1234")]
+    [InlineData("abc")]
+    public async Task ConsultarPaginado_ComCpfInvalido_DeveRejeitarSemConsultarRepositorio(string cpf)
+    {
+        var (servico, repositorio) = CriarServico();
+        var request = new ConsultaAssociadosRequest
+        {
+            Cpf = cpf,
+            Pagina = 1,
+            TamanhoPagina = 20,
+            OrdenarPor = "nome",
+            Direcao = "asc"
+        };
+
+        await Assert.ThrowsAsync<DadosInvalidosException>(
+            () => servico.ConsultarPaginadoAsync(request));
+
+        Assert.Equal(0, repositorio.ChamadasConsultaPaginada);
+    }
 }
