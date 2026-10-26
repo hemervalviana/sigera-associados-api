@@ -64,8 +64,8 @@ public sealed class AssociadosRepository : IAssociadosRepository
 			SQPesCli = a.SQ_PES_CLI,
 			Nome = a.Pessoa != null ? a.Pessoa.NM_PES : null,
 			TipoPessoa = a.Pessoa != null ? a.Pessoa.TP_PES : null,
-			// O CPF sai do banco e é mascarado antes de chegar à resposta.
-			Cpf = DocumentoCpf.Mascarar(pessoasFisicas
+			// O CPF sai do banco e é formatado (completo) antes da resposta.
+			Cpf = DocumentoCpf.Formatar(pessoasFisicas
 				.Where(f => f.CD_EMP == a.CD_EMP && f.SQ_PES_FIS == a.SQ_PES_CLI)
 				.Select(f => f.NR_CPF)
 				.FirstOrDefault()),
@@ -155,8 +155,9 @@ public sealed class AssociadosRepository : IAssociadosRepository
 	/// </summary>
 	private static IQueryable<T000CLIE> AssociadosValidos(SigeraDbContext dbContext)
 	{
+		// Associados excluídos pela API (exclusão lógica) não aparecem.
 		return FiltrarCadastroCompleto(
-			dbContext.Associados.AsNoTracking(),
+			dbContext.Associados.AsNoTracking().Where(a => a.DT_EXC_API == null),
 			dbContext.Pessoas.AsNoTracking(),
 			dbContext.PessoasFisicas.AsNoTracking(),
 			dbContext.PessoasJuridicas.AsNoTracking());
@@ -171,7 +172,8 @@ public sealed class AssociadosRepository : IAssociadosRepository
 	/// - empresa + filial: CD_EMP = empresa AND CD_FIL = filial
 	///   (associados sem filial não entram);
 	/// - carteira do corretor: CD_EMP = empresa [AND CD_FIL = filial]
-	///   AND EXISTS (contrato em T009CTRT do associado com o corretor).
+	///   AND (cadastrado pelo corretor (SQ_PES_CRO_CAD) OR EXISTS (contrato
+	///   em T009CTRT do associado com o corretor)).
 	///
 	/// Cada valor é comparado com a sua própria coluna, com o mesmo tipo
 	/// (numeric(2,0) ou numeric(7,0)). Isso evita chaves calculadas
@@ -219,10 +221,11 @@ public sealed class AssociadosRepository : IAssociadosRepository
 			{
 				var corretorValor = corretor.Value;
 				condicao = a => a.CD_EMP == empresa
-					&& contratos.Any(c =>
-						c.CD_EMP == a.CD_EMP
-						&& c.SQ_PES_CLI == a.SQ_PES_CLI
-						&& c.SQ_PES_CRO == corretorValor);
+					&& (a.SQ_PES_CRO_CAD == corretorValor
+						|| contratos.Any(c =>
+							c.CD_EMP == a.CD_EMP
+							&& c.SQ_PES_CLI == a.SQ_PES_CLI
+							&& c.SQ_PES_CRO == corretorValor));
 			}
 			else
 			{
@@ -230,10 +233,11 @@ public sealed class AssociadosRepository : IAssociadosRepository
 				var corretorValor = corretor.Value;
 				condicao = a => a.CD_EMP == empresa
 					&& a.CD_FIL == filialValor
-					&& contratos.Any(c =>
-						c.CD_EMP == a.CD_EMP
-						&& c.SQ_PES_CLI == a.SQ_PES_CLI
-						&& c.SQ_PES_CRO == corretorValor);
+					&& (a.SQ_PES_CRO_CAD == corretorValor
+						|| contratos.Any(c =>
+							c.CD_EMP == a.CD_EMP
+							&& c.SQ_PES_CLI == a.SQ_PES_CLI
+							&& c.SQ_PES_CRO == corretorValor));
 			}
 
 			filtro = filtro is null ? condicao : Ou(filtro, condicao);
@@ -305,30 +309,6 @@ public sealed class AssociadosRepository : IAssociadosRepository
 	}
 
 	/// <summary>
-	/// Consulta um associado pela chave composta.
-	/// Retorna null quando não encontrado ou fora do escopo.
-	/// </summary>
-	public async Task<AssociadoDto?> ConsultarPorCodigoAsync(
-		decimal cdEmp,
-		decimal sqPesCli,
-		EscopoConsulta escopo,
-		CancellationToken cancellationToken = default)
-	{
-		using var dbContext = CreateDbContext();
-
-		var query = AplicarEscopo(
-			AssociadosValidos(dbContext)
-				.Where(a =>
-					a.CD_EMP == cdEmp &&
-					a.SQ_PES_CLI == sqPesCli),
-			dbContext.Contratos.AsNoTracking(),
-			escopo);
-
-		return await ProjetarAssociados(query, dbContext.PessoasFisicas.AsNoTracking())
-			.SingleOrDefaultAsync(cancellationToken);
-	}
-
-	/// <summary>
 	/// Consulta associados com filtros, paginação e ordenação.
 	/// Os parâmetros já chegam validados e normalizados pelo serviço.
 	/// </summary>
@@ -350,10 +330,10 @@ public sealed class AssociadosRepository : IAssociadosRepository
 			escopo);
 
 		// Os filtros do consumidor atuam somente dentro do escopo.
-		if (request.CdEmp.HasValue)
+		if (request.CdFil.HasValue)
 		{
 			query = query.Where(
-				a => a.CD_EMP == request.CdEmp.Value);
+				a => a.CD_FIL == request.CdFil.Value);
 		}
 
 		query = FiltrarPorNome(query, request.Nome);
@@ -375,10 +355,10 @@ public sealed class AssociadosRepository : IAssociadosRepository
 			"nome" =>
 				query.OrderBy(a => a.Pessoa!.NM_PES),
 
-			"cdemp" when direcao == "desc" =>
-				query.OrderByDescending(a => a.CD_EMP),
-			"cdemp" =>
-				query.OrderBy(a => a.CD_EMP),
+			"cdfil" when direcao == "desc" =>
+				query.OrderByDescending(a => a.CD_FIL),
+			"cdfil" =>
+				query.OrderBy(a => a.CD_FIL),
 
 			"sqpescli" when direcao == "desc" =>
 				query.OrderByDescending(a => a.SQ_PES_CLI),
@@ -420,7 +400,7 @@ public sealed class AssociadosRepository : IAssociadosRepository
 
 		return new ConsultaAssociadosResultado
 		{
-			CdEmp = request.CdEmp,
+			CdFil = request.CdFil,
 			Nome = request.Nome,
 			CdSitCli = request.CdSitCli,
 			Pagina = request.Pagina,

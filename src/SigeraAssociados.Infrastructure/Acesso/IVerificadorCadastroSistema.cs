@@ -7,16 +7,15 @@
 public interface IVerificadorCadastroSistema
 {
 	/// <summary>
-	/// A empresa existe em T009EMPS do sistema.
+	/// Empresa (CD_EMP) da base do sistema, lida em T009EMPS.
+	/// Retorna null quando a tabela não tem exatamente uma empresa.
 	/// </summary>
-	Task<bool> EmpresaExisteAsync(
+	Task<decimal?> ObterEmpresaAsync(
 		int sistema,
-		decimal cdEmp,
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// A filial tem pelo menos um associado (T000CLIE) ou contrato (T009CTRT)
-	/// na empresa.
+	/// A filial está cadastrada em T000PARA na empresa.
 	/// </summary>
 	Task<bool> FilialExisteAsync(
 		int sistema,
@@ -25,12 +24,13 @@ public interface IVerificadorCadastroSistema
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// O corretor existe em T000PESS e tem pelo menos um contrato
-	/// (T009CTRT.SQ_PES_CRO) na empresa.
+	/// O corretor está cadastrado em T009CRRT na empresa e, quando a filial
+	/// é informada, pertence a essa filial.
 	/// </summary>
 	Task<bool> CorretorExisteAsync(
 		int sistema,
 		decimal cdEmp,
 		decimal sqPesCorretor,
+		decimal? cdFil,
 		CancellationToken cancellationToken = default);
 }

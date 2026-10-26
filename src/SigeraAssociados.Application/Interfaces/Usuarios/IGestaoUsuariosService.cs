@@ -35,6 +35,24 @@ public interface IGestaoUsuariosService
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
+	/// Inclui o usuário em mais um grupo funcional, mantendo os atuais.
+	/// O grupo Administradores não é concedido por esta operação.
+	/// </summary>
+	Task<ResultadoGestaoUsuario> AdicionarGrupoAsync(
+		string usuarioId,
+		string grupo,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Retira o usuário de um grupo funcional, mantendo os demais.
+	/// O usuário precisa continuar em pelo menos um grupo funcional.
+	/// </summary>
+	Task<ResultadoGestaoUsuario> RemoverGrupoAsync(
+		string usuarioId,
+		string grupo,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
 	/// Bloqueia o login do usuário por tempo indeterminado.
 	/// Tokens já emitidos continuam válidos até expirar.
 	/// </summary>

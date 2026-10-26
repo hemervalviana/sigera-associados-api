@@ -9,8 +9,8 @@ using SigeraAssociados.Application.Usuarios;
 namespace SigeraAssociados.Api.Controllers;
 
 /// <summary>
-/// Gerencia os escopos de acesso (sistema, empresa, filial e carteira
-/// do corretor) de cada usuário. Restrito a administradores.
+/// Gerencia os escopos de acesso (sistema, filial e carteira do corretor)
+/// de cada usuário. Restrito a administradores.
 /// </summary>
 [ApiController]
 [Route("api/administracao/usuarios/{usuarioId}/acessos")]
@@ -59,6 +59,25 @@ public sealed class UsuarioAcessosController : ControllerBase
 	/// <summary>
 	/// Concede um novo escopo de acesso ao usuário.
 	/// </summary>
+	/// <remarks>
+	/// Cada sistema é uma base com uma única empresa, por isso a empresa
+	/// não é informada.
+	///
+	/// `sistema`: 0 Todos, 1 PROASP, 2 SONASP, 3 ABSP, 4 GSP.
+	/// Todos libera os sistemas inteiros (grava uma linha por sistema que o
+	/// usuário ainda não tem) e não aceita filial nem corretor.
+	///
+	/// Exemplos:
+	///
+	///     { "sistema": 0 }                          todos os sistemas
+	///     { "sistema": 2 }                          SONASP inteiro
+	///     { "sistema": 2, "cdFil": 1 }              filial 1 do SONASP
+	///     { "sistema": 2, "sqPesCorretor": 12345 }  carteira do corretor no SONASP
+	/// </remarks>
+	/// <response code="201">Concedido. `acessos` traz as linhas gravadas (várias com sistema 0).</response>
+	/// <response code="400">Dados inválidos, filial ou corretor inexistente, ou Todos com filial/corretor.</response>
+	/// <response code="404">Usuário não encontrado.</response>
+	/// <response code="409">O acesso já existe (com Todos: o usuário já tem todos os sistemas).</response>
 	[HttpPost]
 	[ProducesResponseType(StatusCodes.Status201Created)]
 	[ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -74,7 +93,6 @@ public sealed class UsuarioAcessosController : ControllerBase
 			new NovoAcessoDto
 			{
 				Sistema = request.Sistema,
-				CdEmp = request.CdEmp,
 				CdFil = request.CdFil,
 				SqPesCorretor = request.SqPesCorretor
 			},
@@ -82,9 +100,14 @@ public sealed class UsuarioAcessosController : ControllerBase
 
 		if (resultado.Status == StatusGestaoAcesso.Sucesso)
 		{
+			IReadOnlyList<UsuarioAcessoDto> acessos = resultado.Acessos
+				?? (resultado.Acesso is null
+					? Array.Empty<UsuarioAcessoDto>()
+					: new[] { resultado.Acesso });
+
 			_logger.LogInformation(
-				"Acesso {AcessoId} concedido ao usuário {UsuarioId} por {Administrador}.",
-				resultado.Acesso!.Id,
+				"Acessos {AcessoIds} concedidos ao usuário {UsuarioId} por {Administrador}.",
+				string.Join(", ", acessos.Select(a => a.Id)),
 				usuarioId,
 				User.Identity?.Name ?? "(desconhecido)");
 
@@ -92,8 +115,10 @@ public sealed class UsuarioAcessosController : ControllerBase
 				StatusCodes.Status201Created,
 				new
 				{
-					mensagem = "Acesso concedido.",
-					acesso = resultado.Acesso
+					mensagem = resultado.Mensagem ?? "Acesso concedido.",
+					acesso = resultado.Acesso,
+					quantidade = acessos.Count,
+					acessos
 				});
 		}
 

@@ -51,6 +51,21 @@ public sealed class CpfTests
 		Assert.Equal(esperado, DocumentoCpf.Mascarar((decimal)numero));
 	}
 
+	[Theory]
+	[InlineData(52998224725d, "529.982.247-25")]
+	[InlineData(1234567890d, "012.345.678-90")]   // zero à esquerda recomposto
+	public void Formatar_DeveDevolverOCpfCompleto(double numero, string esperado)
+	{
+		Assert.Equal(esperado, DocumentoCpf.Formatar((decimal)numero));
+	}
+
+	[Fact]
+	public void Formatar_SemCpf_DeveDevolverNull()
+	{
+		Assert.Null(DocumentoCpf.Formatar(null));
+		Assert.Null(DocumentoCpf.Formatar(0));
+	}
+
 	[Fact]
 	public void Mascarar_SemCpf_DeveDevolverNull()
 	{

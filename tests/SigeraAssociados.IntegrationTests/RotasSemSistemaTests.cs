@@ -35,6 +35,28 @@ public sealed class RotasSemSistemaTests : IClassFixture<SigeraApiFactory>
 		Assert.DoesNotContain("X-Sigera-Sistema", conteudo);
 	}
 
+	[Theory]
+	[InlineData("/api/cadastros/filiais")]
+	[InlineData("/api/cadastros/situacoes")]
+	[InlineData("/api/cadastros/tratamentos")]
+	[InlineData("/api/cadastros/municipios")]
+	[InlineData("/api/orgaos")]
+	[InlineData("/api/orgaos/lotacoes")]
+	[InlineData("/api/orgaos/situacoes")]
+	[InlineData("/api/orgaos/cargos")]
+	[InlineData("/api/orgaos/grupos")]
+	[InlineData("/api/orgaos/suborgaos")]
+	[InlineData("/api/associados/1/orgaos")]
+	public async Task TabelasDeApoio_SemCabecalhoDoSistema_DevemExigir(string rota)
+	{
+		using var client = _factory.CreateClient();
+
+		using var response = await client.GetAsync(rota);
+
+		Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+		Assert.Contains("X-Sigera-Sistema", await response.Content.ReadAsStringAsync());
+	}
+
 	[Fact]
 	public async Task Associados_SemCabecalhoDoSistema_DeveContinuarExigindo()
 	{

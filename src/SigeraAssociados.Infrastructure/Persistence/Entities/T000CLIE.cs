@@ -110,6 +110,30 @@ public sealed class T000CLIE
 	/// T000CLIE(CD_EMP, SQ_PES_CLI)
 	/// -> T000PESS(CD_EMP, SQ_PES).
 	/// </summary>
+	/// <summary>
+	/// Data da exclusão lógica feita pela API. Preenchida, o associado
+	/// some da API (o sistema legado não usa a coluna).
+	/// SQL Server: datetime, NULL. Coluna criada pelo script
+	/// scripts/associados-colunas-api-e-permissoes.sql.
+	/// </summary>
+	[Column("DT_EXC_API", TypeName = "datetime")]
+	public DateTime? DT_EXC_API { get; set; }
+
+	/// <summary>
+	/// Usuário (e-mail) que fez a exclusão lógica. SQL Server: varchar(256), NULL.
+	/// </summary>
+	[MaxLength(256)]
+	[Column("NM_USU_EXC_API", TypeName = "varchar(256)")]
+	public string? NM_USU_EXC_API { get; set; }
+
+	/// <summary>
+	/// Corretor que cadastrou o associado pela API: ele vê e altera o
+	/// associado mesmo antes de haver contrato. SQL Server: numeric(7,0), NULL.
+	/// </summary>
+	[Column("SQ_PES_CRO_CAD", TypeName = "numeric(7, 0)")]
+	[Precision(7, 0)]
+	public decimal? SQ_PES_CRO_CAD { get; set; }
+
 	[ForeignKey(nameof(CD_EMP) + "," + nameof(SQ_PES_CLI))]
 	public T000PESS? Pessoa { get; set; }
 

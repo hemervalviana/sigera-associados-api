@@ -5,7 +5,7 @@
 /// </summary>
 public sealed class ConsultaAssociadosResultado
 {
-	public decimal? CdEmp { get; init; }
+	public decimal? CdFil { get; init; }
 
 	public string? Nome { get; init; }
 

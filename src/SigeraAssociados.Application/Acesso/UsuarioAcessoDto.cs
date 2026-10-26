@@ -13,8 +13,6 @@ public sealed class UsuarioAcessoDto
 
 	public string NomeSistema { get; init; } = string.Empty;
 
-	public decimal? CdEmp { get; init; }
-
 	public decimal? CdFil { get; init; }
 
 	public decimal? SqPesCorretor { get; init; }

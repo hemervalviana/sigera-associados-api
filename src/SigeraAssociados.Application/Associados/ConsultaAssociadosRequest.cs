@@ -6,7 +6,10 @@
 /// </summary>
 public sealed class ConsultaAssociadosRequest
 {
-	public decimal? CdEmp { get; init; }
+	/// <summary>
+	/// Filial (T000CLIE.CD_FIL). A empresa é a do sistema escolhido.
+	/// </summary>
+	public decimal? CdFil { get; init; }
 
 	/// <summary>
 	/// Começo do nome do associado (ex.: "MARIA" encontra "MARIA DA SILVA",

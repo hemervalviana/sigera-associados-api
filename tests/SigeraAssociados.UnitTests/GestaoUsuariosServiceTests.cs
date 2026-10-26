@@ -275,6 +275,119 @@ public sealed class GestaoUsuariosServiceTests : IAsyncLifetime
 			(await _servico.ExcluirAsync("nao-existe")).Status);
 	}
 
+	// ----- Incluir e remover grupos -----
+
+	[Fact]
+	public async Task AdicionarGrupo_DeveManterOsGruposAtuais()
+	{
+		ComoGestor();
+
+		var resultado = await _servico.AdicionarGrupoAsync(_corretorId, "financeiro");
+
+		Assert.Equal(StatusGestaoUsuario.Sucesso, resultado.Status);
+		Assert.Equal(new[] { Grupos.Corretores, Grupos.Financeiro }, resultado.Usuario!.Grupos);
+	}
+
+	[Fact]
+	public async Task AdicionarGrupo_QueJaPossui_DeveDevolverConflito()
+	{
+		ComoAdministrador();
+
+		var resultado = await _servico.AdicionarGrupoAsync(_corretorId, Grupos.Corretores);
+
+		Assert.Equal(StatusGestaoUsuario.Conflito, resultado.Status);
+	}
+
+	[Theory]
+	[InlineData(Grupos.Administradores)]
+	[InlineData("Diretoria")]
+	[InlineData("")]
+	public async Task AdicionarGrupo_Invalido_DeveSerRecusado(string grupo)
+	{
+		ComoAdministrador();
+
+		var resultado = await _servico.AdicionarGrupoAsync(_corretorId, grupo);
+
+		Assert.Equal(StatusGestaoUsuario.Invalido, resultado.Status);
+	}
+
+	[Fact]
+	public async Task AdicionarGrupo_DeveTrocarOCarimboDeSeguranca()
+	{
+		ComoAdministrador();
+		var usuario = await _userManager.FindByIdAsync(_corretorId);
+		var carimboAntes = await _userManager.GetSecurityStampAsync(usuario!);
+
+		await _servico.AdicionarGrupoAsync(_corretorId, Grupos.Atendimento);
+
+		Assert.NotEqual(carimboAntes, await _userManager.GetSecurityStampAsync(usuario!));
+	}
+
+	[Fact]
+	public async Task RemoverGrupo_DeveTirarSomenteOGrupoInformado()
+	{
+		ComoAdministrador();
+		await _servico.AdicionarGrupoAsync(_corretorId, Grupos.Financeiro);
+
+		var resultado = await _servico.RemoverGrupoAsync(_corretorId, "corretores");
+
+		Assert.Equal(StatusGestaoUsuario.Sucesso, resultado.Status);
+		Assert.Equal(new[] { Grupos.Financeiro }, resultado.Usuario!.Grupos);
+	}
+
+	[Fact]
+	public async Task RemoverGrupo_UnicoGrupo_DeveSerRecusado()
+	{
+		ComoAdministrador();
+
+		var resultado = await _servico.RemoverGrupoAsync(_corretorId, Grupos.Corretores);
+
+		Assert.Equal(StatusGestaoUsuario.Invalido, resultado.Status);
+		Assert.Equal(new[] { Grupos.Corretores }, (await _servico.ObterAsync(_corretorId))!.Grupos);
+	}
+
+	[Fact]
+	public async Task RemoverGrupo_QueNaoPossui_DeveDevolverConflito()
+	{
+		ComoAdministrador();
+
+		var resultado = await _servico.RemoverGrupoAsync(_corretorId, Grupos.Financeiro);
+
+		Assert.Equal(StatusGestaoUsuario.Conflito, resultado.Status);
+	}
+
+	[Fact]
+	public async Task RemoverGrupo_Inexistente_DeveSerRecusado()
+	{
+		ComoAdministrador();
+
+		var resultado = await _servico.RemoverGrupoAsync(_corretorId, "Diretoria");
+
+		Assert.Equal(StatusGestaoUsuario.Invalido, resultado.Status);
+	}
+
+	[Fact]
+	public async Task Gestor_IncluindoOuRemovendoGrupoDeAdministrador_DeveSerProibido()
+	{
+		ComoGestor();
+
+		Assert.Equal(StatusGestaoUsuario.Proibido,
+			(await _servico.AdicionarGrupoAsync(_adminId, Grupos.Financeiro)).Status);
+		Assert.Equal(StatusGestaoUsuario.Proibido,
+			(await _servico.RemoverGrupoAsync(_adminId, Grupos.Administradores)).Status);
+	}
+
+	[Fact]
+	public async Task IncluirOuRemoverGrupo_DaPropriaConta_DeveSerProibido()
+	{
+		ComoGestor();
+
+		Assert.Equal(StatusGestaoUsuario.Proibido,
+			(await _servico.AdicionarGrupoAsync(_gestorId, Grupos.Financeiro)).Status);
+		Assert.Equal(StatusGestaoUsuario.Proibido,
+			(await _servico.RemoverGrupoAsync(_gestorId, Grupos.Gestores)).Status);
+	}
+
 	[Fact]
 	public async Task AlterarGrupo_DeveTrocarOCarimboDeSeguranca()
 	{

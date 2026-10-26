@@ -15,4 +15,5 @@ public enum StatusGestaoAcesso
 public sealed record ResultadoGestaoAcesso(
 	StatusGestaoAcesso Status,
 	string? Mensagem = null,
-	UsuarioAcessoDto? Acesso = null);
+	UsuarioAcessoDto? Acesso = null,
+	IReadOnlyList<UsuarioAcessoDto>? Acessos = null);

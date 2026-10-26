@@ -1,6 +1,6 @@
 # SigeraAssociados API
 
-API REST em **C# / ASP.NET Core (.NET 10)** para consultar associados dos sistemas **PROASP, SONASP, ABSP e GSP**, com autenticação JWT, controle de acesso por sistema, empresa, filial e carteira do corretor, e gestão de usuários.
+API REST em **C# / ASP.NET Core (.NET 10)** para consultar associados dos sistemas **PROASP, SONASP, ABSP e GSP**, com autenticação JWT, controle de acesso por sistema, filial e carteira do corretor, e gestão de usuários.
 
 Arquitetura em camadas (Clean Architecture): Api → Application ← Infrastructure, com Entity Framework Core e SQL Server.
 
@@ -205,10 +205,12 @@ Cada requisição de negócio informa o sistema no cabeçalho `X-Sigera-Sistema`
 
 **Acessos** (tabela `UsuarioAcessos`, concedidos por administradores) se somam:
 
+- todos os sistemas (`sistema: 0`, grava uma linha por sistema);
 - sistema inteiro;
-- empresa inteira;
-- empresa + filial (associados sem filial não aparecem);
-- carteira do corretor (associados com contrato com o corretor), na empresa ou na filial.
+- filial do sistema (associados sem filial não aparecem);
+- carteira do corretor (associados com contrato com o corretor), no sistema ou na filial.
+
+Cada sistema é uma base com uma única empresa (CD_EMP), por isso a empresa não é informada na concessão: a API usa a empresa da base (`T009EMPS`).
 
 Regras extras: ninguém altera a própria conta; o grupo Administradores não é concedido pelos endpoints; não há cadastro público.
 
@@ -265,16 +267,29 @@ Implementação: `Api/Erros/RespostasErro.cs` (formato e títulos), `Api/Erros/T
 | POST | `/api/auth/redefinir-senha/formulario` | Público (envio do formulário) |
 | GET | `/api/conta` | Usuário logado |
 | GET | `/api/associados` | Conforme acessos |
-| GET | `/api/associados/consulta` | Conforme acessos |
-| GET | `/api/associados/{cdEmp}/{sqPesCli}` | Conforme acessos |
+| GET | `/api/associados/consulta?cdFil=&nome=&cpf=&cdSitCli=` | Conforme acessos |
+| GET | `/api/associados/{sqPesCli}` | Conforme acessos (cadastro completo) |
+| POST | `/api/associados` | Conforme acessos (corretor: vinculado a ele) |
+| PUT | `/api/associados/{sqPesCli}` | Conforme acessos (falecido: só Admin e Gestores) |
+| DELETE | `/api/associados/{sqPesCli}` | Admin e Gestores (exclusão lógica) |
+| GET | `/api/orgaos?busca=&cdFil=&uf=`, `/api/orgaos/{cdOrg}`, `/api/orgaos/grupos`, `/api/orgaos/suborgaos`, `/api/orgaos/lotacoes`, `/api/orgaos/cargos`, `/api/orgaos/situacoes` | Quem tem acesso ao sistema |
+| POST / PUT / DELETE | `/api/orgaos`, `/api/orgaos/grupos`, `/api/orgaos/suborgaos`, `/api/orgaos/lotacoes`, `/api/orgaos/cargos`, `/api/orgaos/situacoes` (PUT e DELETE com `/{codigo}`) | Admin |
+| GET / POST | `/api/associados/{sqPesCli}/orgaos` | Conforme acessos (vínculos do associado com órgãos) |
+| PUT / DELETE | `/api/associados/{sqPesCli}/orgaos/{sqOrg}` | Conforme acessos; DELETE só Admin e Gestores |
+| GET | `/api/cadastros/filiais`, `/filiais/{cdFil}`, `/situacoes`, `/tratamentos`, `/municipios?uf=&busca=` | Quem tem acesso ao sistema (`X-Sigera-Sistema`) |
+| POST / PUT / DELETE | `/api/cadastros/filiais`, `/situacoes`, `/tratamentos`, `/municipios` (PUT e DELETE com `/{codigo}`) | Admin |
 | GET | `/api/administracao/grupos` | Admin, Gestores |
 | POST | `/api/administracao/usuarios` | Admin, Gestores |
 | GET | `/api/administracao/usuarios` | Admin, Gestores |
 | GET / DELETE | `/api/administracao/usuarios/{id}` | Admin, Gestores |
 | PUT | `/api/administracao/usuarios/{id}/grupo` | Admin, Gestores |
+| POST | `/api/administracao/usuarios/{id}/grupos` | Admin, Gestores |
+| DELETE | `/api/administracao/usuarios/{id}/grupos/{grupo}` | Admin, Gestores |
 | POST | `/api/administracao/usuarios/{id}/bloquear` e `/desbloquear` | Admin, Gestores |
 | POST | `/api/administracao/usuarios/{id}/reenviar-confirmacao` | Admin, Gestores |
 | GET / POST | `/api/administracao/usuarios/{id}/acessos` | Admin |
+| GET | `/api/administracao/sistemas/{sistema}/filiais` | Admin |
+| GET | `/api/administracao/sistemas/{sistema}/corretores?cdFil=&busca=` | Admin |
 | DELETE | `/api/administracao/usuarios/{id}/acessos/{acessoId}` | Admin |
 | GET | `/api/diagnostico/conexao`, `/api/diagnostico/pessoas` | Admin |
 | GET | `/health` | Público (API no ar) |

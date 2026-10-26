@@ -18,16 +18,6 @@ public interface IAssociadosRepository
 			CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Consulta um associado pela empresa e sequência da pessoa.
-	/// Retorna null quando não encontrado ou fora do escopo.
-	/// </summary>
-	Task<AssociadoDto?> ConsultarPorCodigoAsync(
-			decimal cdEmp,
-			decimal sqPesCli,
-			EscopoConsulta escopo,
-			CancellationToken cancellationToken = default);
-
-	/// <summary>
 	/// Consulta associados com filtros, paginação e ordenação,
 	/// dentro do escopo.
 	/// </summary>

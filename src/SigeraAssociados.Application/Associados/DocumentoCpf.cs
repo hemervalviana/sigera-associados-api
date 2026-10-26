@@ -46,7 +46,26 @@ public static class DocumentoCpf
 	}
 
 	/// <summary>
+	/// CPF completo com pontuação: 12345678909 vira 123.456.789-09.
+	/// Recompõe o zero à esquerda perdido no numeric(11,0).
+	/// </summary>
+	public static string? Formatar(decimal? numero)
+	{
+		if (numero is null || numero <= 0)
+		{
+			return null;
+		}
+
+		var texto = decimal.Truncate(numero.Value).ToString("00000000000", CultureInfo.InvariantCulture);
+
+		return texto.Length != 11
+			? null
+			: $"{texto[..3]}.{texto[3..6]}.{texto[6..9]}-{texto[9..]}";
+	}
+
+	/// <summary>
 	/// Máscara para exibição: 12345678909 vira ***.456.789-**.
+	/// Não usada nas respostas hoje (a API devolve o CPF completo).
 	/// </summary>
 	public static string? Mascarar(decimal? numero)
 	{

@@ -16,6 +16,12 @@ public enum StatusGestaoUsuario
 	/// </summary>
 	Proibido,
 
+	/// <summary>
+	/// A situação atual do usuário impede a operação
+	/// (por exemplo, ele já pertence ao grupo ou não pertence a ele).
+	/// </summary>
+	Conflito,
+
 	Falha
 }
 

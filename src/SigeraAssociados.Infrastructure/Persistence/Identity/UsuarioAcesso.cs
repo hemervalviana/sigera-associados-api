@@ -7,7 +7,9 @@ namespace SigeraAssociados.Infrastructure.Persistence.Identity;
 /// Um usuário pode ter várias linhas (vários sistemas, empresas ou filiais).
 ///
 /// Regras de interpretação:
-/// - CdEmp nulo: todas as empresas do sistema.
+/// - CdEmp: preenchido pela API com a empresa da base (cada sistema tem
+///   uma só) quando há filial ou corretor; não é informado na concessão.
+///   Nulo: sistema inteiro.
 /// - CdFil nulo: todas as filiais da empresa informada.
 /// - SqPesCorretor preenchido: somente os associados da carteira
 ///   desse corretor (contratos em T009CTRT.SQ_PES_CRO) na empresa informada.

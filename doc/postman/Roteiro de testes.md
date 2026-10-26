@@ -35,8 +35,33 @@ Antes de começar:
 | [ ] | 04.2 | Filtro por nome | Em **Params**, marque `nome` com um sobrenome real | **200**, todos os nomes contêm o trecho |
 | [ ] | 04.2 | Ordem decrescente | `direcao` = desc | **200**, nomes de Z para A |
 | [ ] | 04.2 | Segunda página | `pagina` = 2 | **200**, registros diferentes da página 1 |
-| [ ] | 04.3 | Consultar por código | Ajuste `cdEmp` e `sqPesCli` com um associado do 04.1 | **200** |
+| [ ] | 04.2 | Filtro por filial | Em **Params**, marque `cdFil` | **200**, só associados da filial |
+| [ ] | 04.3 | Consultar cadastro completo | Ajuste `sqPesCli` com um associado do 04.1 | **200**, com `pessoaFisica` e `associado` |
 | [ ] | 04.3 | Código que não existe | `sqPesCli` = 9999999 | **404** |
+| [ ] | — | Script do CRUD rodado | `scripts\associados-colunas-api-e-permissoes.sql` nas 4 bases | Colunas e permissões criadas |
+| [ ] | — | Script das tabelas de apoio | `scripts\tabelas-apoio-permissoes.sql` nas 4 bases | Permissões concedidas; consulta de triggers vazia |
+| [ ] | 04.24 | Incluir tratamento de teste | Body `descricao` = TESTE API | **201**, `item.codigo` salvo |
+| [ ] | 04.25 | Alterar o tratamento | Body `descricao` = TESTE API 2 | **200** |
+| [ ] | 04.26 | Excluir o tratamento | — | **200** |
+| [ ] | 04.26 | Excluir tratamento em uso | `codigoApoio` de um tratamento usado por alguém | **409** |
+| [ ] | 04.27 | Excluir a situação 10 | — | **409** (falecido é protegido) |
+| [ ] | — | Script de órgãos | `scripts\orgaos-permissoes.sql` nas 4 bases | Permissões concedidas |
+| [ ] | 09.1 | Pesquisar órgãos | — | **200**, lista paginada |
+| [ ] | 09.2 | Incluir órgão de teste | — | **201**, `cdOrg` salvo |
+| [ ] | 09.3 | Detalhe do órgão | — | **200**, com endereço e contatos |
+| [ ] | 09.6 | Incluir o associado de teste no órgão | `sqPesCli` do 04.4 | **201**, `sqOrg` salvo |
+| [ ] | 09.6 | Repetir com a mesma matrícula | Envie de novo | **409** |
+| [ ] | 09.5 | Listar órgãos do associado | — | **200**, com nome do órgão |
+| [ ] | 09.8 | Excluir o vínculo | Como administrador | **200** |
+| [ ] | 09.4 | Excluir o órgão de teste | Depois de excluir o vínculo | **200** (com vínculo: **409**) |
+| [ ] | 04.4 | Incluir associado de teste | Troque o CPF no Body por um CPF válido que não exista na base | **201**, `sqPesCli` salvo |
+| [ ] | 04.4 | Incluir de novo o mesmo CPF | Envie de novo | **409** |
+| [ ] | 04.3 | Conferir a inclusão | — | **200**, dados iguais aos enviados |
+| [ ] | 04.5 | Alterar o associado de teste | Mude o nome no Body | **200**, nome novo |
+| [ ] | 04.5 | Corretor marcando falecido | Com um usuário Corretor, `cdSitCli` = 10 | **403** |
+| [ ] | 04.6 | Excluir como Corretor ou Atendimento | — | **403** |
+| [ ] | 04.6 | Excluir como administrador | — | **200** |
+| [ ] | 04.3 | Conferir a exclusão | — | **404**; no banco, `DT_EXC_API` preenchida |
 
 ## Parte 4 — Gestão de usuários
 
@@ -49,6 +74,10 @@ Antes de começar:
 | [ ] | 05.3 | Filtro por grupo | Em **Params**, marque `grupo` = Corretores | **200**, só Corretores |
 | [ ] | 05.4 | Consultar pelo ID | — | **200**, `emailConfirmado: false` |
 | [ ] | 05.6 | Trocar grupo | Body `grupo` = Atendimento | **200**, `grupos: ["Atendimento"]` |
+| [ ] | 05.10 | Incluir em mais um grupo | Body `grupo` = Financeiro | **200**, `grupos: ["Atendimento", "Financeiro"]` |
+| [ ] | 05.10 | Incluir de novo no mesmo grupo | Envie de novo sem mudar | **409** |
+| [ ] | 05.11 | Remover de um grupo | Variável `grupoRemover` = Financeiro | **200**, `grupos: ["Atendimento"]` |
+| [ ] | 05.11 | Remover o único grupo | Variável `grupoRemover` = Atendimento | **400** |
 | [ ] | 05.7 | Bloquear | — | **200**, `bloqueado: true` |
 | [ ] | 05.8 | Desbloquear | — | **200**, `bloqueado: false` |
 
@@ -56,12 +85,16 @@ Antes de começar:
 
 | OK | Nº | O que testar | Preparação | Esperado |
 |---|---|---|---|---|
-| [ ] | 06.2 | Conceder empresa + filial | Ajuste `cdEmp`/`cdFil` no Body com valores reais | **201** |
+| [ ] | 06.7 | Listar filiais do sistema | — | **200**, lista de `cdFil` e nomes |
+| [ ] | 06.8 | Listar corretores da filial | Ajuste `cdFil` com uma filial do 06.7 | **200**, só corretores da filial |
+| [ ] | 06.2 | Conceder filial | `cdFil` de uma filial do 06.7 | **201** |
 | [ ] | 06.2 | Repetir o mesmo acesso | Envie de novo sem mudar | **409** (duplicado) |
-| [ ] | 06.3 | Conceder carteira de corretor | `sqPesCorretor` real no Body | **201** |
+| [ ] | 06.3 | Conceder carteira de corretor | `sqPesCorretor` de um corretor do 06.8 | **201** |
 | [ ] | 06.4 | Listar acessos | — | **200**, 2 acessos |
 | [ ] | 06.5 | Revogar o último acesso | — | **200** |
 | [ ] | 06.4 | Conferir a revogação | — | **200**, 1 acesso |
+| [ ] | 06.6 | Conceder todos os sistemas | — | **201**, `acessos` com os sistemas que faltavam |
+| [ ] | 06.6 | Repetir | Envie de novo | **409** |
 
 ## Parte 6 — Confirmação de e-mail e login do usuário de teste
 
@@ -116,7 +149,7 @@ Antes: preencha `restritoSenha` em **Variables > Current value**, e confira `res
 |---|---|---|---|
 | [ ] | 08.1 | Login como administrador | **200** |
 | [ ] | 08.2 | Remove acessos ao sistema inteiro do restrito | **200**; o Console mostra os acessos revogados |
-| [ ] | 08.3 | Garante empresa 2 + filial 1 | **201** ou **409** |
+| [ ] | 08.3 | Garante a filial 1 | **201** ou **409** |
 | [ ] | 08.4 | Total como administrador | **200**; o Console mostra o total |
 | [ ] | 08.5 | Login como restrito | **200** |
 | [ ] | 08.6 | Minha conta do restrito | `acessoIrrestrito: false` e nenhum acesso ao sistema inteiro |
@@ -143,9 +176,9 @@ Rode a pasta inteira: passe o mouse em **07 - Testes de erro e segurança**, cli
 | [ ] | 07.9 | Excluir a própria conta | **403** |
 | [ ] | 07.10 | E-mail já cadastrado | **409** |
 | [ ] | 07.11 | Grupo inexistente | **400** |
-| [ ] | 07.12 | Filial sem empresa | **400** |
+| [ ] | 07.12 | Todos os sistemas com filial | **400** |
 | [ ] | 07.13 | Acesso ao sistema 7 | **400** |
-| [ ] | 07.13b | Acesso a empresa inexistente (99) | **400** |
+| [ ] | 07.13b | Filial inexistente (99) | **400** |
 | [ ] | 07.13c | Carteira de corretor inexistente | **400** |
 | [ ] | 07.14 | Link de confirmação adulterado | **400** |
 | [ ] | 07.15 | Usuário inexistente | **404** |

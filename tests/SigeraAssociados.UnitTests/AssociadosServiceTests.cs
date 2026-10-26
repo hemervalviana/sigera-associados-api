@@ -54,21 +54,6 @@ public sealed class AssociadosServiceTests
             return Task.FromResult(Lista);
         }
 
-        public Task<AssociadoDto?> ConsultarPorCodigoAsync(
-            decimal cdEmp,
-            decimal sqPesCli,
-            EscopoConsulta escopo,
-            CancellationToken cancellationToken = default)
-        {
-            ChamadasConsultarPorCodigo++;
-            UltimoEscopo = escopo;
-            UltimoCdEmp = cdEmp;
-            UltimoSqPesCli = sqPesCli;
-            UltimoCancellationToken = cancellationToken;
-
-            return Task.FromResult(AssociadoConsultado);
-        }
-
         public Task<ConsultaAssociadosResultado> ConsultarPaginadoAsync(
             ConsultaAssociadosRequest request,
             EscopoConsulta escopo,
@@ -260,7 +245,7 @@ public sealed class AssociadosServiceTests
 
     [Theory]
     [InlineData(" NOME ", "nome")]
-    [InlineData("CdEmp", "cdemp")]
+    [InlineData("CdFil", "cdfil")]
     [InlineData("SQPesCli", "sqpescli")]
     [InlineData("CdSitCli", "cdsitcli")]
     [InlineData("Situacao", "situacao")]
@@ -310,7 +295,7 @@ public sealed class AssociadosServiceTests
         var (servico, repositorio) = CriarServico();
         var request = new ConsultaAssociadosRequest
         {
-            CdEmp = 12,
+            CdFil = 12,
             Nome = "Maria",
             CdSitCli = 3,
             Pagina = 4,
@@ -324,7 +309,7 @@ public sealed class AssociadosServiceTests
         var consulta = Assert.IsType<ConsultaAssociadosRequest>(
             repositorio.UltimaConsulta);
 
-        Assert.Equal(12m, consulta.CdEmp);
+        Assert.Equal(12m, consulta.CdFil);
         Assert.Equal("Maria", consulta.Nome);
         Assert.Equal(3m, consulta.CdSitCli);
         Assert.Equal(4, consulta.Pagina);
@@ -404,39 +389,6 @@ public sealed class AssociadosServiceTests
     }
 
     [Fact]
-    public async Task ConsultarPorCodigoAsync_DeveEncaminharChaveComposta()
-    {
-        var (servico, repositorio) = CriarServico();
-        var esperado = new AssociadoDto
-        {
-            CDEmp = 10,
-            SQPesCli = 25,
-            Nome = "Maria da Silva"
-        };
-
-        repositorio.AssociadoConsultado = esperado;
-
-        var resultado = await servico.ConsultarPorCodigoAsync(10, 25);
-
-        Assert.Same(esperado, resultado);
-        Assert.Equal(1, repositorio.ChamadasConsultarPorCodigo);
-        Assert.Equal(10m, repositorio.UltimoCdEmp);
-        Assert.Equal(25m, repositorio.UltimoSqPesCli);
-    }
-
-    [Fact]
-    public async Task ConsultarPorCodigoAsync_QuandoNaoEncontrado_DeveRetornarNulo()
-    {
-        var (servico, repositorio) = CriarServico();
-        repositorio.AssociadoConsultado = null;
-
-        var resultado = await servico.ConsultarPorCodigoAsync(10, 25);
-
-        Assert.Null(resultado);
-        Assert.Equal(1, repositorio.ChamadasConsultarPorCodigo);
-    }
-
-    [Fact]
     public async Task ConsultarPaginadoAsync_DevePropagarCancellationToken()
     {
         var (servico, repositorio) = CriarServico();
@@ -463,18 +415,6 @@ public sealed class AssociadosServiceTests
     }
 
     [Fact]
-    public async Task ConsultarPorCodigoAsync_DevePropagarCancellationToken()
-    {
-        var (servico, repositorio) = CriarServico();
-        using var origemCancelamento = new CancellationTokenSource();
-        var token = origemCancelamento.Token;
-
-        await servico.ConsultarPorCodigoAsync(10, 25, token);
-
-        Assert.Equal(token, repositorio.UltimoCancellationToken);
-    }
-
-    [Fact]
     public async Task ConsultarPaginado_SemAcesso_DeveRetornarVazioSemConsultarRepositorio()
     {
         var (servico, repositorio) = CriarServico(EscopoConsulta.Nenhum);
@@ -495,17 +435,6 @@ public sealed class AssociadosServiceTests
 
         Assert.Empty(resultado);
         Assert.Equal(0, repositorio.ChamadasListar);
-    }
-
-    [Fact]
-    public async Task ConsultarPorCodigoAsync_SemAcesso_DeveRetornarNuloSemConsultarRepositorio()
-    {
-        var (servico, repositorio) = CriarServico(EscopoConsulta.Nenhum);
-
-        var resultado = await servico.ConsultarPorCodigoAsync(10, 25);
-
-        Assert.Null(resultado);
-        Assert.Equal(0, repositorio.ChamadasConsultarPorCodigo);
     }
 
     [Fact]

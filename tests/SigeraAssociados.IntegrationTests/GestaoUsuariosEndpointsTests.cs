@@ -229,6 +229,231 @@ public sealed class GestaoUsuariosEndpointsTests
 		Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
 	}
 
+	// ----- Incluir e remover grupos -----
+
+	[Fact]
+	public async Task AdicionarGrupo_ComSucesso_DeveRetornar200()
+	{
+		using var cliente = Cliente("Gestores");
+
+		using var resposta = await cliente.PostAsJsonAsync(
+			"/api/administracao/usuarios/usuario-alvo/grupos",
+			new { grupo = "Financeiro" });
+
+		Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+		Assert.Equal("Financeiro", _factory.GestaoUsuarios.UltimoGrupo);
+	}
+
+	[Fact]
+	public async Task AdicionarGrupo_ComoCorretor_DeveRetornar403()
+	{
+		using var cliente = Cliente("Corretores");
+
+		using var resposta = await cliente.PostAsJsonAsync(
+			"/api/administracao/usuarios/usuario-alvo/grupos",
+			new { grupo = "Financeiro" });
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	[Fact]
+	public async Task AdicionarGrupo_SemGrupoNoCorpo_DeveRetornar400()
+	{
+		using var cliente = Cliente();
+
+		using var resposta = await cliente.PostAsJsonAsync(
+			"/api/administracao/usuarios/usuario-alvo/grupos",
+			new { grupo = "" });
+
+		Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+	}
+
+	[Fact]
+	public async Task AdicionarGrupo_QuandoJaPertence_DeveRetornar409()
+	{
+		_factory.GestaoUsuarios.ProximoResultado =
+			new ResultadoGestaoUsuario(StatusGestaoUsuario.Conflito, "Já pertence.");
+
+		using var cliente = Cliente();
+
+		using var resposta = await cliente.PostAsJsonAsync(
+			"/api/administracao/usuarios/usuario-alvo/grupos",
+			new { grupo = "Corretores" });
+
+		Assert.Equal(HttpStatusCode.Conflict, resposta.StatusCode);
+	}
+
+	[Fact]
+	public async Task RemoverGrupo_ComNomeCodificadoNaUrl_DeveRetornar200()
+	{
+		using var cliente = Cliente("Gestores");
+
+		using var resposta = await cliente.DeleteAsync(
+			"/api/administracao/usuarios/usuario-alvo/grupos/Coordenadora%20Adm.%20%26%20Operacional");
+
+		Assert.Equal(HttpStatusCode.OK, resposta.StatusCode);
+		Assert.Equal(Grupos.CoordenadoraAdmOperacional, _factory.GestaoUsuarios.UltimoGrupo);
+	}
+
+	[Fact]
+	public async Task RemoverGrupo_ComoFinanceiro_DeveRetornar403()
+	{
+		using var cliente = Cliente("Financeiro");
+
+		using var resposta = await cliente.DeleteAsync(
+			"/api/administracao/usuarios/usuario-alvo/grupos/Corretores");
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	[Fact]
+	public async Task RemoverGrupo_QuandoNaoPertence_DeveRetornar409()
+	{
+		_factory.GestaoUsuarios.ProximoResultado =
+			new ResultadoGestaoUsuario(StatusGestaoUsuario.Conflito, "Não pertence.");
+
+		using var cliente = Cliente();
+
+		using var resposta = await cliente.DeleteAsync(
+			"/api/administracao/usuarios/usuario-alvo/grupos/Financeiro");
+
+		Assert.Equal(HttpStatusCode.Conflict, resposta.StatusCode);
+	}
+
+	[Fact]
+	public async Task RemoverGrupo_UnicoGrupo_DeveRetornar400()
+	{
+		_factory.GestaoUsuarios.ProximoResultado =
+			new ResultadoGestaoUsuario(StatusGestaoUsuario.Invalido, "Precisa de um grupo.");
+
+		using var cliente = Cliente();
+
+		using var resposta = await cliente.DeleteAsync(
+			"/api/administracao/usuarios/usuario-alvo/grupos/Corretores");
+
+		Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+	}
+
+	// ----- Pesquisa de filiais e corretores -----
+
+	[Theory]
+	[InlineData("/api/administracao/sistemas/2/filiais")]
+	[InlineData("/api/administracao/sistemas/2/corretores?cdFil=1")]
+	public async Task CadastrosDoSistema_ComoGestor_DeveRetornar403(string rota)
+	{
+		using var cliente = Cliente("Gestores");
+
+		using var resposta = await cliente.GetAsync(rota);
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	[Theory]
+	[InlineData("/api/administracao/sistemas/0/filiais")]
+	[InlineData("/api/administracao/sistemas/9/filiais")]
+	[InlineData("/api/administracao/sistemas/9/corretores")]
+	[InlineData("/api/administracao/sistemas/2/corretores?cdFil=100")]
+	[InlineData("/api/administracao/sistemas/2/corretores?tamanhoPagina=500")]
+	public async Task CadastrosDoSistema_ComFiltroInvalido_DeveRetornar400(string rota)
+	{
+		using var cliente = Cliente("Administradores");
+
+		using var resposta = await cliente.GetAsync(rota);
+
+		Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+	}
+
+	// ----- Cadastro de associados: permissões -----
+
+	[Theory]
+	[InlineData("Corretores")]
+	[InlineData("Atendimento")]
+	[InlineData("Financeiro")]
+	public async Task ExcluirAssociado_SemSerAdministradorOuGestor_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.DeleteAsync("/api/associados/123");
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	[Fact]
+	public async Task IncluirAssociado_SemCabecalhoDoSistema_DeveRetornar400()
+	{
+		using var cliente = Cliente("Atendimento");
+
+		using var resposta = await cliente.PostAsJsonAsync("/api/associados", new { nome = "MARIA" });
+
+		Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+		Assert.Contains("X-Sigera-Sistema", await resposta.Content.ReadAsStringAsync());
+	}
+
+	// ----- Manutenção das tabelas de apoio: só administradores -----
+
+	[Theory]
+	[InlineData("Gestores", "/api/cadastros/filiais")]
+	[InlineData("Atendimento", "/api/cadastros/situacoes")]
+	[InlineData("Corretores", "/api/cadastros/tratamentos")]
+	[InlineData("Financeiro", "/api/cadastros/municipios")]
+	public async Task IncluirEmTabelaDeApoio_SemSerAdministrador_DeveRetornar403(string grupo, string rota)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.PostAsJsonAsync(rota, new { descricao = "TESTE", nome = "TESTE" });
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	[Theory]
+	[InlineData("/api/cadastros/filiais/1")]
+	[InlineData("/api/cadastros/situacoes/1")]
+	[InlineData("/api/cadastros/tratamentos/1")]
+	[InlineData("/api/cadastros/municipios/2307304")]
+	public async Task ExcluirDeTabelaDeApoio_ComoGestor_DeveRetornar403(string rota)
+	{
+		using var cliente = Cliente("Gestores");
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.DeleteAsync(rota);
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	// ----- Órgãos e vínculos: permissões -----
+
+	[Theory]
+	[InlineData("Gestores", "/api/orgaos")]
+	[InlineData("Atendimento", "/api/orgaos/lotacoes")]
+	[InlineData("Corretores", "/api/orgaos/situacoes")]
+	[InlineData("Financeiro", "/api/orgaos/cargos")]
+	[InlineData("Gestores", "/api/orgaos/grupos")]
+	[InlineData("Atendimento", "/api/orgaos/suborgaos")]
+	public async Task IncluirOrgaoOuApoio_SemSerAdministrador_DeveRetornar403(string grupo, string rota)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.PostAsJsonAsync(rota, new { nome = "TESTE", descricao = "TESTE" });
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	[Theory]
+	[InlineData("Corretores")]
+	[InlineData("Atendimento")]
+	public async Task ExcluirVinculoDeOrgao_SemSerAdministradorOuGestor_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.DeleteAsync("/api/associados/123/orgaos/1");
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
 	// ----- Minha conta -----
 
 	[Fact]

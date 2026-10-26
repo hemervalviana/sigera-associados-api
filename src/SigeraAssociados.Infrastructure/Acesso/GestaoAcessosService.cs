@@ -71,49 +71,84 @@ public sealed class GestaoAcessosService : IGestaoAcessosService
 				"Usuário não encontrado.");
 		}
 
+		var todos = acesso.Sistema == SigeraSystemCatalog.Todos;
+
+		var sistemas = todos
+			? SigeraSystemCatalog.Codigos.ToArray()
+			: new[] { acesso.Sistema };
+
 		// O índice único do SQL Server ignora linhas com colunas nulas,
 		// por isso a duplicidade também é verificada aqui.
-		var duplicado = await _identityDb.UsuarioAcessos.AnyAsync(
-			a => a.UsuarioId == usuarioId
-				&& a.Sistema == acesso.Sistema
-				&& a.CdEmp == acesso.CdEmp
+		// A empresa não entra na comparação: cada sistema tem uma só.
+		var sistemasJaCadastrados = await _identityDb.UsuarioAcessos
+			.Where(a => a.UsuarioId == usuarioId
+				&& sistemas.Contains(a.Sistema)
 				&& a.CdFil == acesso.CdFil
-				&& a.SqPesCorretor == acesso.SqPesCorretor,
-			cancellationToken);
+				&& a.SqPesCorretor == acesso.SqPesCorretor)
+			.Select(a => a.Sistema)
+			.Distinct()
+			.ToListAsync(cancellationToken);
 
-		if (duplicado)
+		var sistemasNovos = sistemas.Except(sistemasJaCadastrados).ToArray();
+
+		if (sistemasNovos.Length == 0)
 		{
 			return new ResultadoGestaoAcesso(
 				StatusGestaoAcesso.Duplicado,
-				"Este acesso já está cadastrado para o usuário.");
+				todos
+					? "O usuário já tem acesso a todos os sistemas."
+					: "Este acesso já está cadastrado para o usuário.");
 		}
 
-		// Confere no banco do sistema se empresa, filial e corretor existem.
-		var erroCadastro = await VerificarCadastroAsync(acesso, cancellationToken);
+		// Filial e corretor: confere no banco do sistema e usa a empresa da base.
+		decimal? empresa = null;
 
-		if (erroCadastro is not null)
+		if (acesso.CdFil is not null || acesso.SqPesCorretor is not null)
 		{
-			return new ResultadoGestaoAcesso(StatusGestaoAcesso.Invalido, erroCadastro);
+			var (empresaDaBase, erroCadastro) = await VerificarCadastroAsync(
+				acesso,
+				cancellationToken);
+
+			if (erroCadastro is not null)
+			{
+				return new ResultadoGestaoAcesso(StatusGestaoAcesso.Invalido, erroCadastro);
+			}
+
+			empresa = empresaDaBase;
 		}
 
-		var entidade = new UsuarioAcesso
-		{
-			UsuarioId = usuarioId,
-			Sistema = acesso.Sistema,
-			CdEmp = acesso.CdEmp,
-			CdFil = acesso.CdFil,
-			SqPesCorretor = acesso.SqPesCorretor,
-			CriadoEmUtc = DateTime.UtcNow
-		};
+		var agora = DateTime.UtcNow;
 
-		_identityDb.UsuarioAcessos.Add(entidade);
+		var entidades = sistemasNovos
+			.Select(sistema => new UsuarioAcesso
+			{
+				UsuarioId = usuarioId,
+				Sistema = sistema,
+				CdEmp = empresa,
+				CdFil = acesso.CdFil,
+				SqPesCorretor = acesso.SqPesCorretor,
+				CriadoEmUtc = agora
+			})
+			.ToList();
+
+		_identityDb.UsuarioAcessos.AddRange(entidades);
 		await _identityDb.SaveChangesAsync(cancellationToken);
 
 		_cache.Remove(EscopoAcessoService.ChaveCache(usuarioId));
 
+		var dtos = entidades.Select(ParaDto).ToList();
+
+		var mensagem = !todos
+			? "Acesso concedido."
+			: sistemasJaCadastrados.Count == 0
+				? "Acesso concedido a todos os sistemas."
+				: $"Acesso concedido a {dtos.Count} sistema(s); os demais já estavam liberados.";
+
 		return new ResultadoGestaoAcesso(
 			StatusGestaoAcesso.Sucesso,
-			Acesso: ParaDto(entidade));
+			mensagem,
+			Acesso: dtos[0],
+			Acessos: dtos);
 	}
 
 	/// <inheritdoc />
@@ -150,14 +185,10 @@ public sealed class GestaoAcessosService : IGestaoAcessosService
 	/// </summary>
 	internal static string? Validar(NovoAcessoDto acesso)
 	{
-		if (!SigeraSystemCatalog.TryGetDatabase(acesso.Sistema, out _))
+		if (acesso.Sistema != SigeraSystemCatalog.Todos
+			&& !SigeraSystemCatalog.TryGetDatabase(acesso.Sistema, out _))
 		{
-			return "Sistema inválido. Os valores permitidos são 1, 2, 3 e 4.";
-		}
-
-		if (acesso.CdEmp is not null && (acesso.CdEmp < 1 || acesso.CdEmp > 99 || acesso.CdEmp % 1 != 0))
-		{
-			return "A empresa deve ser um código inteiro entre 1 e 99.";
+			return "Sistema inválido. Os valores permitidos são 0 (todos), 1, 2, 3 e 4.";
 		}
 
 		if (acesso.CdFil is not null && (acesso.CdFil < 1 || acesso.CdFil > 99 || acesso.CdFil % 1 != 0))
@@ -171,53 +202,50 @@ public sealed class GestaoAcessosService : IGestaoAcessosService
 			return "O corretor deve ser um código inteiro entre 1 e 9999999.";
 		}
 
-		if (acesso.CdFil is not null && acesso.CdEmp is null)
+		if (acesso.Sistema == SigeraSystemCatalog.Todos
+			&& (acesso.CdFil is not null || acesso.SqPesCorretor is not null))
 		{
-			return "Para restringir por filial, informe também a empresa.";
-		}
-
-		if (acesso.SqPesCorretor is not null && acesso.CdEmp is null)
-		{
-			return "Para restringir pela carteira do corretor, informe também a empresa.";
+			return "A opção todos (sistema 0) libera os sistemas inteiros. " +
+				"Para restringir por filial ou corretor, escolha um sistema de 1 a 4.";
 		}
 
 		return null;
 	}
 
 	/// <summary>
-	/// Confere no banco de negócio do sistema se a empresa, a filial e o
-	/// corretor do acesso existem. Retorna a mensagem de erro ou null.
-	/// Acesso ao sistema inteiro (sem empresa) não precisa de conferência.
+	/// Para acesso por filial ou corretor: obtém a empresa da base do sistema
+	/// (gravada na linha de acesso e usada no filtro) e confere se a filial e
+	/// o corretor existem. Devolve a empresa ou a mensagem de erro.
 	/// </summary>
-	private async Task<string?> VerificarCadastroAsync(
+	private async Task<(decimal? Empresa, string? Erro)> VerificarCadastroAsync(
 		NovoAcessoDto acesso,
 		CancellationToken cancellationToken)
 	{
-		if (acesso.CdEmp is not decimal empresa)
-		{
-			return null;
-		}
-
 		var nomeSistema = ((SigeraSystem)acesso.Sistema).ToString();
 
-		if (!await _verificador.EmpresaExisteAsync(acesso.Sistema, empresa, cancellationToken))
+		if (await _verificador.ObterEmpresaAsync(acesso.Sistema, cancellationToken)
+			is not decimal empresa)
 		{
-			return $"A empresa {empresa:0} não existe no sistema {nomeSistema}.";
+			return (null,
+				$"Não foi possível identificar a empresa do sistema {nomeSistema}: " +
+				"a tabela T009EMPS deve ter exatamente uma empresa.");
 		}
 
 		if (acesso.CdFil is decimal filial
 			&& !await _verificador.FilialExisteAsync(acesso.Sistema, empresa, filial, cancellationToken))
 		{
-			return $"A filial {filial:0} não tem associados nem contratos na empresa {empresa:0} do sistema {nomeSistema}.";
+			return (null, $"A filial {filial:0} não está cadastrada (T000PARA) no sistema {nomeSistema}.");
 		}
 
 		if (acesso.SqPesCorretor is decimal corretor
-			&& !await _verificador.CorretorExisteAsync(acesso.Sistema, empresa, corretor, cancellationToken))
+			&& !await _verificador.CorretorExisteAsync(acesso.Sistema, empresa, corretor, acesso.CdFil, cancellationToken))
 		{
-			return $"O corretor {corretor:0} não existe ou não tem contratos na empresa {empresa:0} do sistema {nomeSistema}.";
+			return (null, acesso.CdFil is decimal filialDoCorretor
+				? $"O corretor {corretor:0} não está cadastrado (T009CRRT) na filial {filialDoCorretor:0} do sistema {nomeSistema}."
+				: $"O corretor {corretor:0} não está cadastrado (T009CRRT) no sistema {nomeSistema}.");
 		}
 
-		return null;
+		return (empresa, null);
 	}
 
 	private Task<bool> UsuarioExisteAsync(
@@ -239,7 +267,6 @@ public sealed class GestaoAcessosService : IGestaoAcessosService
 			NomeSistema = Enum.IsDefined(typeof(SigeraSystem), a.Sistema)
 				? ((SigeraSystem)a.Sistema).ToString()
 				: string.Empty,
-			CdEmp = a.CdEmp,
 			CdFil = a.CdFil,
 			SqPesCorretor = a.SqPesCorretor,
 			CriadoEmUtc = a.CriadoEmUtc

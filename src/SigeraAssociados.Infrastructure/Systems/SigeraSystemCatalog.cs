@@ -2,6 +2,17 @@
 
 public static class SigeraSystemCatalog
 {
+    /// <summary>
+    /// Código usado na concessão de acesso para liberar todos os sistemas.
+    /// Não é gravado: vira uma linha de acesso para cada sistema.
+    /// </summary>
+    public const int Todos = 0;
+
+    /// <summary>
+    /// Códigos dos sistemas existentes, em ordem.
+    /// </summary>
+    public static IReadOnlyList<int> Codigos { get; } = [1, 2, 3, 4];
+
     private static readonly IReadOnlyDictionary<int, string> Databases =
         new Dictionary<int, string>
         {

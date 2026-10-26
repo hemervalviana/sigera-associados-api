@@ -6,9 +6,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using SigeraAssociados.Application.Interfaces.Acesso;
+using SigeraAssociados.Application.Interfaces.Associados;
+using SigeraAssociados.Application.Interfaces.Cadastros;
+using SigeraAssociados.Application.Interfaces.Orgaos;
 using SigeraAssociados.Application.Interfaces.Repositories;
 using SigeraAssociados.Application.Interfaces.Usuarios;
 using SigeraAssociados.Infrastructure.Acesso;
+using SigeraAssociados.Infrastructure.Associados;
+using SigeraAssociados.Infrastructure.Cadastros;
+using SigeraAssociados.Infrastructure.Orgaos;
 using SigeraAssociados.Infrastructure.Persistence.Configuration;
 using SigeraAssociados.Infrastructure.Persistence.Factories;
 using SigeraAssociados.Infrastructure.Persistence.Identity;
@@ -120,6 +126,11 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Confere empresa, filial e corretor no banco do sistema ao conceder acesso.
         services.AddScoped<IVerificadorCadastroSistema, VerificadorCadastroSistema>();
+        services.AddScoped<ICadastrosSistemaService, CadastrosSistemaService>();
+        services.AddScoped<IManutencaoTabelasApoioService, ManutencaoTabelasApoioService>();
+        services.AddScoped<IOrgaosService, OrgaosService>();
+        services.AddScoped<IVinculosOrgaoService, VinculosOrgaoService>();
+        services.AddScoped<ICadastroAssociadosService, CadastroAssociadosService>();
 
         // Consulta e manutenção das contas de usuário.
         services.AddScoped<IGestaoUsuariosService, GestaoUsuariosService>();

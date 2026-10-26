@@ -102,6 +102,8 @@ public sealed class SigeraSystemMiddleware
 	public static bool RotaDeNegocio(PathString caminho)
 	{
 		return caminho.StartsWithSegments("/api/associados")
+			|| caminho.StartsWithSegments("/api/cadastros")
+			|| caminho.StartsWithSegments("/api/orgaos")
 			|| caminho.StartsWithSegments("/api/diagnostico");
 	}
 }

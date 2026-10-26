@@ -576,9 +576,9 @@
                   "disabled": true
                 },
                 {
-                  "key": "cdEmp",
-                  "value": "2",
-                  "description": "Código da empresa.",
+                  "key": "cdFil",
+                  "value": "1",
+                  "description": "Filial (soma com os seus acessos).",
                   "disabled": true
                 },
                 {
@@ -600,7 +600,7 @@
                 {
                   "key": "ordenarPor",
                   "value": "nome",
-                  "description": "nome, cdemp, sqpescli, cdsitcli, situacao ou dtcarteira."
+                  "description": "nome, cdfil, sqpescli, cdsitcli, situacao ou dtcarteira."
                 },
                 {
                   "key": "direcao",
@@ -609,7 +609,7 @@
                 }
               ]
             },
-            "description": "## O que faz\nBusca associados com filtros opcionais, paginação e ordenação.\n\n## Passo a passo\n1. Abra a aba **Params**.\n2. Marque os filtros que quiser usar (`nome`, `cdEmp`, `cdSitCli`) e preencha o valor.\n3. Ajuste `pagina` e `tamanhoPagina` (máximo 100).\n4. `ordenarPor` aceita: nome, cdemp, sqpescli, cdsitcli, situacao, dtcarteira. `direcao`: asc ou desc.\n\n## Respostas\n- **200**: página de associados com total de registros e de páginas.\n- **400**: parâmetro inválido (a mensagem diz qual)."
+            "description": "## O que faz\nBusca associados com filtros opcionais, paginação e ordenação.\n\n## Passo a passo\n1. Abra a aba **Params**.\n2. Marque os filtros que quiser usar (`nome`, `cdFil`, `cdSitCli`) e preencha o valor.\n3. Ajuste `pagina` e `tamanhoPagina` (máximo 100).\n4. `ordenarPor` aceita: nome, cdfil, sqpescli, cdsitcli, situacao, dtcarteira. `direcao`: asc ou desc.\n\n## Respostas\n- **200**: página de associados com total de registros e de páginas.\n- **400**: parâmetro inválido (a mensagem diz qual)."
           },
           "response": [],
           "event": [
@@ -625,7 +625,7 @@
           ]
         },
         {
-          "name": "04.3 - Consultar um associado pela empresa e pelo código",
+          "name": "04.3 - Consultar o cadastro completo de um associado",
           "request": {
             "method": "GET",
             "header": [
@@ -636,18 +636,540 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/associados/{{cdEmp}}/{{sqPesCli}}",
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "associados",
-                "{{cdEmp}}",
                 "{{sqPesCli}}"
               ]
             },
-            "description": "## O que faz\nTraz um associado específico pela empresa (`cdEmp`) e pelo código da pessoa (`sqPesCli`).\n\n## Passo a passo\n1. Ajuste as variáveis `cdEmp` e `sqPesCli` na coleção (pegue um código real no 04.1 ou 04.2).\n2. Clique em **Send**.\n\n## Respostas\n- **200**: associado encontrado.\n- **404**: não existe ou está fora dos acessos do usuário."
+            "description": "## O que faz\nTraz o cadastro completo (pessoa, pessoa física e associado) pelo código da pessoa (`sqPesCli`). A empresa é a do sistema escolhido.\n\n## Passo a passo\n1. Ajuste a variável `sqPesCli` (pegue um código no 04.1 ou 04.2; o 04.4 preenche sozinho).\n2. Clique em **Send**.\n\n## Respostas\n- **200**: cadastro encontrado (CPF completo).\n- **404**: não existe, foi excluído, é pessoa jurídica ou está fora dos acessos do usuário."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 404)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.4 - Incluir um associado (pessoa física)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados"
+              ]
+            },
+            "description": "## O que faz\nCadastra o associado em T000PESS, T000PFIS e T000CLIE numa transação. A API gera o `sqPesCli` (MAX + 1) e preenche empresa, tipo F, data e usuário.\n\n## Passo a passo\n1. **Troque o CPF** por um CPF válido que não exista na base.\n2. Use `cdFil` do 04.20 e `cdSitCli` do 04.21 (opcionais: `cdMunicipio` do 04.23, `cdTratamento` do 04.22).\n3. Clique em **Send**. O código gerado vai para a variável `sqPesCli`.\n\nObrigatórios: nome, CPF, data de nascimento, sexo (M/F), filial e situação. Situação 10 (falecido) só Administradores e Gestores.\n\n## Respostas\n- **201**: cadastrado.\n- **400**: dados inválidos ou referência inexistente.\n- **403**: filial fora dos seus acessos, ou falecido sem permissão.\n- **409**: CPF já cadastrado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"TESTE API DA SILVA\",\n  \"nomeCurto\": \"TESTE API\",\n  \"email\": \"teste.api@exemplo.com\",\n  \"observacao\": \"Cadastro de teste pela API\",\n  \"pessoaFisica\": {\n    \"cpf\": \"529.982.247-25\",\n    \"rg\": \"1234567\",\n    \"orgaoExpedidor\": \"SSP\",\n    \"ufOrgao\": \"CE\",\n    \"dataNascimento\": \"1980-05-10\",\n    \"sexo\": \"F\",\n    \"estadoCivil\": \"S\",\n    \"cdMunicipio\": null,\n    \"cdTratamento\": null,\n    \"nomePai\": null,\n    \"nomeMae\": \"MAE DE TESTE\",\n    \"nomeConjuge\": null,\n    \"dataNascimentoConjuge\": null,\n    \"dataCasamento\": null\n  },\n  \"associado\": {\n    \"cdFil\": 1,\n    \"cdSitCli\": 1,\n    \"obsSituacao\": null,\n    \"dataCarteira\": null\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"sqPesCli\", pm.response.json().associado.sqPesCli);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.5 - Alterar um associado",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}"
+              ]
+            },
+            "description": "## O que faz\nSubstitui o cadastro do associado `sqPesCli` (envie tudo, como na inclusão). Só as colunas que mudaram são gravadas.\n\n**Atenção:** `cdSitCli` = 10 (falecido) aciona a trigger TR_CLIE_UPD, que encerra os contratos ativos (2/5 → 7). Só Administradores e Gestores; a resposta traz `contratosEncerrados`. Não teste isso com associado real.\n\n## Respostas\n- **200**: alterado.\n- **400**: dados inválidos.\n- **403**: nova filial fora dos seus acessos, ou falecido sem permissão.\n- **404**: não encontrado.\n- **409**: CPF de outra pessoa.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"TESTE API ALTERADO\",\n  \"nomeCurto\": \"TESTE API\",\n  \"email\": \"teste.api@exemplo.com\",\n  \"observacao\": \"Cadastro de teste pela API\",\n  \"pessoaFisica\": {\n    \"cpf\": \"529.982.247-25\",\n    \"rg\": \"1234567\",\n    \"orgaoExpedidor\": \"SSP\",\n    \"ufOrgao\": \"CE\",\n    \"dataNascimento\": \"1980-05-10\",\n    \"sexo\": \"F\",\n    \"estadoCivil\": \"S\",\n    \"cdMunicipio\": null,\n    \"cdTratamento\": null,\n    \"nomePai\": null,\n    \"nomeMae\": \"MAE DE TESTE\",\n    \"nomeConjuge\": null,\n    \"dataNascimentoConjuge\": null,\n    \"dataCasamento\": null\n  },\n  \"associado\": {\n    \"cdFil\": 1,\n    \"cdSitCli\": 1,\n    \"obsSituacao\": null,\n    \"dataCarteira\": null\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.6 - Excluir um associado (exclusão lógica)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}"
+              ]
+            },
+            "description": "## O que faz\nMarca o associado como excluído (T000CLIE.DT_EXC_API e NM_USU_EXC_API). Nada é apagado e a situação não muda; o associado some da API, mas continua no sistema legado.\n\nSomente Administradores e Gestores.\n\n## Respostas\n- **200**: excluído.\n- **403**: sem permissão.\n- **404**: não encontrado."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.20 - Tabela de apoio: filiais",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/filiais",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "filiais"
+              ]
+            },
+            "description": "Filiais do sistema (T000PARA), para o campo filial do associado."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.21 - Tabela de apoio: situações do associado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/situacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "situacoes"
+              ]
+            },
+            "description": "Situações (T000SCLI), para o campo `cdSitCli`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.22 - Tabela de apoio: tratamentos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/tratamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "tratamentos"
+              ]
+            },
+            "description": "Tratamentos (T000TRTA), para o campo tratamento da pessoa física."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.23 - Tabela de apoio: municípios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/municipios?uf=CE&busca=JUAZEIRO&pagina=1&tamanhoPagina=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "municipios"
+              ],
+              "query": [
+                {
+                  "key": "uf",
+                  "value": "CE"
+                },
+                {
+                  "key": "busca",
+                  "value": "JUAZEIRO"
+                },
+                {
+                  "key": "pagina",
+                  "value": "1"
+                },
+                {
+                  "key": "tamanhoPagina",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Municípios (T000MUNI). `busca` = começo do nome ou código; `uf` com 2 letras."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.24 - Incluir um tratamento (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/tratamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "tratamentos"
+              ]
+            },
+            "description": "## O que faz\nInclui um tratamento em T000TRTA. Sem `codigo`, a API usa MAX + 1. O código criado vai para a variável `codigoApoio`.\n\nOs mesmos formatos valem para `/situacoes` (descrição até 30), `/filiais` (veja o 04.28) e `/municipios` (`cdMun`, `nome`, `uf`).\n\n## Respostas\n- **201**: incluído.\n- **400**: dados inválidos.\n- **403**: não é administrador.\n- **409**: código já existe.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"TESTE API\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"codigoApoio\", pm.response.json().item.codigo);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.25 - Alterar um tratamento",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/tratamentos/{{codigoApoio}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "tratamentos",
+                "{{codigoApoio}}"
+              ]
+            },
+            "description": "## O que faz\nAltera a descrição do tratamento `codigoApoio`.\n\n## Respostas\n- **200**: alterado.\n- **404**: não encontrado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"TESTE API 2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.26 - Excluir um tratamento",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/tratamentos/{{codigoApoio}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "tratamentos",
+                "{{codigoApoio}}"
+              ]
+            },
+            "description": "## O que faz\nExclui o tratamento `codigoApoio` (exclusão física).\n\n## Respostas\n- **200**: excluído.\n- **404**: não encontrado.\n- **409**: há pessoas com o tratamento."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.27 - Excluir a situação 10 deve dar 409",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/situacoes/10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "situacoes",
+                "10"
+              ]
+            },
+            "description": "Confere a proteção: a situação 10 (falecido) não pode ser excluída, porque a trigger TR_CLIE_UPD depende dela."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (409)\", () => pm.expect(pm.response.code).to.be.oneOf([409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04.28 - Detalhe de uma filial",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/filiais/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "filiais",
+                "1"
+              ]
+            },
+            "description": "Dados completos da filial 1 (endereço, telefone, CNPJ). Para incluir ou alterar, use o mesmo formato em `POST /api/cadastros/filiais` e `PUT /api/cadastros/filiais/{cdFil}`."
           },
           "response": [],
           "event": [
@@ -666,7 +1188,7 @@
     },
     {
       "name": "05 - Usuários (Administradores e Gestores)",
-      "description": "Criação e manutenção de usuários.\n\nOrdem sugerida para um teste completo: 05.1 → 05.2 → 05.3 → 05.4 → 05.6 → 05.7 → 05.8 → 05.9.\n\nRegras: ninguém altera a própria conta; Gestores não alteram administradores; o grupo Administradores não é concedido por aqui.",
+      "description": "Criação e manutenção de usuários.\n\nOrdem sugerida para um teste completo: 05.1 → 05.2 → 05.3 → 05.4 → 05.6 → 05.10 → 05.11 → 05.7 → 05.8 → 05.9.\n\nRegras: ninguém altera a própria conta; Gestores não alteram administradores; o grupo Administradores não é concedido por aqui.",
       "item": [
         {
           "name": "05.1 - Listar os grupos funcionais disponíveis",
@@ -917,6 +1439,87 @@
           ]
         },
         {
+          "name": "05.10 - Incluir o usuário em mais um grupo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/grupos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "grupos"
+              ]
+            },
+            "description": "## O que faz\nInclui o usuário no grupo informado no **Body**, mantendo os grupos que ele já tem (o **05.6** substitui todos).\n\nVale na hora: a próxima renovação do token (01.5) já traz o grupo novo.\n\n## Respostas\n- **200**: incluído; devolve o usuário com os grupos.\n- **400**: grupo inválido ou Administradores.\n- **403**: própria conta ou, sendo Gestor, conta de administrador.\n- **404**: usuário não encontrado.\n- **409**: o usuário já pertence ao grupo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grupo\": \"Financeiro\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05.11 - Remover o usuário de um grupo",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/grupos/{{grupoRemover}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "grupos",
+                "{{grupoRemover}}"
+              ]
+            },
+            "description": "## O que faz\nTira o usuário do grupo da variável `grupoRemover`, mantendo os demais.\n\nO usuário precisa continuar em pelo menos um grupo; para trocar o único grupo, use o **05.6**.\n\nNomes com espaço ou `&` vão codificados, por exemplo `Coordenadora%20Adm.%20%26%20Operacional`.\n\n## Respostas\n- **200**: removido; devolve o usuário com os grupos.\n- **400**: grupo inválido ou é o único grupo do usuário.\n- **403**: própria conta ou, sendo Gestor, conta de administrador.\n- **404**: usuário não encontrado.\n- **409**: o usuário não pertence ao grupo."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "05.7 - Bloquear o login do usuário",
           "request": {
             "method": "POST",
@@ -1046,7 +1649,7 @@
             "description": "## O que faz\nLibera todos os associados do sistema informado (1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP).\n\nO ID do acesso criado vai para a variável `acessoId` (usada no 06.5).\n\n## Respostas\n- **201**: concedido.\n- **409**: esse acesso já existe.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sistema\": 2,\n  \"cdEmp\": null,\n  \"cdFil\": null,\n  \"sqPesCorretor\": null\n}",
+              "raw": "{\n  \"sistema\": 2,\n  \"cdFil\": null,\n  \"sqPesCorretor\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1071,7 +1674,95 @@
           ]
         },
         {
-          "name": "06.2 - Conceder acesso a uma empresa e filial",
+          "name": "06.7 - Listar as filiais do sistema",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/sistemas/{{sistema}}/filiais",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "sistemas",
+                "{{sistema}}",
+                "filiais"
+              ]
+            },
+            "description": "## O que faz\nLista as filiais do sistema (T000PARA), para escolher o `cdFil` do 06.2 e do filtro do 06.8.\n\nO sistema vai na rota (variável `sistema`); não precisa do cabeçalho X-Sigera-Sistema.\n\n## Respostas\n- **200**: filiais.\n- **400**: sistema inválido.\n- **403**: não é administrador."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06.8 - Pesquisar corretores do sistema (filtro por filial)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/sistemas/{{sistema}}/corretores?cdFil=1&busca=&pagina=1&tamanhoPagina=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "sistemas",
+                "{{sistema}}",
+                "corretores"
+              ],
+              "query": [
+                {
+                  "key": "cdFil",
+                  "value": "1",
+                  "description": "Filial (opcional). Com filial, só os corretores dela."
+                },
+                {
+                  "key": "busca",
+                  "value": "",
+                  "description": "Começo do nome ou código do corretor (opcional).",
+                  "disabled": true
+                },
+                {
+                  "key": "pagina",
+                  "value": "1"
+                },
+                {
+                  "key": "tamanhoPagina",
+                  "value": "50",
+                  "description": "1 a 200."
+                }
+              ]
+            },
+            "description": "## O que faz\nPesquisa os corretores do sistema (T009CRRT, nome de T000PESS), para escolher o `sqPesCorretor` do 06.3.\n\nCom `cdFil`, traz só os corretores dessa filial. `busca` procura pelo começo do nome ou pelo código.\n\n## Respostas\n- **200**: página de corretores.\n- **400**: sistema, filial ou paginação inválidos.\n- **403**: não é administrador."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06.2 - Conceder acesso a uma filial",
           "request": {
             "method": "POST",
             "header": [
@@ -1093,10 +1784,10 @@
                 "acessos"
               ]
             },
-            "description": "## O que faz\nLibera só os associados da filial informada. Associados sem filial não aparecem para esse acesso.\n\nPara liberar a empresa inteira, apague o `cdFil` (deixe `null`).\n\n## Respostas\n- **201**: concedido.\n- **400**: filial sem empresa ou códigos fora da faixa.",
+            "description": "## O que faz\nLibera só os associados da filial informada no sistema. Associados sem filial não aparecem para esse acesso.\n\nA empresa não é informada: cada sistema tem uma só, e a API usa a da base.\n\nPara liberar o sistema inteiro, apague o `cdFil` (deixe `null`).\n\n## Respostas\n- **201**: concedido.\n- **400**: filial não cadastrada em T000PARA (veja o 06.7), ou código fora da faixa.\n- **409**: já existe.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sistema\": 2,\n  \"cdEmp\": 2,\n  \"cdFil\": 1,\n  \"sqPesCorretor\": null\n}",
+              "raw": "{\n  \"sistema\": 2,\n  \"cdFil\": 1,\n  \"sqPesCorretor\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1143,10 +1834,10 @@
                 "acessos"
               ]
             },
-            "description": "## O que faz\nLibera só os associados que têm contrato com o corretor informado (`sqPesCorretor` = código da pessoa do corretor).\n\n## Passo a passo\nTroque `12345` no **Body** pelo código de um corretor **real**: a API confere se ele existe em T000PESS e tem contratos em T009CTRT na empresa.\n\nPara achar um código: `SELECT DISTINCT TOP 10 SQ_PES_CRO FROM T009CTRT WHERE CD_EMP = 2;`\n\n## Respostas\n- **201**: concedido.\n- **400**: corretor sem empresa, ou corretor inexistente/sem contratos na empresa.",
+            "description": "## O que faz\nLibera só os associados que têm contrato com o corretor informado (`sqPesCorretor` = código da pessoa do corretor).\n\n## Passo a passo\nTroque `12345` no **Body** pelo código de um corretor **real**: a API confere se ele está em T009CRRT (e, com `cdFil`, se é dessa filial). Use o 06.8 para achar o código.\n\nPara achar um código: `SELECT DISTINCT TOP 10 SQ_PES_CRO FROM T009CTRT;`\n\n## Respostas\n- **201**: concedido.\n- **400**: corretor sem empresa, ou corretor inexistente/sem contratos na empresa.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sistema\": 2,\n  \"cdEmp\": 2,\n  \"cdFil\": null,\n  \"sqPesCorretor\": 12345\n}",
+              "raw": "{\n  \"sistema\": 2,\n  \"cdFil\": null,\n  \"sqPesCorretor\": 12345\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1232,6 +1923,56 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06.6 - Conceder acesso a todos os sistemas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/administracao/usuarios/{{usuarioId}}/acessos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "administracao",
+                "usuarios",
+                "{{usuarioId}}",
+                "acessos"
+              ]
+            },
+            "description": "## O que faz\nLibera os 4 sistemas inteiros (`sistema: 0`). A API grava uma linha de acesso para cada sistema que o usuário ainda não tem; `acessos` na resposta lista as linhas gravadas.\n\nNão aceita `cdFil` nem `sqPesCorretor`.\n\n## Respostas\n- **201**: concedido.\n- **400**: veio filial ou corretor junto.\n- **409**: o usuário já tem todos os sistemas.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sistema\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    console.log(\"Sistemas liberados: \" + pm.response.json().acessos.map(a => a.nomeSistema).join(\", \"));",
+                  "}"
                 ]
               }
             }
@@ -1685,7 +2426,7 @@
           ]
         },
         {
-          "name": "07.12 - Conceder acesso com filial sem empresa deve dar 400",
+          "name": "07.12 - Conceder todos os sistemas com filial deve dar 400",
           "request": {
             "method": "POST",
             "header": [
@@ -1707,10 +2448,10 @@
                 "acessos"
               ]
             },
-            "description": "Confere a regra: para restringir por filial, a empresa é obrigatória.",
+            "description": "Confere a regra: a opção todos (sistema 0) libera os sistemas inteiros e não aceita filial nem corretor.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sistema\": 2,\n  \"cdEmp\": null,\n  \"cdFil\": 1,\n  \"sqPesCorretor\": null\n}",
+              "raw": "{\n  \"sistema\": 0,\n  \"cdFil\": 1,\n  \"sqPesCorretor\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1757,7 +2498,7 @@
             "description": "Confere que só os sistemas 1 a 4 são aceitos nos acessos.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sistema\": 7,\n  \"cdEmp\": null,\n  \"cdFil\": null,\n  \"sqPesCorretor\": null\n}",
+              "raw": "{\n  \"sistema\": 7,\n  \"cdFil\": null,\n  \"sqPesCorretor\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1779,7 +2520,7 @@
           ]
         },
         {
-          "name": "07.13b - Conceder acesso a empresa inexistente no sistema deve dar 400",
+          "name": "07.13b - Conceder filial inexistente no sistema deve dar 400",
           "request": {
             "method": "POST",
             "header": [
@@ -1801,10 +2542,10 @@
                 "acessos"
               ]
             },
-            "description": "Confere que a API recusa empresa que não existe no banco do sistema (T009EMPS). No SONASP só existe a empresa 2.",
+            "description": "Confere que a API recusa filial sem associados nem contratos no banco do sistema.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sistema\": 2,\n  \"cdEmp\": 99,\n  \"cdFil\": null,\n  \"sqPesCorretor\": null\n}",
+              "raw": "{\n  \"sistema\": 2,\n  \"cdFil\": 99,\n  \"sqPesCorretor\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1848,10 +2589,10 @@
                 "acessos"
               ]
             },
-            "description": "Confere que a API recusa corretor que não existe em T000PESS ou não tem contratos em T009CTRT na empresa.",
+            "description": "Confere que a API recusa corretor que não existe em T000PESS ou não tem contratos em T009CTRT no sistema.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sistema\": 2,\n  \"cdEmp\": 2,\n  \"cdFil\": null,\n  \"sqPesCorretor\": 9999999\n}",
+              "raw": "{\n  \"sistema\": 2,\n  \"cdFil\": null,\n  \"sqPesCorretor\": 9999999\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2023,7 +2764,7 @@
                 "acessos"
               ]
             },
-            "description": "Lista os acessos do usuário restrito e **revoga automaticamente** os que liberam o sistema inteiro (`cdEmp` vazio) no `sistemaRestrito`.\n\nVeja no **Console** quais acessos foram revogados.",
+            "description": "Lista os acessos do usuário restrito e **revoga automaticamente** os que liberam o sistema inteiro (sem filial e sem corretor) no `sistemaRestrito`.\n\nVeja no **Console** quais acessos foram revogados.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -2044,7 +2785,7 @@
                 "exec": [
                   "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
                   "const sistema = Number(pm.collectionVariables.get(\"sistemaRestrito\"));",
-                  "const amplos = pm.response.json().acessos.filter(a => a.sistema === sistema && a.cdEmp === null);",
+                  "const amplos = pm.response.json().acessos.filter(a => a.sistema === sistema && a.cdFil === null && a.sqPesCorretor === null);",
                   "const base = pm.collectionVariables.get(\"baseUrl\");",
                   "const usuarioId = pm.collectionVariables.get(\"restritoUsuarioId\");",
                   "amplos.forEach(a => {",
@@ -2085,10 +2826,10 @@
                 "acessos"
               ]
             },
-            "description": "Concede o acesso empresa `restritoCdEmp` + filial `restritoCdFil` no `sistemaRestrito`.\n\n**201** = concedido agora; **409** = já existia. Os dois estão certos.",
+            "description": "Concede o acesso à filial `restritoCdFil` no `sistemaRestrito`.\n\n**201** = concedido agora; **409** = já existia. Os dois estão certos.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sistema\": {{sistemaRestrito}},\n  \"cdEmp\": {{restritoCdEmp}},\n  \"cdFil\": {{restritoCdFil}},\n  \"sqPesCorretor\": null\n}",
+              "raw": "{\n  \"sistema\": {{sistemaRestrito}},\n  \"cdFil\": {{restritoCdFil}},\n  \"sqPesCorretor\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2131,7 +2872,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/associados/consulta?pagina=1&tamanhoPagina=100&ordenarPor=cdemp",
+              "raw": "{{baseUrl}}/api/associados/consulta?pagina=1&tamanhoPagina=100&ordenarPor=sqpescli",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -2151,7 +2892,7 @@
                 },
                 {
                   "key": "ordenarPor",
-                  "value": "cdemp"
+                  "value": "sqpescli"
                 }
               ]
             },
@@ -2293,9 +3034,9 @@
                   "const sistema = Number(pm.collectionVariables.get(\"sistemaRestrito\"));",
                   "const doSistema = r.acessos.filter(a => a.sistema === sistema);",
                   "pm.test(\"Não tem acesso irrestrito\", () => pm.expect(r.acessoIrrestrito).to.eql(false));",
-                  "pm.test(\"Não tem acesso ao sistema inteiro\", () => pm.expect(doSistema.some(a => a.cdEmp === null)).to.eql(false));",
+                  "pm.test(\"Não tem acesso ao sistema inteiro\", () => pm.expect(doSistema.some(a => a.cdFil === null && a.sqPesCorretor === null)).to.eql(false));",
                   "pm.collectionVariables.set(\"restritoTemCarteira\", doSistema.some(a => a.sqPesCorretor !== null) ? \"true\" : \"false\");",
-                  "console.log(\"Acessos no sistema \" + sistema + \": \" + JSON.stringify(doSistema.map(a => ({ cdEmp: a.cdEmp, cdFil: a.cdFil, corretor: a.sqPesCorretor }))));"
+                  "console.log(\"Acessos no sistema \" + sistema + \": \" + JSON.stringify(doSistema.map(a => ({ cdFil: a.cdFil, corretor: a.sqPesCorretor }))));"
                 ]
               }
             }
@@ -2430,14 +3171,13 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/associados/{{associadoForaCdEmp}}/{{associadoForaSqPesCli}}",
+              "raw": "{{baseUrl}}/api/associados/{{associadoForaSqPesCli}}",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "associados",
-                "{{associadoForaCdEmp}}",
                 "{{associadoForaSqPesCli}}"
               ]
             },
@@ -2502,6 +3242,542 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"Resposta esperada (403)\", () => pm.expect(pm.response.code).to.be.oneOf([403]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09 - Órgãos e vínculos do associado",
+      "description": "Órgãos (T000ORGA) e as tabelas de apoio dos vínculos: lotações (T000LOTA) e situações (T000SPOG). Gravar órgãos e apoio: só administradores.\n\nVínculos do associado (T000RPOR) em `/api/associados/{sqPesCli}/orgaos`: quem altera o associado inclui e altera; excluir só Administradores e Gestores.\n\nOrdem sugerida: 09.1 → 09.2 → 09.3 → 09.6 → 09.5 → 09.7 → 09.8 → 09.4. Use o associado de teste do 04.4.",
+      "item": [
+        {
+          "name": "09.1 - Pesquisar órgãos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgaos?busca=&pagina=1&tamanhoPagina=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgaos"
+              ]
+            },
+            "description": "Pesquisa pelo começo do nome, da sigla ou pelo código. Filtros opcionais `cdFil` e `uf`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09.2 - Incluir um órgão (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgaos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgaos"
+              ]
+            },
+            "description": "## O que faz\nCadastra um órgão em T000ORGA. Sem `cdOrg`, a API usa MAX + 1. O código vai para a variável `cdOrg`.\n\n## Respostas\n- **201**: cadastrado.\n- **400**: dados inválidos ou filial/município inexistente.\n- **403**: não é administrador.\n- **409**: código já existe.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"ORGAO TESTE API\",\n  \"sigla\": \"OTAPI\",\n  \"uf\": \"CE\",\n  \"cdFil\": 1,\n  \"endereco\": {\n    \"logradouro\": \"RUA TESTE\",\n    \"numero\": 1,\n    \"bairro\": \"CENTRO\",\n    \"cep\": \"63000-000\",\n    \"cdMunicipio\": null\n  },\n  \"contatoAdministrativo\": {\n    \"nome\": \"CONTATO ADM\",\n    \"telefone\": \"88 3500-0000\",\n    \"email\": \"adm@teste.com\"\n  },\n  \"contatoFinanceiro\": {\n    \"nome\": \"CONTATO FIN\",\n    \"telefone\": \"88 3500-0001\",\n    \"email\": \"fin@teste.com\"\n  },\n  \"empresaProcessadora\": {\n    \"nome\": null,\n    \"contato\": null,\n    \"telefone\": null,\n    \"email\": null,\n    \"endereco\": null\n  },\n  \"dataLimiteProcessamento\": null,\n  \"dataPagamento\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"cdOrg\", pm.response.json().item.cdOrg);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09.3 - Detalhe de um órgão",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgaos/{{cdOrg}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgaos",
+                "{{cdOrg}}"
+              ]
+            },
+            "description": "Todos os campos do órgão `cdOrg`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 404)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09.4 - Excluir um órgão",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgaos/{{cdOrg}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgaos",
+                "{{cdOrg}}"
+              ]
+            },
+            "description": "Exclui o órgão `cdOrg`. Com associados vinculados: **409**."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 409)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09.5 - Listar os órgãos do associado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/orgaos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "orgaos"
+              ]
+            },
+            "description": "Vínculos do associado `sqPesCli`, com nome do órgão, lotação, situação, matrícula e salários."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 404)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09.6 - Incluir o associado em um órgão",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/orgaos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "orgaos"
+              ]
+            },
+            "description": "## O que faz\nCria o vínculo do associado `sqPesCli` com o órgão `cdOrg`. A API gera o `sqOrg` (MAX + 1 da pessoa), salvo na variável `sqOrg`.\n\nLotação e situação vêm de `GET /api/orgaos/lotacoes` e `/situacoes`.\n\n## Respostas\n- **201**: incluído.\n- **400**: órgão, lotação ou situação inexistente.\n- **404**: associado fora dos seus acessos.\n- **409**: mesmo órgão e matrícula.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdOrg\": {{cdOrg}},\n  \"cdLotacao\": null,\n  \"cdSituacao\": null,\n  \"cdCargo\": null,\n  \"matricula\": \"123456\",\n  \"digitoMatricula\": \"7\",\n  \"matriculaInstituidor\": null,\n  \"salario\": 3500.0,\n  \"salarioLiquido\": 2980.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"sqOrg\", pm.response.json().item.sqOrg);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09.7 - Alterar um vínculo",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/orgaos/{{sqOrg}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "orgaos",
+                "{{sqOrg}}"
+              ]
+            },
+            "description": "Altera o vínculo `sqOrg` do associado (envie todos os campos).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdOrg\": {{cdOrg}},\n  \"cdLotacao\": null,\n  \"cdSituacao\": null,\n  \"cdCargo\": null,\n  \"matricula\": \"123456\",\n  \"digitoMatricula\": \"7\",\n  \"matriculaInstituidor\": null,\n  \"salario\": 3800.0,\n  \"salarioLiquido\": 2980.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09.8 - Excluir um vínculo (Administradores e Gestores)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/orgaos/{{sqOrg}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "orgaos",
+                "{{sqOrg}}"
+              ]
+            },
+            "description": "Exclui o vínculo `sqOrg` do associado (exclusão física)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09.9 - Lotações",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgaos/lotacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgaos",
+                "lotacoes"
+              ]
+            },
+            "description": "Lotações (T000LOTA). `busca` opcional: começo da descrição ou código."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09.10 - Situações do vínculo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgaos/situacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgaos",
+                "situacoes"
+              ]
+            },
+            "description": "Situações do vínculo com o órgão (T000SPOG)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09.11 - Cargos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgaos/cargos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgaos",
+                "cargos"
+              ]
+            },
+            "description": "Cargos (T000CARG), para o campo `cdCargo` do vínculo. `busca` opcional: começo da descrição ou código. Gravar (POST/PUT/DELETE em `/api/orgaos/cargos`): só administradores."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09.12 - Grupos de órgãos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgaos/grupos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgaos",
+                "grupos"
+              ]
+            },
+            "description": "Grupos (T009GRUP), para o campo `cdGrupo` do órgão. Gravar (POST/PUT/DELETE): só administradores."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09.13 - Subórgãos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orgaos/suborgaos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orgaos",
+                "suborgaos"
+              ]
+            },
+            "description": "Subórgãos (T009SBOR), para o campo `sqSubOrgao` do órgão. Na inclusão, o código é gerado pelo banco. Gravar: só administradores."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
                 ]
               }
             }
@@ -2594,7 +3870,7 @@
     {
       "key": "restritoCdEmp",
       "value": "2",
-      "description": "Pasta 08: empresa liberada para o restrito."
+      "description": "Pasta 08: empresa da base do sistemaRestrito (conferida no 08.7)."
     },
     {
       "key": "restritoCdFil",
@@ -2634,12 +3910,31 @@
     {
       "key": "cdEmp",
       "value": "2",
-      "description": "Empresa usada no 04.3."
+      "description": "Não usada nas rotas (a empresa vem do sistema). Mantida para referência."
     },
     {
       "key": "sqPesCli",
       "value": "1",
-      "description": "Código da pessoa do associado usado no 04.3."
+      "description": "Código da pessoa do associado (04.3, 04.5 e 04.6). Preenchido pelo 04.4."
+    },
+    {
+      "key": "grupoRemover",
+      "value": "Financeiro"
+    },
+    {
+      "key": "codigoApoio",
+      "value": "",
+      "description": "Preenchido pelo 04.24 (código do tratamento de teste)."
+    },
+    {
+      "key": "cdOrg",
+      "value": "",
+      "description": "Preenchido pelo 09.2 (órgão de teste)."
+    },
+    {
+      "key": "sqOrg",
+      "value": "",
+      "description": "Preenchido pelo 09.6 (vínculo do associado de teste)."
     }
   ]
 }

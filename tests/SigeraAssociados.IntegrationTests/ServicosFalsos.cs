@@ -19,6 +19,12 @@ public sealed class GestaoUsuariosFalso : IGestaoUsuariosService
 	public ResultadoGestaoUsuario ProximoResultado { get; set; } = Sucesso();
 
 	/// <summary>
+	/// Último grupo recebido ao incluir ou remover grupo
+	/// (confere a leitura da rota e do corpo).
+	/// </summary>
+	public string? UltimoGrupo { get; private set; }
+
+	/// <summary>
 	/// Quando preenchida, a listagem lança esta exceção
 	/// (simula uma falha inesperada).
 	/// </summary>
@@ -64,6 +70,20 @@ public sealed class GestaoUsuariosFalso : IGestaoUsuariosService
 	public Task<ResultadoGestaoUsuario> AlterarGrupoAsync(
 		string usuarioId, string grupo, CancellationToken cancellationToken = default)
 		=> Task.FromResult(ProximoResultado);
+
+	public Task<ResultadoGestaoUsuario> AdicionarGrupoAsync(
+		string usuarioId, string grupo, CancellationToken cancellationToken = default)
+	{
+		UltimoGrupo = grupo;
+		return Task.FromResult(ProximoResultado);
+	}
+
+	public Task<ResultadoGestaoUsuario> RemoverGrupoAsync(
+		string usuarioId, string grupo, CancellationToken cancellationToken = default)
+	{
+		UltimoGrupo = grupo;
+		return Task.FromResult(ProximoResultado);
+	}
 
 	public Task<ResultadoGestaoUsuario> BloquearAsync(
 		string usuarioId, CancellationToken cancellationToken = default)

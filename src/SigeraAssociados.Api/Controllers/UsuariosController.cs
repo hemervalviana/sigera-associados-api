@@ -9,7 +9,7 @@ namespace SigeraAssociados.Api.Controllers;
 
 /// <summary>
 /// Consulta e manutenção de usuários: listar, consultar, trocar grupo,
-/// bloquear, desbloquear e excluir.
+/// incluir e remover de grupos, bloquear, desbloquear e excluir.
 /// Disponível para Administradores e Gestores. Somente administradores
 /// alteram contas de administradores, e ninguém altera a própria conta.
 /// A criação de usuários fica em AdministracaoController.
@@ -111,6 +111,105 @@ public sealed class UsuariosController : ControllerBase
 	}
 
 	/// <summary>
+	/// Inclui o usuário em mais um grupo, mantendo os grupos que ele já tem.
+	/// </summary>
+	/// <remarks>
+	/// Diferente de `PUT /api/administracao/usuarios/{id}/grupo`, que substitui
+	/// todos os grupos pelo informado.
+	///
+	/// Regras: ninguém altera a própria conta; Gestores não alteram contas de
+	/// administradores; o grupo Administradores não é concedido por aqui.
+	///
+	/// Vale na hora: o token de acesso atual do usuário deixa de valer e a
+	/// próxima renovação (`POST /api/auth/renovar`) já traz o grupo novo.
+	///
+	/// Exemplo:
+	///
+	///     POST /api/administracao/usuarios/{id}/grupos
+	///     {
+	///       "grupo": "Financeiro"
+	///     }
+	/// </remarks>
+	/// <param name="id">Identificador do usuário.</param>
+	/// <param name="request">Grupo em que o usuário será incluído.</param>
+	/// <param name="cancellationToken">Cancelamento da requisição.</param>
+	/// <response code="200">Usuário incluído no grupo; devolve o usuário com os grupos atualizados.</response>
+	/// <response code="400">Grupo vazio, inexistente ou Administradores.</response>
+	/// <response code="403">Própria conta ou, sendo Gestor, conta de administrador.</response>
+	/// <response code="404">Usuário não encontrado.</response>
+	/// <response code="409">O usuário já pertence ao grupo.</response>
+	[HttpPost("{id}/grupos")]
+	[Consumes("application/json")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(StatusCodes.Status404NotFound)]
+	[ProducesResponseType(StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> AdicionarGrupo(
+		string id,
+		[FromBody] AdicionarGrupoRequest request,
+		CancellationToken cancellationToken)
+	{
+		var resultado = await _gestaoUsuarios.AdicionarGrupoAsync(
+			id,
+			request.Grupo,
+			cancellationToken);
+
+		return ParaResposta(
+			resultado,
+			"Grupo incluído",
+			"Usuário incluído no grupo.");
+	}
+
+	/// <summary>
+	/// Remove o usuário de um grupo, mantendo os demais grupos.
+	/// </summary>
+	/// <remarks>
+	/// O usuário precisa continuar em pelo menos um grupo; para trocar o único
+	/// grupo, use `PUT /api/administracao/usuarios/{id}/grupo`.
+	///
+	/// Regras: ninguém altera a própria conta; Gestores não alteram contas de
+	/// administradores (por isso só administradores removem o grupo
+	/// Administradores de alguém).
+	///
+	/// Vale na hora, como a inclusão.
+	///
+	/// Nomes com espaço ou `&amp;` vão codificados na URL. Exemplo:
+	///
+	///     DELETE /api/administracao/usuarios/{id}/grupos/Financeiro
+	///     DELETE /api/administracao/usuarios/{id}/grupos/Coordenadora%20Adm.%20%26%20Operacional
+	/// </remarks>
+	/// <param name="id">Identificador do usuário.</param>
+	/// <param name="grupo">Nome do grupo (não diferencia maiúsculas).</param>
+	/// <param name="cancellationToken">Cancelamento da requisição.</param>
+	/// <response code="200">Usuário removido do grupo; devolve o usuário com os grupos atualizados.</response>
+	/// <response code="400">Grupo inexistente ou é o único grupo do usuário.</response>
+	/// <response code="403">Própria conta ou, sendo Gestor, conta de administrador.</response>
+	/// <response code="404">Usuário não encontrado.</response>
+	/// <response code="409">O usuário não pertence ao grupo.</response>
+	[HttpDelete("{id}/grupos/{grupo}")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(StatusCodes.Status404NotFound)]
+	[ProducesResponseType(StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> RemoverGrupo(
+		string id,
+		string grupo,
+		CancellationToken cancellationToken)
+	{
+		var resultado = await _gestaoUsuarios.RemoverGrupoAsync(
+			id,
+			grupo,
+			cancellationToken);
+
+		return ParaResposta(
+			resultado,
+			"Grupo removido",
+			"Usuário removido do grupo.");
+	}
+
+	/// <summary>
 	/// Bloqueia o login do usuário por tempo indeterminado.
 	/// </summary>
 	[HttpPost("{id}/bloquear")]
@@ -190,6 +289,7 @@ public sealed class UsuariosController : ControllerBase
 			StatusGestaoUsuario.UsuarioNaoEncontrado => StatusCodes.Status404NotFound,
 			StatusGestaoUsuario.Proibido => StatusCodes.Status403Forbidden,
 			StatusGestaoUsuario.Invalido => StatusCodes.Status400BadRequest,
+			StatusGestaoUsuario.Conflito => StatusCodes.Status409Conflict,
 			_ => StatusCodes.Status500InternalServerError
 		};
 

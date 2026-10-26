@@ -34,6 +34,23 @@ public static class Grupos
 		AdministradorLegado + "," + Administradores + "," + Gestores;
 
 	/// <summary>
+	/// Perfis que podem excluir associados e marcá-los como falecidos
+	/// (a situação falecido encerra os contratos ativos pela trigger TR_CLIE_UPD).
+	/// </summary>
+	public const string PerfisExclusaoAssociados =
+		AdministradorLegado + "," + Administradores + "," + Gestores;
+
+	/// <summary>
+	/// Os mesmos perfis de PerfisExclusaoAssociados, em lista.
+	/// </summary>
+	public static readonly IReadOnlyList<string> PodemMarcarFalecido =
+	[
+		AdministradorLegado,
+		Administradores,
+		Gestores
+	];
+
+	/// <summary>
 	/// Os sete grupos funcionais oficiais.
 	/// </summary>
 	public static readonly IReadOnlyList<string> Funcionais =

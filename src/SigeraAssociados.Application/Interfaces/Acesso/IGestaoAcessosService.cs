@@ -14,6 +14,10 @@ public interface IGestaoAcessosService
 		string usuarioId,
 		CancellationToken cancellationToken = default);
 
+	/// <summary>
+	/// Concede um escopo. Com sistema 0 (todos), grava uma linha para cada
+	/// sistema que o usuário ainda não tem; as linhas gravadas voltam em Acessos.
+	/// </summary>
 	Task<ResultadoGestaoAcesso> ConcederAsync(
 		string usuarioId,
 		NovoAcessoDto acesso,

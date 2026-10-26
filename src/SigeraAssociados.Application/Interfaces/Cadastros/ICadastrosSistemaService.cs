@@ -1,0 +1,51 @@
+﻿using SigeraAssociados.Application.Cadastros;
+
+namespace SigeraAssociados.Application.Interfaces.Cadastros;
+
+/// <summary>
+/// Consulta as tabelas de apoio de um sistema: filiais e corretores
+/// (concessão de acesso) e situações, tratamentos e municípios
+/// (cadastro de associados).
+/// Sistema inválido ou filtros fora da faixa lançam DadosInvalidosException.
+/// </summary>
+public interface ICadastrosSistemaService
+{
+	/// <summary>
+	/// Filiais do sistema (T000PARA), ordenadas pelo código.
+	/// </summary>
+	Task<IReadOnlyList<FilialDto>> ListarFiliaisAsync(
+		int sistema,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Corretores do sistema (T009CRRT), ordenados pelo nome,
+	/// com filtro opcional por filial e por nome ou código.
+	/// </summary>
+	Task<ConsultaCorretoresResultado> ListarCorretoresAsync(
+		int sistema,
+		ConsultaCorretoresRequest request,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Situações do associado (T000SCLI), ordenadas pelo código.
+	/// </summary>
+	Task<IReadOnlyList<ItemTabelaDto>> ListarSituacoesAsync(
+		int sistema,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Tratamentos (T000TRTA), ordenados pelo código.
+	/// </summary>
+	Task<IReadOnlyList<ItemTabelaDto>> ListarTratamentosAsync(
+		int sistema,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Municípios (T000MUNI), ordenados pelo nome,
+	/// com filtro opcional por UF e por nome ou código.
+	/// </summary>
+	Task<ConsultaMunicipiosResultado> ListarMunicipiosAsync(
+		int sistema,
+		ConsultaMunicipiosRequest request,
+		CancellationToken cancellationToken = default);
+}

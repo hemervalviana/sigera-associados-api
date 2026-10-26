@@ -17,16 +17,20 @@ public sealed class VerificadorCadastroSistema : IVerificadorCadastroSistema
 	}
 
 	/// <inheritdoc />
-	public async Task<bool> EmpresaExisteAsync(
+	public async Task<decimal?> ObterEmpresaAsync(
 		int sistema,
-		decimal cdEmp,
 		CancellationToken cancellationToken = default)
 	{
 		await using var db = _factory.Create(sistema);
 
-		return await db.Empresas
+		// Lê no máximo duas: basta saber se existe exatamente uma.
+		var empresas = await db.Empresas
 			.AsNoTracking()
-			.AnyAsync(e => e.CD_EMP == cdEmp, cancellationToken);
+			.Select(e => e.CD_EMP)
+			.Take(2)
+			.ToListAsync(cancellationToken);
+
+		return empresas.Count == 1 ? empresas[0] : null;
 	}
 
 	/// <inheritdoc />
@@ -38,12 +42,9 @@ public sealed class VerificadorCadastroSistema : IVerificadorCadastroSistema
 	{
 		await using var db = _factory.Create(sistema);
 
-		return await db.Associados
-				.AsNoTracking()
-				.AnyAsync(a => a.CD_EMP == cdEmp && a.CD_FIL == cdFil, cancellationToken)
-			|| await db.Contratos
-				.AsNoTracking()
-				.AnyAsync(c => c.CD_EMP == cdEmp && c.CD_FIL == cdFil, cancellationToken);
+		return await db.Filiais
+			.AsNoTracking()
+			.AnyAsync(f => f.CD_EMP == cdEmp && f.CD_FIL == cdFil, cancellationToken);
 	}
 
 	/// <inheritdoc />
@@ -51,17 +52,20 @@ public sealed class VerificadorCadastroSistema : IVerificadorCadastroSistema
 		int sistema,
 		decimal cdEmp,
 		decimal sqPesCorretor,
+		decimal? cdFil,
 		CancellationToken cancellationToken = default)
 	{
 		await using var db = _factory.Create(sistema);
 
-		var pessoaExiste = await db.Pessoas
+		var corretores = db.Corretores
 			.AsNoTracking()
-			.AnyAsync(p => p.CD_EMP == cdEmp && p.SQ_PES == sqPesCorretor, cancellationToken);
+			.Where(c => c.CD_EMP == cdEmp && c.SQ_PES_CRO == sqPesCorretor);
 
-		return pessoaExiste
-			&& await db.Contratos
-				.AsNoTracking()
-				.AnyAsync(c => c.CD_EMP == cdEmp && c.SQ_PES_CRO == sqPesCorretor, cancellationToken);
+		if (cdFil is decimal filial)
+		{
+			corretores = corretores.Where(c => c.CD_FIL == filial);
+		}
+
+		return await corretores.AnyAsync(cancellationToken);
 	}
 }

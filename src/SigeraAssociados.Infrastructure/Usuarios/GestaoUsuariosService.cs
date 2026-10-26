@@ -226,6 +226,123 @@ public sealed class GestaoUsuariosService : IGestaoUsuariosService
 	}
 
 	/// <inheritdoc />
+	public async Task<ResultadoGestaoUsuario> AdicionarGrupoAsync(
+		string usuarioId,
+		string grupo,
+		CancellationToken cancellationToken = default)
+	{
+		var novoGrupo = Grupos.Normalizar(grupo);
+
+		if (novoGrupo is null)
+		{
+			return new ResultadoGestaoUsuario(
+				StatusGestaoUsuario.Invalido,
+				"Informe um grupo funcional válido.");
+		}
+
+		if (novoGrupo == Grupos.Administradores)
+		{
+			return new ResultadoGestaoUsuario(
+				StatusGestaoUsuario.Invalido,
+				"A atribuição do grupo Administradores exige um processo separado.");
+		}
+
+		var (usuario, funcoes, erro) = await CarregarAlvoAsync(usuarioId);
+
+		if (erro is not null)
+		{
+			return erro;
+		}
+
+		if (funcoes.Contains(novoGrupo, StringComparer.OrdinalIgnoreCase))
+		{
+			return new ResultadoGestaoUsuario(
+				StatusGestaoUsuario.Conflito,
+				$"O usuário já pertence ao grupo {novoGrupo}.");
+		}
+
+		if (!await _identityDb.Roles.AnyAsync(
+				r => r.Name == novoGrupo,
+				cancellationToken))
+		{
+			return new ResultadoGestaoUsuario(
+				StatusGestaoUsuario.Falha,
+				"O grupo solicitado ainda não foi provisionado no sistema.");
+		}
+
+		var resultado = await _userManager.AddToRoleAsync(usuario!, novoGrupo);
+
+		if (!resultado.Succeeded)
+		{
+			return Falha("Não foi possível incluir o usuário no grupo.");
+		}
+
+		await AplicarMudancaDeGruposAsync(usuario!);
+
+		return await SucessoAsync(usuario!);
+	}
+
+	/// <inheritdoc />
+	public async Task<ResultadoGestaoUsuario> RemoverGrupoAsync(
+		string usuarioId,
+		string grupo,
+		CancellationToken cancellationToken = default)
+	{
+		// Aceita também a função legada "Administrador", para limpar contas antigas.
+		var grupoInformado = Grupos.Normalizar(grupo)
+			?? (string.Equals(grupo?.Trim(), Grupos.AdministradorLegado, StringComparison.OrdinalIgnoreCase)
+				? Grupos.AdministradorLegado
+				: null);
+
+		if (grupoInformado is null)
+		{
+			return new ResultadoGestaoUsuario(
+				StatusGestaoUsuario.Invalido,
+				"Informe um grupo funcional válido.");
+		}
+
+		var (usuario, funcoes, erro) = await CarregarAlvoAsync(usuarioId);
+
+		if (erro is not null)
+		{
+			return erro;
+		}
+
+		var funcaoAtual = funcoes.FirstOrDefault(f =>
+			string.Equals(f, grupoInformado, StringComparison.OrdinalIgnoreCase));
+
+		if (funcaoAtual is null)
+		{
+			return new ResultadoGestaoUsuario(
+				StatusGestaoUsuario.Conflito,
+				$"O usuário não pertence ao grupo {grupoInformado}.");
+		}
+
+		var gruposRestantes = funcoes.Count(f =>
+			EhGrupoFuncional(f) &&
+			!string.Equals(f, funcaoAtual, StringComparison.OrdinalIgnoreCase));
+
+		if (gruposRestantes == 0)
+		{
+			return new ResultadoGestaoUsuario(
+				StatusGestaoUsuario.Invalido,
+				"O usuário precisa continuar em pelo menos um grupo. " +
+				"Para trocar o grupo, use PUT /api/administracao/usuarios/{id}/grupo.");
+		}
+
+		var resultado = await _userManager.RemoveFromRoleAsync(usuario!, funcaoAtual);
+
+		if (!resultado.Succeeded)
+		{
+			return Falha("Não foi possível remover o usuário do grupo.");
+		}
+
+		await AplicarMudancaDeGruposAsync(usuario!);
+
+		return await SucessoAsync(usuario!);
+	}
+
+	/// <inheritdoc />
 	public async Task<ResultadoGestaoUsuario> BloquearAsync(
 		string usuarioId,
 		CancellationToken cancellationToken = default)
@@ -367,6 +484,26 @@ public sealed class GestaoUsuariosService : IGestaoUsuariosService
 		}
 
 		return (usuario, funcoes, null);
+	}
+
+	/// <summary>
+	/// Faz a mudança de grupos valer na hora: o token de acesso atual
+	/// deixa de valer e a próxima renovação já traz os grupos novos.
+	/// O usuário continua logado.
+	/// </summary>
+	private async Task AplicarMudancaDeGruposAsync(IdentityUser usuario)
+	{
+		await _userManager.UpdateSecurityStampAsync(usuario);
+
+		// O escopo depende dos grupos (acesso irrestrito dos administradores).
+		_cache.Remove(EscopoAcessoService.ChaveCache(usuario.Id));
+		_sessoes.InvalidarCache(usuario.Id);
+	}
+
+	private static bool EhGrupoFuncional(string funcao)
+	{
+		return Grupos.Funcionais.Contains(funcao, StringComparer.OrdinalIgnoreCase) ||
+			string.Equals(funcao, Grupos.AdministradorLegado, StringComparison.OrdinalIgnoreCase);
 	}
 
 	private async Task<Dictionary<string, IReadOnlyList<string>>> ObterGruposAsync(

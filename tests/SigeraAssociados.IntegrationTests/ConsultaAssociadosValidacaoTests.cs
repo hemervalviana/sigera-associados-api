@@ -185,7 +185,7 @@ public sealed class ConsultaAssociadosValidacaoTests : IClassFixture<SigeraApiFa
             .ToArray();
 
         Assert.Contains("nome", valores);
-        Assert.Contains("cdemp", valores);
+        Assert.Contains("cdfil", valores);
         Assert.Contains("sqpescli", valores);
         Assert.Contains("cdsitcli", valores);
         Assert.Contains("situacao", valores);

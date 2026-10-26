@@ -5,29 +5,27 @@ namespace SigeraAssociados.Api.DTOs.Acessos;
 /// <summary>
 /// Dados para conceder um escopo de acesso a um usuário.
 ///
+/// Cada sistema é uma base com uma única empresa (CD_EMP), por isso a
+/// empresa não é informada: a API usa a empresa da base escolhida.
+///
 /// Exemplos:
-/// - Gestor de todo o SONASP: { "sistema": 2 }
-/// - Empresa 1 inteira do GSP: { "sistema": 4, "cdEmp": 1 }
-/// - Filial 3 da empresa 1: { "sistema": 4, "cdEmp": 1, "cdFil": 3 }
-/// - Carteira do corretor 1234 na empresa 1:
-///   { "sistema": 4, "cdEmp": 1, "sqPesCorretor": 1234 }
+/// - Todos os sistemas inteiros: { "sistema": 0 }
+/// - SONASP inteiro: { "sistema": 2 }
+/// - Filial 3 do GSP: { "sistema": 4, "cdFil": 3 }
+/// - Carteira do corretor 1234 no GSP: { "sistema": 4, "sqPesCorretor": 1234 }
 /// </summary>
 public sealed class ConcederAcessoRequest
 {
 	/// <summary>
-	/// Sistema: 1 PROASP, 2 SONASP, 3 ABSP, 4 GSP.
+	/// Sistema: 0 Todos, 1 PROASP, 2 SONASP, 3 ABSP, 4 GSP.
+	/// Todos (0) libera os sistemas inteiros e não aceita filial nem corretor.
 	/// </summary>
-	[Range(1, 4, ErrorMessage = "O sistema deve ser 1, 2, 3 ou 4.")]
+	/// <example>2</example>
+	[Range(0, 4, ErrorMessage = "O sistema deve ser 0 (todos), 1, 2, 3 ou 4.")]
 	public int Sistema { get; init; }
 
 	/// <summary>
-	/// Empresa. Omitir para liberar todas as empresas do sistema.
-	/// </summary>
-	[Range(1, 99, ErrorMessage = "A empresa deve estar entre 1 e 99.")]
-	public decimal? CdEmp { get; init; }
-
-	/// <summary>
-	/// Filial. Omitir para liberar todas as filiais da empresa.
+	/// Filial. Omitir para liberar todas as filiais do sistema.
 	/// </summary>
 	[Range(1, 99, ErrorMessage = "A filial deve estar entre 1 e 99.")]
 	public decimal? CdFil { get; init; }

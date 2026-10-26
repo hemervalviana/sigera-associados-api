@@ -17,7 +17,7 @@ public sealed class AssociadoDto
 	public string? TipoPessoa { get; init; }
 
 	/// <summary>
-	/// CPF mascarado (***.456.789-**). Nulo para pessoa jurídica ou sem CPF.
+	/// CPF completo (123.456.789-09). Nulo para pessoa jurídica ou sem CPF.
 	/// </summary>
 	public string? Cpf { get; init; }
 

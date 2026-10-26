@@ -12,38 +12,36 @@ public sealed class ValidacaoAcessoTests
 {
 	private static string? Validar(
 		int sistema,
-		decimal? cdEmp = null,
 		decimal? cdFil = null,
 		decimal? sqPesCorretor = null)
 	{
 		return GestaoAcessosService.Validar(new NovoAcessoDto
 		{
 			Sistema = sistema,
-			CdEmp = cdEmp,
 			CdFil = cdFil,
 			SqPesCorretor = sqPesCorretor
 		});
 	}
 
 	[Theory]
+	[InlineData(0)]
 	[InlineData(1)]
 	[InlineData(4)]
-	public void SistemaInteiro_DeveSerValido(int sistema)
+	public void SistemaInteiroOuTodos_DeveSerValido(int sistema)
 	{
 		Assert.Null(Validar(sistema));
 	}
 
 	[Fact]
-	public void EmpresaFilialECorretor_DevemSerValidos()
+	public void FilialECorretor_SemEmpresa_DevemSerValidos()
 	{
-		Assert.Null(Validar(2, cdEmp: 2));
-		Assert.Null(Validar(2, cdEmp: 2, cdFil: 1));
-		Assert.Null(Validar(2, cdEmp: 2, sqPesCorretor: 12345));
-		Assert.Null(Validar(2, cdEmp: 2, cdFil: 1, sqPesCorretor: 12345));
+		Assert.Null(Validar(2, cdFil: 1));
+		Assert.Null(Validar(2, sqPesCorretor: 12345));
+		Assert.Null(Validar(2, cdFil: 1, sqPesCorretor: 12345));
 	}
 
 	[Theory]
-	[InlineData(0)]
+	[InlineData(-1)]
 	[InlineData(5)]
 	[InlineData(9)]
 	public void SistemaForaDaFaixa_DeveSerRecusado(int sistema)
@@ -52,24 +50,15 @@ public sealed class ValidacaoAcessoTests
 	}
 
 	[Fact]
-	public void FilialSemEmpresa_DeveSerRecusada()
+	public void Todos_ComFilial_DeveSerRecusado()
 	{
-		Assert.Contains("informe também a empresa", Validar(2, cdFil: 1));
+		Assert.Contains("escolha um sistema", Validar(0, cdFil: 1));
 	}
 
 	[Fact]
-	public void CorretorSemEmpresa_DeveSerRecusado()
+	public void Todos_ComCorretor_DeveSerRecusado()
 	{
-		Assert.Contains("informe também a empresa", Validar(2, sqPesCorretor: 12345));
-	}
-
-	[Theory]
-	[InlineData(0d)]
-	[InlineData(100d)]
-	[InlineData(1.5d)]
-	public void EmpresaInvalida_DeveSerRecusada(double cdEmp)
-	{
-		Assert.Contains("empresa", Validar(2, cdEmp: (decimal)cdEmp));
+		Assert.Contains("escolha um sistema", Validar(0, sqPesCorretor: 12345));
 	}
 
 	[Theory]
@@ -77,7 +66,7 @@ public sealed class ValidacaoAcessoTests
 	[InlineData(100d)]
 	public void FilialInvalida_DeveSerRecusada(double cdFil)
 	{
-		Assert.Contains("filial", Validar(2, cdEmp: 2, cdFil: (decimal)cdFil));
+		Assert.Contains("filial", Validar(2, cdFil: (decimal)cdFil));
 	}
 
 	[Theory]
@@ -85,6 +74,6 @@ public sealed class ValidacaoAcessoTests
 	[InlineData(10_000_000d)]
 	public void CorretorInvalido_DeveSerRecusado(double corretor)
 	{
-		Assert.Contains("corretor", Validar(2, cdEmp: 2, sqPesCorretor: (decimal)corretor));
+		Assert.Contains("corretor", Validar(2, sqPesCorretor: (decimal)corretor));
 	}
 }

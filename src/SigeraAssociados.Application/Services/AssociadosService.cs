@@ -17,7 +17,7 @@ public sealed class AssociadosService : IAssociadosService
 	private static readonly string[] CamposPermitidos =
 	[
 		"nome",
-		"cdemp",
+		"cdfil",
 		"sqpescli",
 		"cdsitcli",
 		"situacao",
@@ -49,29 +49,6 @@ public sealed class AssociadosService : IAssociadosService
 		}
 
 		return await _repository.ListarAsync(escopo, cancellationToken);
-	}
-
-	/// <summary>
-	/// Consulta um associado pela chave composta.
-	/// Retorna null quando não encontrado ou fora do escopo do usuário.
-	/// </summary>
-	public async Task<AssociadoDto?> ConsultarPorCodigoAsync(
-		decimal cdEmp,
-		decimal sqPesCli,
-		CancellationToken cancellationToken = default)
-	{
-		var escopo = await _escopoAcesso.ObterEscopoAsync(cancellationToken);
-
-		if (escopo.SemAcesso)
-		{
-			return null;
-		}
-
-		return await _repository.ConsultarPorCodigoAsync(
-			cdEmp,
-			sqPesCli,
-			escopo,
-			cancellationToken);
 	}
 
 	/// <summary>
@@ -119,6 +96,13 @@ public sealed class AssociadosService : IAssociadosService
 				"A direção deve ser 'asc' ou 'desc'.");
 		}
 
+		if (request.CdFil is not null
+			&& (request.CdFil < 1 || request.CdFil > 99 || request.CdFil % 1 != 0))
+		{
+			throw new DadosInvalidosException(
+				"A filial deve ser um código inteiro entre 1 e 99.");
+		}
+
 		string? cpf = null;
 
 		if (!string.IsNullOrWhiteSpace(request.Cpf))
@@ -135,7 +119,7 @@ public sealed class AssociadosService : IAssociadosService
 		// Encaminha a consulta com os valores normalizados.
 		var consultaNormalizada = new ConsultaAssociadosRequest
 		{
-			CdEmp = request.CdEmp,
+			CdFil = request.CdFil,
 			Nome = request.Nome,
 			CdSitCli = request.CdSitCli,
 			Cpf = cpf,
@@ -151,7 +135,7 @@ public sealed class AssociadosService : IAssociadosService
 		{
 			return new ConsultaAssociadosResultado
 			{
-				CdEmp = consultaNormalizada.CdEmp,
+				CdFil = consultaNormalizada.CdFil,
 				Nome = consultaNormalizada.Nome,
 				CdSitCli = consultaNormalizada.CdSitCli,
 				Pagina = consultaNormalizada.Pagina,

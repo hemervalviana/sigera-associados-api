@@ -15,15 +15,6 @@ public interface IAssociadosService
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Consulta um associado pela empresa e sequência da pessoa.
-	/// Retorna null quando não encontrado.
-	/// </summary>
-	Task<AssociadoDto?> ConsultarPorCodigoAsync(
-		decimal cdEmp,
-		decimal sqPesCli,
-		CancellationToken cancellationToken = default);
-
-	/// <summary>
 	/// Consulta associados com filtros, paginação e ordenação.
 	/// </summary>
 	Task<ConsultaAssociadosResultado> ConsultarPaginadoAsync(
