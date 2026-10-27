@@ -59,7 +59,7 @@ public sealed class VerificadorCadastroSistema : IVerificadorCadastroSistema
 
 		var corretores = db.Corretores
 			.AsNoTracking()
-			.Where(c => c.CD_EMP == cdEmp && c.SQ_PES_CRO == sqPesCorretor);
+			.Where(c => c.CD_EMP == cdEmp && c.SQ_PES_CRO == sqPesCorretor && c.DT_EXC_API == null);
 
 		if (cdFil is decimal filial)
 		{

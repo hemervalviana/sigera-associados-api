@@ -21,6 +21,7 @@
   <Folder Name="/scripts/">
     <File Path="scripts/associados-colunas-api-e-permissoes.sql" />
     <File Path="scripts/contas-bancarias-permissoes.sql" />
+    <File Path="scripts/corretores-colunas-api-e-permissoes.sql" />
     <File Path="scripts/creditos-permissoes.sql" />
     <File Path="scripts/criar-indice-nome-t000pess.sql" />
     <File Path="scripts/criar-login-usr_sisgera_api.sql" />

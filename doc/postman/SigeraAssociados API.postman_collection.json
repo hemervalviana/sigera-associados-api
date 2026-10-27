@@ -5338,6 +5338,287 @@
           ]
         }
       ]
+    },
+    {
+      "name": "16 - Corretores",
+      "description": "Corretores pessoa física ou jurídica (nunca as duas), com um registro em T009CRRT. Consultar: quem tem acesso ao sistema. Incluir, alterar e excluir (lógica): Administradores e Gestores.\n\nRode antes o `scripts\\corretores-colunas-api-e-permissoes.sql`. Ordem sugerida: 16.3 → 16.2 → 16.5 → 16.1 → 16.6.",
+      "item": [
+        {
+          "name": "16.1 - Pesquisar corretores",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores?busca=A&pagina=1&tamanhoPagina=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores"
+              ],
+              "query": [
+                {
+                  "key": "busca",
+                  "value": "A"
+                },
+                {
+                  "key": "pagina",
+                  "value": "1"
+                },
+                {
+                  "key": "tamanhoPagina",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Pesquisa corretores não excluídos e coerentes com o tipo. `busca`: CPF, CNPJ, código ou começo do nome. Filtros opcionais: `cdFil`, `tipoPessoa` (F/J), `cdSituacao`. Sem senha."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.2 - Detalhe do corretor",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/{{sqPesCorretor}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "{{sqPesCorretor}}"
+              ]
+            },
+            "description": "Cadastro completo do corretor `sqPesCorretor`. `corretor.senhaRepresentante` só vem para Administradores e Gestores."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 404)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.3 - Incluir corretor pessoa física (Administradores e Gestores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores"
+              ]
+            },
+            "description": "## O que faz\nInclui um corretor pessoa física (T000PESS + T000PFIS + T009CRRT). A API gera o `sqPesCorretor` (MAX + 1), salvo na variável `sqPesCorretor`.\n\nTroque o CPF por um válido que não exista na base. Física leva só `pessoaFisica`.\n\n## Respostas\n- **201**: incluído.\n- **400**: dados inválidos (ex.: bloco de jurídica junto).\n- **403**: não é Administrador nem Gestor.\n- **409**: CPF de outra pessoa.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoPessoa\": \"F\",\n  \"nome\": \"CORRETOR TESTE API\",\n  \"email\": \"corretor.teste@exemplo.com\",\n  \"pessoaFisica\": {\n    \"cpf\": \"529.982.247-25\",\n    \"sexo\": \"M\"\n  },\n  \"corretor\": {\n    \"cdFil\": 1,\n    \"cdSituacao\": 1,\n    \"comissaoAdesao\": 10,\n    \"senhaRepresentante\": \"1234\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"sqPesCorretor\", pm.response.json().item.sqPesCorretor);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.4 - Incluir corretor pessoa jurídica (Administradores e Gestores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores"
+              ]
+            },
+            "description": "Inclui um corretor pessoa jurídica (T000PESS + T000PJUR + T009CRRT). Troque o CNPJ por um válido que não exista. Jurídica leva só `pessoaJuridica`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoPessoa\": \"J\",\n  \"nome\": \"CORRETORA TESTE API LTDA\",\n  \"nomeCurto\": \"TESTE API\",\n  \"pessoaJuridica\": {\n    \"cnpj\": \"11.222.333/0001-81\",\n    \"contato\": \"MARIA\"\n  },\n  \"corretor\": {\n    \"cdFil\": 1\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.5 - Alterar corretor (Administradores e Gestores)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/{{sqPesCorretor}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "{{sqPesCorretor}}"
+              ]
+            },
+            "description": "Altera o corretor `sqPesCorretor` (cadastro inteiro). O tipo de pessoa não muda (400). Bloco `corretor` omitido mantém T009CRRT; `senhaRepresentante` omitida mantém, `\"\"` apaga.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoPessoa\": \"F\",\n  \"nome\": \"CORRETOR TESTE API ALTERADO\",\n  \"pessoaFisica\": {\n    \"cpf\": \"529.982.247-25\",\n    \"sexo\": \"M\"\n  },\n  \"corretor\": {\n    \"cdFil\": 1,\n    \"cdSituacao\": 1,\n    \"comissaoAdesao\": 12.5\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.6 - Excluir corretor (Administradores e Gestores)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/{{sqPesCorretor}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "{{sqPesCorretor}}"
+              ]
+            },
+            "description": "Exclusão lógica: grava data e usuário em T009CRRT; nada é apagado. O corretor some da API."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
@@ -5517,6 +5798,11 @@
     },
     {
       "key": "sqCredito",
+      "value": "",
+      "description": "Preenchido pelo 10.2 (endereço do associado de teste)."
+    },
+    {
+      "key": "sqPesCorretor",
       "value": "",
       "description": "Preenchido pelo 10.2 (endereço do associado de teste)."
     }

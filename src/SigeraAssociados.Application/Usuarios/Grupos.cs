@@ -34,6 +34,23 @@ public static class Grupos
 		AdministradorLegado + "," + Administradores + "," + Gestores;
 
 	/// <summary>
+	/// Perfis que podem incluir, alterar e excluir corretores e ver a senha
+	/// do representante.
+	/// </summary>
+	public const string PerfisCadastroCorretores =
+		AdministradorLegado + "," + Administradores + "," + Gestores;
+
+	/// <summary>
+	/// Os mesmos perfis de PerfisCadastroCorretores, em lista.
+	/// </summary>
+	public static readonly IReadOnlyList<string> PodemCadastrarCorretores =
+	[
+		AdministradorLegado,
+		Administradores,
+		Gestores
+	];
+
+	/// <summary>
 	/// Perfis que podem excluir associados e marcá-los como falecidos
 	/// (a situação falecido encerra os contratos ativos pela trigger TR_CLIE_UPD).
 	/// </summary>

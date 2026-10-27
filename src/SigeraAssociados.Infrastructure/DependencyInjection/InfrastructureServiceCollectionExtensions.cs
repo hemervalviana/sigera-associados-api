@@ -16,6 +16,7 @@ using SigeraAssociados.Application.Interfaces.Pix;
 using SigeraAssociados.Application.Interfaces.Referencias;
 using SigeraAssociados.Application.Interfaces.Financeiro;
 using SigeraAssociados.Application.Interfaces.Creditos;
+using SigeraAssociados.Application.Interfaces.Corretores;
 using SigeraAssociados.Application.Interfaces.Repositories;
 using SigeraAssociados.Application.Interfaces.Usuarios;
 using SigeraAssociados.Infrastructure.Acesso;
@@ -29,6 +30,7 @@ using SigeraAssociados.Infrastructure.Pix;
 using SigeraAssociados.Infrastructure.Referencias;
 using SigeraAssociados.Infrastructure.Financeiro;
 using SigeraAssociados.Infrastructure.Creditos;
+using SigeraAssociados.Infrastructure.Corretores;
 using SigeraAssociados.Infrastructure.Persistence.Configuration;
 using SigeraAssociados.Infrastructure.Persistence.Factories;
 using SigeraAssociados.Infrastructure.Persistence.Identity;
@@ -150,6 +152,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IReferenciasAssociadoService, ReferenciasAssociadoService>();
         services.AddScoped<ICadastrosFinanceirosService, CadastrosFinanceirosService>();
         services.AddScoped<ICreditosAssociadoService, CreditosAssociadoService>();
+        services.AddScoped<ICadastroCorretoresService, CadastroCorretoresService>();
         services.AddScoped<IContasBancariasService, ContasBancariasService>();
         services.AddScoped<ICadastroAssociadosService, CadastroAssociadosService>();
 

@@ -70,6 +70,7 @@ public sealed class CadastrosSistemaService : ICadastrosSistemaService
 
 		var query =
 			from c in db.Corretores.AsNoTracking()
+			where c.DT_EXC_API == null // corretor excluído pela API não aparece
 			join p in db.Pessoas.AsNoTracking()
 				on new { Empresa = c.CD_EMP, Pessoa = c.SQ_PES_CRO }
 				equals new { Empresa = p.CD_EMP, Pessoa = p.SQ_PES }

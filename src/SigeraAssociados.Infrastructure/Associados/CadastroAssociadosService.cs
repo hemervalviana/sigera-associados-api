@@ -7,7 +7,9 @@ using SigeraAssociados.Application.Interfaces.Acesso;
 using SigeraAssociados.Application.Interfaces.Associados;
 using SigeraAssociados.Infrastructure.Persistence.Context;
 using SigeraAssociados.Infrastructure.Persistence.Entities;
+using SigeraAssociados.Application.Pessoas;
 using SigeraAssociados.Infrastructure.Persistence.Factories;
+using SigeraAssociados.Infrastructure.Pessoas;
 using SigeraAssociados.Infrastructure.Systems;
 
 namespace SigeraAssociados.Infrastructure.Associados;
@@ -20,6 +22,9 @@ namespace SigeraAssociados.Infrastructure.Associados;
 ///   UPDLOCK, HOLDLOCK (um segundo cadastro espera o primeiro terminar).
 /// - Alteração grava só as colunas que mudaram; ao passar a situação
 ///   para 10 (falecido), a trigger TR_CLIE_UPD encerra os contratos ativos.
+/// - CPF de uma pessoa que ainda não é associado (por exemplo, um corretor):
+///   a pessoa é aproveitada e só o T000CLIE é criado; os dados pessoais já
+///   gravados não mudam, só os campos vazios são completados.
 /// - Exclusão lógica em T000CLIE (DT_EXC_API, NM_USU_EXC_API).
 /// - Tudo limitado pelo escopo de acesso do usuário (EscopoEscrita).
 /// </summary>
@@ -135,9 +140,10 @@ public sealed class CadastroAssociadosService : ICadastroAssociadosService
 				.Select(f => (decimal?)f.SQ_PES_FIS)
 				.FirstOrDefaultAsync(cancellationToken);
 
-			if (dono is not null)
+			// Pessoa já cadastrada (por exemplo, um corretor): aproveita.
+			if (dono is decimal existente)
 			{
-				return CpfRepetido(dono.Value);
+				return await IncluirComPessoaExistenteAsync(db, emp, existente, dados, avaliacao.Corretor, cancellationToken);
 			}
 
 			await using var transacao = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -340,6 +346,49 @@ public sealed class CadastroAssociadosService : ICadastroAssociadosService
 		return new ResultadoCadastroAssociado(StatusCadastroAssociado.Sucesso, "Associado excluído.");
 	}
 
+	/// <summary>
+	/// O CPF já é de uma pessoa: se ela ainda não é associado e o cadastro é
+	/// de pessoa física coerente, cria só o T000CLIE e completa os campos
+	/// vazios da pessoa. Já associado (ou excluído pela API): Conflito.
+	/// </summary>
+	private static async Task<ResultadoCadastroAssociado> IncluirComPessoaExistenteAsync(
+		SigeraDbContext db,
+		decimal emp,
+		decimal sqPes,
+		CadastroAssociadoDados dados,
+		decimal? corretor,
+		CancellationToken cancellationToken)
+	{
+		var situacao = await PessoaExistente.CarregarAsync(db, emp, sqPes, cancellationToken);
+
+		if (RegrasPessoaExistente.PodeVirarAssociado(situacao) is string recusa)
+		{
+			return new ResultadoCadastroAssociado(StatusCadastroAssociado.Conflito, recusa);
+		}
+
+		await using var transacao = await db.Database.BeginTransactionAsync(cancellationToken);
+
+		var pessoa = await db.Pessoas.SingleAsync(p => p.CD_EMP == emp && p.SQ_PES == sqPes, cancellationToken);
+		var pessoaFisica = await db.PessoasFisicas.SingleAsync(f => f.CD_EMP == emp && f.SQ_PES_FIS == sqPes, cancellationToken);
+
+		PessoaExistente.ComplementarPessoa(pessoa, dados.NomeCurto, dados.Email, url: null, dados.Observacao);
+		PessoaExistente.ComplementarFisica(pessoaFisica, dados.PessoaFisica!);
+
+		var cliente = new T000CLIE { CD_EMP = emp, SQ_PES_CLI = sqPes, SQ_PES_CRO_CAD = corretor };
+		AplicarAssociado(dados.Associado!, cliente);
+		db.Associados.Add(cliente);
+
+		await db.SaveChangesAsync(cancellationToken);
+		await transacao.CommitAsync(cancellationToken);
+
+		return new ResultadoCadastroAssociado(
+			StatusCadastroAssociado.Sucesso,
+			$"Associado cadastrado aproveitando a pessoa já existente (código {sqPes:0}): " +
+			"os dados pessoais já gravados foram mantidos e só os campos vazios foram completados.",
+			ParaDto(pessoa, pessoaFisica, cliente,
+				await DescricaoSituacaoAsync(db, emp, cliente.CD_SIT_CLI, cancellationToken)));
+	}
+
 	// ----- Apoio -----
 
 	private sealed record Cadastro(
@@ -442,7 +491,7 @@ public sealed class CadastroAssociadosService : ICadastroAssociadosService
 		}
 
 		if (corretor is decimal sqPesCorretor
-			&& !await db.Corretores.AnyAsync(c => c.CD_EMP == empresa && c.SQ_PES_CRO == sqPesCorretor, cancellationToken))
+			&& !await db.Corretores.AnyAsync(c => c.CD_EMP == empresa && c.SQ_PES_CRO == sqPesCorretor && c.DT_EXC_API == null, cancellationToken))
 		{
 			return $"O corretor {sqPesCorretor:0} não está cadastrado (T009CRRT).";
 		}
@@ -482,6 +531,14 @@ public sealed class CadastroAssociadosService : ICadastroAssociadosService
 		pessoaFisica.DT_NAS_CJG = pf.DataNascimentoConjuge?.Date;
 		pessoaFisica.DT_CAS = pf.DataCasamento?.Date;
 
+		AplicarAssociado(associado, cliente);
+	}
+
+	/// <summary>
+	/// Copia os dados de T000CLIE (inclusão, alteração e pessoa aproveitada).
+	/// </summary>
+	private static void AplicarAssociado(AssociadoDados associado, T000CLIE cliente)
+	{
 		cliente.CD_FIL = associado.CdFil;
 		cliente.CD_SIT_CLI = associado.CdSitCli;
 		cliente.OB_SIT = Texto(associado.ObsSituacao);

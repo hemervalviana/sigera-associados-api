@@ -70,12 +70,12 @@ public sealed class PessoaFisicaDados
 	public string? UfOrgao { get; init; }
 
 	/// <summary>
-	/// Data de nascimento (DT_NAS). Obrigatória.
+	/// Data de nascimento (DT_NAS). Obrigatória no associado; opcional no corretor.
 	/// </summary>
 	public DateTime? DataNascimento { get; init; }
 
 	/// <summary>
-	/// Sexo (ID_SEX): M ou F. Obrigatório.
+	/// Sexo (ID_SEX): M ou F. Obrigatório no associado; opcional no corretor.
 	/// </summary>
 	public string? Sexo { get; init; }
 

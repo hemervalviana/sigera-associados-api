@@ -91,6 +91,20 @@ Antes de começar:
 | [ ] | 15.7 / 15.8 | Produtos e convênios | — | **200** |
 | [ ] | 15.9 | Incluir convênio como não administrador | Gestor | **403** |
 | [ ] | 15.9 | Convênio com banco e governo | `"cdBanco": 1` junto com `"tipoGoverno": 3` | **400** "não os dois" |
+| [ ] | — | Script de corretores | `scripts\corretores-colunas-api-e-permissoes.sql` nas 4 bases, antes de subir a API | Colunas e permissões criadas |
+| [ ] | 16.1 | Pesquisar corretores | `busca` = começo de um nome | **200**, só corretores coerentes (F com PFIS, J com PJUR) |
+| [ ] | 16.3 | Incluir corretor pessoa física | Troque o CPF por um válido que não exista | **201**, `sqPesCorretor` salvo |
+| [ ] | 16.3 | Mesmo CPF de novo | Envie de novo | **409** "Já existe um corretor" |
+| [ ] | 16.3 | Associado que vira corretor | CPF do associado de teste (04.4) | **201**, mensagem "aproveitando a pessoa já existente"; `sqPesCorretor` = `sqPesCli`; nome e nascimento do associado mantidos |
+| [ ] | 04.4 | Corretor que vira associado | CPF do corretor pessoa física (16.3) que ainda não é associado | **201**, mensagem "aproveitando a pessoa já existente"; nome do corretor mantido |
+| [ ] | 16.3 | Física com bloco de jurídica | Acrescente `pessoaJuridica` | **400** |
+| [ ] | 16.4 | Incluir corretor pessoa jurídica | Troque o CNPJ por um válido que não exista | **201** |
+| [ ] | 16.2 | Detalhe como administrador | — | **200**, com `senhaRepresentante` |
+| [ ] | 16.2 | Detalhe como Atendimento | Outro usuário | **200**, `senhaRepresentante` nula |
+| [ ] | 16.5 | Alterar trocando o tipo para J | `"tipoPessoa": "J"` | **400** |
+| [ ] | 16.5 | Alterar sem a senha | Tire `senhaRepresentante` | **200**; senha mantida no 16.2 |
+| [ ] | 16.6 | Excluir como Corretor ou Atendimento | — | **403** |
+| [ ] | 16.6 | Excluir como administrador | — | **200**; 16.2 dá **404**; no banco, `DT_EXC_API` preenchida |
 | [ ] | 15.9 | Convênio sem banco nem governo | Tire o `tipoGoverno` | **201** (os dois vazios são aceitos) |
 | [ ] | — | Script de órgãos | `scripts\orgaos-permissoes.sql` nas 4 bases | Permissões concedidas |
 | [ ] | 09.1 | Pesquisar órgãos | — | **200**, lista paginada |

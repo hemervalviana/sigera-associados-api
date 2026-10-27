@@ -97,6 +97,11 @@ public sealed class AssociadosController : ControllerBase
 	///
 	/// Situação 10 (falecido) só por Administradores e Gestores.
 	///
+	/// CPF de uma pessoa que já existe mas ainda não é associado (por exemplo,
+	/// um corretor pessoa física): a pessoa é aproveitada e só o T000CLIE é
+	/// criado. Os dados pessoais já gravados (nome inclusive) não mudam; só os
+	/// campos vazios são completados com o que foi enviado.
+	///
 	///     POST /api/associados
 	///     {
 	///       "nome": "MARIA DA SILVA",
@@ -117,7 +122,7 @@ public sealed class AssociadosController : ControllerBase
 	/// <response code="201">Cadastrado; devolve o cadastro com o sqPesCli gerado.</response>
 	/// <response code="400">Dados inválidos, ou filial, situação, município, tratamento ou corretor inexistente.</response>
 	/// <response code="403">Filial fora dos seus acessos, ou situação falecido sem ser Administrador ou Gestor.</response>
-	/// <response code="409">CPF já cadastrado em outra pessoa.</response>
+	/// <response code="409">CPF de um associado que já existe (ou excluído pela API), ou pessoa com cadastro incoerente.</response>
 	[HttpPost]
 	[Consumes("application/json")]
 	[ProducesResponseType(typeof(AssociadoCadastroDto), StatusCodes.Status201Created)]

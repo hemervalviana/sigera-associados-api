@@ -294,6 +294,8 @@ Implementação: `Api/Erros/RespostasErro.cs` (formato e títulos), `Api/Erros/T
 | PUT / DELETE | `/api/associados/{sqPesCli}/creditos/{sqCredito}` | Conforme acessos; DELETE só Admin e Gestores, e só com valor = saldo |
 | GET | `/api/cadastros/formas-pagamento`, `/api/cadastros/produtos`, `/api/convenios`, `/api/convenios/{cdCvn}`, `/api/convenios/tipos-governo` | Quem tem acesso ao sistema |
 | POST / PUT / DELETE | `/api/cadastros/formas-pagamento`, `/api/cadastros/produtos`, `/api/convenios` (PUT e DELETE com `/{codigo}` ou `/{cdCvn}`) | Admin |
+| GET | `/api/corretores?busca=&cdFil=&tipoPessoa=&cdSituacao=`, `/api/corretores/{sqPesCorretor}` | Quem tem acesso ao sistema (senha do representante só para Admin e Gestores) |
+| POST / PUT / DELETE | `/api/corretores` (PUT e DELETE com `/{sqPesCorretor}`) | Admin e Gestores (DELETE = exclusão lógica) |
 | GET / POST | `/api/associados/{sqPesCli}/orgaos` | Conforme acessos (vínculos do associado com órgãos) |
 | PUT / DELETE | `/api/associados/{sqPesCli}/orgaos/{sqOrg}` | Conforme acessos; DELETE só Admin e Gestores |
 | GET | `/api/cadastros/filiais`, `/filiais/{cdFil}`, `/situacoes`, `/tratamentos`, `/municipios?uf=&busca=` | Quem tem acesso ao sistema (`X-Sigera-Sistema`) |

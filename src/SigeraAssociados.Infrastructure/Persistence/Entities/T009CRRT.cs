@@ -6,8 +6,10 @@ namespace SigeraAssociados.Infrastructure.Persistence.Entities;
 
 /// <summary>
 /// Mapeia integralmente a tabela legada dbo.T009CRRT: cadastro de corretores.
-/// O nome do corretor fica em T000PESS (CD_EMP + SQ_PES_CRO = CD_EMP + SQ_PES).
-/// Somente leitura.
+/// O nome do corretor fica em T000PESS (CD_EMP + SQ_PES_CRO = CD_EMP + SQ_PES),
+/// com T000PFIS (TP_PES = F) ou T000PJUR (TP_PES = J). Gravada pelo CRUD de
+/// corretores; DT_EXC_API e NM_USU_EXC_API são colunas criadas para a API
+/// (scripts/corretores-colunas-api-e-permissoes.sql).
 /// </summary>
 [Table("T009CRRT", Schema = "dbo")]
 [PrimaryKey(nameof(CD_EMP), nameof(SQ_PES_CRO))]
@@ -90,4 +92,16 @@ public sealed class T009CRRT
 
 	[Column("TP_CRRT", TypeName = "int")]
 	public int? TP_CRRT { get; set; }
+
+	/// <summary>
+	/// Data da exclusão lógica feita pela API (coluna criada para a API).
+	/// Corretor com data preenchida não aparece na API; o legado continua mostrando.
+	/// </summary>
+	[Column("DT_EXC_API", TypeName = "datetime")]
+	public DateTime? DT_EXC_API { get; set; }
+
+	/// <summary>Quem excluiu (e-mail do usuário da API). Coluna criada para a API.</summary>
+	[MaxLength(256)]
+	[Column("NM_USU_EXC_API", TypeName = "varchar(256)")]
+	public string? NM_USU_EXC_API { get; set; }
 }

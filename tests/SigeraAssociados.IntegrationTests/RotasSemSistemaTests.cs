@@ -58,6 +58,7 @@ public sealed class RotasSemSistemaTests : IClassFixture<SigeraApiFactory>
 	[InlineData("/api/cadastros/formas-pagamento")]
 	[InlineData("/api/cadastros/produtos")]
 	[InlineData("/api/convenios")]
+	[InlineData("/api/corretores")]
 	[InlineData("/api/cadastros/tipos-telefone")]
 	public async Task TabelasDeApoio_SemCabecalhoDoSistema_DevemExigir(string rota)
 	{
