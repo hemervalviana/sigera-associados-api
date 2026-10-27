@@ -1,5 +1,6 @@
 ﻿using SigeraAssociados.Application.Associados;
 using SigeraAssociados.Application.Financeiro;
+using SigeraAssociados.Application.Orgaos;
 
 namespace SigeraAssociados.Application.Corretores;
 
@@ -153,8 +154,8 @@ public static class ValidacaoCadastroCorretor
 
 		return RegrasCampos.Inteiro(c.CdFil, 1, 99, "cdFil")
 			?? RegrasCampos.Inteiro(c.CdMunicipio, 1, 9_999_999, "cdMunicipio")
-			?? RegrasCampos.Inteiro(c.CdSituacao, 0, 9, "cdSituacao")
-			?? (c.Tipo is < 0 ? "O campo tipo não pode ser negativo." : null)
+			?? SituacaoAtivoInativo.Corretor.Validar(c.CdSituacao, "cdSituacao")
+			?? (TipoCorretor.Valido(c.Tipo) ? null : "O campo tipo deve ser 1 (CORRETOR) ou 2 (COLABORADOR).")
 			?? RegrasCampos.Inteiro(c.InscricaoSusep, 0, 999_999_999_999_999m, "inscricaoSusep")
 			?? Percentual(c.ComissaoAdesao, "comissaoAdesao")
 			?? Percentual(c.ComissaoCarencia, "comissaoCarencia")
@@ -163,7 +164,10 @@ public static class ValidacaoCadastroCorretor
 			?? Senha(c.SenhaRepresentante, "senhaRepresentante")
 			?? RegrasCampos.Inteiro(c.SqCoordenador, 1, 9_999_999, "sqCoordenador")
 			?? RegrasCampos.Inteiro(c.SqAgente, 1, 99_999_999, "sqAgente")
-			?? RegrasCampos.Inteiro(c.SqGved, 1, 99_999_999, "sqGved");
+			?? RegrasCampos.Inteiro(c.SqGerenteVendas, 1, 99_999_999, "sqGerenteVendas")
+			?? (c.SqPesRepresentante is not null && c.CdFil is null
+				? "Para informar o representante, informe a filial (cdFil): ele precisa ser da mesma filial."
+				: null);
 	}
 
 	private static string? Percentual(decimal? valor, string campo) =>

@@ -617,6 +617,21 @@ public sealed class GestaoUsuariosEndpointsTests
 		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
 	}
 
+	[Theory]
+	[InlineData("Gestores", "/api/corretores/agentes")]
+	[InlineData("Corretores", "/api/corretores/agentes")]
+	[InlineData("Gestores", "/api/corretores/gerentes-vendas")]
+	[InlineData("Financeiro", "/api/corretores/gerentes-vendas")]
+	public async Task IncluirApoioDoCorretor_SemSerAdministrador_DeveRetornar403(string grupo, string rota)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.PostAsJsonAsync(rota, new { descricao = "TESTE" });
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
 	// ----- Contas bancárias e bancos: permissões -----
 
 	[Theory]

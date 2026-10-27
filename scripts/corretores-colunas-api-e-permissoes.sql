@@ -16,7 +16,9 @@
 
   2) Permissão do login usr_sisgera_api: INSERT e UPDATE em T000PESS,
      T000PFIS, T000PJUR e T009CRRT (a leitura já vem do db_datareader).
-     Não há DELETE: a exclusão é lógica, como a do associado.
+     Não há DELETE nessas: a exclusão do corretor é lógica, como a do associado.
+     Tabelas de apoio do corretor: INSERT, UPDATE e DELETE em T009AGENT
+     (agentes) e T009GVED (gerentes de vendas).
 
   Execute com um login que possa alterar tabelas e conceder permissões
   (sa ou db_owner nas bases).
@@ -60,6 +62,8 @@ BEGIN
     GRANT INSERT, UPDATE ON dbo.T000PFIS TO usr_sisgera_api;
     GRANT INSERT, UPDATE ON dbo.T000PJUR TO usr_sisgera_api;
     GRANT INSERT, UPDATE ON dbo.T009CRRT TO usr_sisgera_api;
+    GRANT INSERT, UPDATE, DELETE ON dbo.T009AGENT TO usr_sisgera_api;
+    GRANT INSERT, UPDATE, DELETE ON dbo.T009GVED TO usr_sisgera_api;
     PRINT N''Permissões de corretores concedidas em ' + @Banco + N''';
 END
 ELSE
@@ -101,12 +105,29 @@ GO
           AND EXISTS (SELECT 1 FROM dbo.T000PJUR j WHERE j.CD_EMP = a.CD_EMP AND j.SQ_PES_JUR = a.SQ_PES)
           AND NOT EXISTS (SELECT 1 FROM dbo.T000PFIS f WHERE f.CD_EMP = a.CD_EMP AND f.SQ_PES_FIS = a.SQ_PES)));
 
-  3) Valores usados nos campos de código do legado (a API aceita sem
-     descrição até receber as listas):
+  3) Valores usados nos campos de código do legado. A API aceita situação
+     1 (ATIVO) e 2 (INATIVO) e tipo 1 (CORRETOR) e 2 (COLABORADOR); outro
+     valor gravado faz a alteração do corretor dar 400 até ser corrigido.
+     CL_CRO segue sem lista.
 
   SELECT CL_CRO, COUNT(*) AS quantidade FROM dbo.T009CRRT GROUP BY CL_CRO;
   SELECT CD_SIT_CRRT, COUNT(*) AS quantidade FROM dbo.T009CRRT GROUP BY CD_SIT_CRRT;
   SELECT TP_CRRT, COUNT(*) AS quantidade FROM dbo.T009CRRT GROUP BY TP_CRRT;
+
+     Representante fora da regra do legado (não é pessoa jurídica ou é de
+     outra filial); a API recusa esses ao alterar o corretor:
+
+  SELECT c.SQ_PES_CRO, c.CD_FIL, c.SQ_PES_RPR, r.CD_FIL AS filial_rpr, p.TP_PES AS tipo_rpr
+    FROM dbo.T009CRRT c
+    JOIN dbo.T009CRRT r ON r.CD_EMP = c.CD_EMP AND r.SQ_PES_CRO = c.SQ_PES_RPR
+    JOIN dbo.T000PESS p ON p.CD_EMP = r.CD_EMP AND p.SQ_PES = r.SQ_PES_CRO
+   WHERE p.TP_PES <> 'J' OR ISNULL(r.CD_FIL, -1) <> ISNULL(c.CD_FIL, -1);
+
+     Gerente de vendas (sem FK) que não existe em T009GVED:
+
+  SELECT c.SQ_PES_CRO, c.SQ_GVED FROM dbo.T009CRRT c
+   WHERE c.SQ_GVED IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM dbo.T009GVED g WHERE g.CD_EMP = c.CD_EMP AND g.SQ_GVED = c.SQ_GVED);
 
   4) Triggers nessas tabelas:
 
@@ -114,11 +135,13 @@ GO
     FROM sys.triggers tr
     JOIN sys.tables t ON t.object_id = tr.parent_id
     JOIN sys.trigger_events te ON te.object_id = tr.object_id
-   WHERE t.name IN ('T000PESS', 'T000PFIS', 'T000PJUR', 'T009CRRT');
+   WHERE t.name IN ('T000PESS', 'T000PFIS', 'T000PJUR', 'T009CRRT', 'T009AGENT', 'T009GVED');
 
   Para desfazer (em cada base; só depois de voltar a API para a versão anterior):
 
   REVOKE INSERT, UPDATE ON dbo.T000PJUR FROM usr_sisgera_api;
   REVOKE INSERT, UPDATE ON dbo.T009CRRT FROM usr_sisgera_api;
+  REVOKE INSERT, UPDATE, DELETE ON dbo.T009AGENT FROM usr_sisgera_api;
+  REVOKE INSERT, UPDATE, DELETE ON dbo.T009GVED FROM usr_sisgera_api;
   ALTER TABLE dbo.T009CRRT DROP COLUMN DT_EXC_API, NM_USU_EXC_API;
 */

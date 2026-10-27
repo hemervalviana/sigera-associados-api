@@ -48,6 +48,8 @@ public sealed class SigeraDbContext : DbContext
 	public DbSet<T009PRDT> Produtos => Set<T009PRDT>();
 	public DbSet<T009CONV> Convenios => Set<T009CONV>();
 	public DbSet<T009EXTRA> Creditos => Set<T009EXTRA>();
+	public DbSet<T009AGENT> Agentes => Set<T009AGENT>();
+	public DbSet<T009GVED> GerentesVendas => Set<T009GVED>();
 
 	/// <summary>
 	/// Aplica automaticamente as configurações de entidades

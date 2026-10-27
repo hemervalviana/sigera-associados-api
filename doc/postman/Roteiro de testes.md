@@ -103,6 +103,14 @@ Antes de começar:
 | [ ] | 16.4 | Jurídica com cargo | `pessoaJuridica.cdCargo` de um cargo do 16.7 | **201**, `pessoaJuridica.cargo` com a descrição |
 | [ ] | 16.4 | Jurídica com cargo inexistente | `"cdCargo": 9999` | **400** "não está cadastrado (T000CARG)" |
 | [ ] | 16.8 | Excluir cargo usado por corretor | Cargo usado no teste acima | **409** "há corretores pessoa jurídica" |
+| [ ] | 16.9 | Incluir agente | — | **201**, `sqAgente` salvo |
+| [ ] | 16.10 | Incluir gerente de vendas | — | **201**, `sqGerenteVendas` salvo |
+| [ ] | 16.5 | Corretor com agente e gerente | `sqAgente` e `sqGerenteVendas` acima | **200**, `agente` e `gerenteVendas` com os nomes |
+| [ ] | 16.5 | Representante pessoa física | `sqPesRepresentante` de um corretor F | **400** "precisa ser um corretor pessoa jurídica" |
+| [ ] | 16.5 | Representante de outra filial | Corretor J de outra filial | **400** |
+| [ ] | 16.5 | Representante sem filial | Tire `cdFil` | **400** |
+| [ ] | 16.5 | Situação ou tipo fora da lista | `"cdSituacao": 3` ou `"tipo": 3` | **400** |
+| [ ] | 16.9 | Excluir agente usado por corretor | — | **409** |
 | [ ] | 16.2 | Detalhe como administrador | — | **200**, com `senhaRepresentante` |
 | [ ] | 16.2 | Detalhe como Atendimento | Outro usuário | **200**, `senhaRepresentante` nula |
 | [ ] | 16.5 | Alterar trocando o tipo para J | `"tipoPessoa": "J"` | **400** |

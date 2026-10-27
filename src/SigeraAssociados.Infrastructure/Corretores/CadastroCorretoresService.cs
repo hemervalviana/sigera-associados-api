@@ -6,6 +6,7 @@ using SigeraAssociados.Application.Cadastros;
 using SigeraAssociados.Application.Corretores;
 using SigeraAssociados.Application.Erros;
 using SigeraAssociados.Application.Interfaces.Corretores;
+using SigeraAssociados.Application.Orgaos;
 using SigeraAssociados.Infrastructure.Persistence.Context;
 using SigeraAssociados.Infrastructure.Persistence.Entities;
 using SigeraAssociados.Application.Pessoas;
@@ -128,6 +129,11 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 
 		if (request.CdSituacao is decimal situacao)
 		{
+			if (!SituacaoAtivoInativo.Corretor.Valida(situacao))
+			{
+				throw new DadosInvalidosException("A situação do corretor deve ser 1 (ATIVO) ou 2 (INATIVO).");
+			}
+
 			query = query.Where(c => c.CdSituacao == situacao);
 		}
 
@@ -162,8 +168,10 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 					: DocumentoCnpj.Formatar(l.Cnpj),
 				CdFil = l.CdFil,
 				CdSituacao = l.CdSituacao,
+				Situacao = SituacaoAtivoInativo.Corretor.Descricao(l.CdSituacao),
 				Classe = l.Classe,
-				Tipo = l.TipoCorretor
+				Tipo = l.TipoCorretor,
+				DescricaoTipo = TipoCorretor.Descricao(l.TipoCorretor)
 			}).ToList()
 		};
 	}
@@ -213,8 +221,7 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 
 		return cadastro is null
 			? null
-			: ParaDto(cadastro, await NomeRepresentanteAsync(db, emp, cadastro.Corretor.SQ_PES_RPR, cancellationToken), incluirSenha,
-				await DescricaoCargoAsync(db, emp, cadastro.Juridica, cancellationToken));
+			: ParaDto(cadastro, await ExtrasAsync(db, emp, cadastro, cancellationToken), incluirSenha);
 	}
 
 	// ===================== Inclusão =====================
@@ -293,6 +300,7 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 
 				var corretor = new T009CRRT { CD_EMP = emp, SQ_PES_CRO = sqPes };
 				AplicarCorretor(dados.Corretor ?? new DadosCorretor(), corretor);
+				corretor.CD_SIT_CRRT ??= SituacaoAtivoInativo.Corretor.Ativo;
 				db.Corretores.Add(corretor);
 
 				await db.SaveChangesAsync(cancellationToken);
@@ -301,8 +309,7 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 				var cadastro = new Cadastro(pessoa, fisica, juridica, corretor);
 
 				return Sucesso("Corretor cadastrado.",
-					ParaDto(cadastro, await NomeRepresentanteAsync(db, emp, corretor.SQ_PES_RPR, cancellationToken), incluirSenha: true,
-						await DescricaoCargoAsync(db, emp, juridica, cancellationToken)));
+					ParaDto(cadastro, await ExtrasAsync(db, emp, cadastro, cancellationToken), incluirSenha: true));
 			}
 			catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2627 or 2601 } && tentativa < TentativasNumeracao)
 			{
@@ -386,8 +393,7 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 		}
 
 		return Sucesso("Corretor alterado.",
-			ParaDto(cadastro, await NomeRepresentanteAsync(db, emp, cadastro.Corretor.SQ_PES_RPR, cancellationToken), incluirSenha: true,
-				await DescricaoCargoAsync(db, emp, cadastro.Juridica, cancellationToken)));
+			ParaDto(cadastro, await ExtrasAsync(db, emp, cadastro, cancellationToken), incluirSenha: true));
 	}
 
 	// ===================== Exclusão =====================
@@ -418,7 +424,7 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 
 		await db.SaveChangesAsync(cancellationToken);
 
-		return Sucesso("Corretor excluído.", ParaDto(cadastro, null, incluirSenha: false));
+		return Sucesso("Corretor excluído.", ParaDto(cadastro, Extras.Nenhum, incluirSenha: false));
 	}
 
 	// ===================== Apoio =====================
@@ -528,10 +534,23 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 				return "O corretor não pode ser representante de si mesmo.";
 			}
 
-			if (!await db.Corretores.AnyAsync(
-					r => r.CD_EMP == emp && r.SQ_PES_CRO == representante && r.DT_EXC_API == null, cancellationToken))
+			// Regra do legado: o representante é um corretor pessoa jurídica da
+			// mesma filial (aqui, a filial do corretor; não excluído pela API).
+			var filialCorretor = c.CdFil;
+
+			var representanteValido = await (
+					from r in db.Corretores
+					where r.CD_EMP == emp && r.SQ_PES_CRO == representante && r.DT_EXC_API == null && r.CD_FIL == filialCorretor
+					join p in db.Pessoas
+						on new { Empresa = r.CD_EMP, Pessoa = r.SQ_PES_CRO }
+						equals new { Empresa = p.CD_EMP, Pessoa = p.SQ_PES }
+					where p.TP_PES == ValidacaoCadastroCorretor.PessoaJuridica
+					select r.SQ_PES_CRO)
+				.AnyAsync(cancellationToken);
+
+			if (!representanteValido)
 			{
-				return $"O representante {representante:0} não é um corretor ativo deste sistema.";
+				return $"O representante {representante:0} precisa ser um corretor pessoa jurídica da filial {filialCorretor:0}.";
 			}
 		}
 
@@ -544,11 +563,15 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 		}
 
 		if (c.SqAgente is decimal agente
-			&& await NumeroAsync(db,
-				$"SELECT CAST(COUNT(*) AS decimal(10, 0)) AS [Value] FROM dbo.T009AGENT WHERE CD_EMP = {emp} AND SQ_AGEN = {agente}",
-				cancellationToken) == 0)
+			&& !await db.Agentes.AnyAsync(a => a.CD_EMP == emp && a.SQ_AGEN == agente, cancellationToken))
 		{
 			return $"O agente {agente:0} não está cadastrado (T009AGENT).";
+		}
+
+		if (c.SqGerenteVendas is decimal gerente
+			&& !await db.GerentesVendas.AnyAsync(g => g.CD_EMP == emp && g.SQ_GVED == gerente, cancellationToken))
+		{
+			return $"O gerente de vendas {gerente:0} não está cadastrado (T009GVED).";
 		}
 
 		return null;
@@ -630,6 +653,7 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 
 		var corretor = new T009CRRT { CD_EMP = emp, SQ_PES_CRO = sqPes };
 		AplicarCorretor(dados.Corretor ?? new DadosCorretor(), corretor);
+		corretor.CD_SIT_CRRT ??= SituacaoAtivoInativo.Corretor.Ativo;
 		db.Corretores.Add(corretor);
 
 		if (await SalvarAsync(db, cancellationToken) is string erroGravacao)
@@ -639,13 +663,12 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 
 		await transacao.CommitAsync(cancellationToken);
 
+		var cadastro = new Cadastro(pessoa, fisica, juridica, corretor);
+
 		return Sucesso(
 			$"Corretor cadastrado aproveitando a pessoa já existente (código {sqPes:0}): " +
 			"os dados pessoais já gravados foram mantidos e só os campos vazios foram completados.",
-			ParaDto(new Cadastro(pessoa, fisica, juridica, corretor),
-				await NomeRepresentanteAsync(db, emp, corretor.SQ_PES_RPR, cancellationToken),
-				incluirSenha: true,
-				await DescricaoCargoAsync(db, emp, juridica, cancellationToken)));
+			ParaDto(cadastro, await ExtrasAsync(db, emp, cadastro, cancellationToken), incluirSenha: true));
 	}
 
 	private static async Task<string?> DescricaoCargoAsync(
@@ -676,10 +699,12 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 			return null;
 		}
 
-		return await db.Pessoas.AsNoTracking()
+		var nome = await db.Pessoas.AsNoTracking()
 			.Where(p => p.CD_EMP == emp && p.SQ_PES == sq)
 			.Select(p => p.NM_PES)
 			.FirstOrDefaultAsync(cancellationToken);
+
+		return nome?.ToUpperInvariant();
 	}
 
 	private static void AplicarPessoa(CadastroCorretorDados d, T000PESS p)
@@ -731,7 +756,7 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 		r.SQ_PES_RPR = c.SqPesRepresentante;
 		r.SQ_CDR = c.SqCoordenador;
 		r.SQ_AGEN = c.SqAgente;
-		r.SQ_GVED = c.SqGved;
+		r.SQ_GVED = c.SqGerenteVendas;
 
 		// Senha em texto puro, como o legado lê. Omitida (null) mantém; vazia apaga.
 		if (c.SenhaRepresentante is not null)
@@ -740,7 +765,30 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 		}
 	}
 
-	private static CorretorCadastroDto ParaDto(Cadastro c, string? nomeRepresentante, bool incluirSenha, string? cargo = null) => new()
+	/// <summary>Descrições que vêm de outras tabelas.</summary>
+	private sealed record Extras(string? NomeRepresentante, string? Cargo, string? Agente, string? GerenteVendas)
+	{
+		public static readonly Extras Nenhum = new(null, null, null, null);
+	}
+
+	private static async Task<Extras> ExtrasAsync(SigeraDbContext db, decimal emp, Cadastro c, CancellationToken cancellationToken)
+	{
+		var agente = c.Corretor.SQ_AGEN is decimal sqAgen
+			? await db.Agentes.AsNoTracking().Where(a => a.CD_EMP == emp && a.SQ_AGEN == sqAgen).Select(a => a.DE_AGEN).FirstOrDefaultAsync(cancellationToken)
+			: null;
+
+		var gerente = c.Corretor.SQ_GVED is decimal sqGved
+			? await db.GerentesVendas.AsNoTracking().Where(g => g.CD_EMP == emp && g.SQ_GVED == sqGved).Select(g => g.DE_GVED).FirstOrDefaultAsync(cancellationToken)
+			: null;
+
+		return new Extras(
+			await NomeRepresentanteAsync(db, emp, c.Corretor.SQ_PES_RPR, cancellationToken),
+			await DescricaoCargoAsync(db, emp, c.Juridica, cancellationToken),
+			agente,
+			gerente);
+	}
+
+	private static CorretorCadastroDto ParaDto(Cadastro c, Extras e, bool incluirSenha) => new()
 	{
 		SqPesCorretor = c.Corretor.SQ_PES_CRO,
 		TipoPessoa = c.Pessoa.TP_PES,
@@ -774,15 +822,17 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 			InscricaoEstadual = j.NR_CGF,
 			Contato = j.NM_CON,
 			CdCargo = j.CD_CG,
-			Cargo = cargo
+			Cargo = e.Cargo
 		},
 		Corretor = new DadosCorretor
 		{
 			CdFil = c.Corretor.CD_FIL,
 			CdMunicipio = c.Corretor.CD_MUN,
 			CdSituacao = c.Corretor.CD_SIT_CRRT,
+			Situacao = SituacaoAtivoInativo.Corretor.Descricao(c.Corretor.CD_SIT_CRRT),
 			Classe = c.Corretor.CL_CRO,
 			Tipo = c.Corretor.TP_CRRT,
+			DescricaoTipo = TipoCorretor.Descricao(c.Corretor.TP_CRRT),
 			InscricaoSusep = c.Corretor.NR_ISC_SUS,
 			ComissaoAdesao = c.Corretor.PC_CMS_ADT,
 			ComissaoCarencia = c.Corretor.PC_CMS_CAR,
@@ -791,9 +841,11 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 			SenhaRepresentante = incluirSenha ? c.Corretor.SH_RPR : null,
 			SqCoordenador = c.Corretor.SQ_CDR,
 			SqAgente = c.Corretor.SQ_AGEN,
-			SqGved = c.Corretor.SQ_GVED
+			Agente = e.Agente,
+			SqGerenteVendas = c.Corretor.SQ_GVED,
+			GerenteVendas = e.GerenteVendas
 		},
-		NomeRepresentante = nomeRepresentante
+		NomeRepresentante = e.NomeRepresentante
 	};
 
 	private static decimal? Numero(string? digitos) =>

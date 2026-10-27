@@ -19,7 +19,9 @@ namespace SigeraAssociados.Api.Controllers;
 /// Consultar: qualquer usuário com acesso ao sistema.
 /// Incluir, alterar e excluir: Administradores e Gestores.
 /// Exclusão lógica, como a do associado.
-/// Tabelas de apoio do corretor: cargos (T000CARG), em /api/corretores/cargos.
+/// Tabelas de apoio do corretor: cargos (T000CARG), agentes (T009AGENT) e
+/// gerentes de vendas (T009GVED), em /api/corretores/cargos, /agentes e
+/// /gerentes-vendas (consultar todos; gravar só administradores).
 /// </summary>
 [ApiController]
 [Route("api/corretores")]
@@ -28,17 +30,20 @@ public sealed class CorretoresController : ControllerBase
 {
 	private readonly ICadastroCorretoresService _corretores;
 	private readonly IOrgaosService _orgaos;
+	private readonly ITabelasApoioCorretorService _apoio;
 	private readonly SigeraSystemContext _sistema;
 	private readonly ILogger<CorretoresController> _logger;
 
 	public CorretoresController(
 		ICadastroCorretoresService corretores,
 		IOrgaosService orgaos,
+		ITabelasApoioCorretorService apoio,
 		SigeraSystemContext sistema,
 		ILogger<CorretoresController> logger)
 	{
 		_corretores = corretores;
 		_orgaos = orgaos;
+		_apoio = apoio;
 		_sistema = sistema;
 		_logger = logger;
 	}
@@ -59,7 +64,7 @@ public sealed class CorretoresController : ControllerBase
 	/// <param name="busca">CPF, CNPJ, código ou começo do nome (opcional).</param>
 	/// <param name="cdFil">Filial (opcional).</param>
 	/// <param name="tipoPessoa">F (física) ou J (jurídica) (opcional).</param>
-	/// <param name="cdSituacao">Situação (CD_SIT_CRRT) (opcional).</param>
+	/// <param name="cdSituacao">Situação: 1 = ATIVO, 2 = INATIVO (opcional).</param>
 	/// <param name="pagina">Página, a partir de 1.</param>
 	/// <param name="tamanhoPagina">Itens por página, de 1 a 200.</param>
 	/// <param name="cancellationToken">Cancelamento da requisição.</param>
@@ -133,6 +138,12 @@ public sealed class CorretoresController : ControllerBase
 	/// leva só `pessoaFisica` (CPF obrigatório); J leva só `pessoaJuridica`
 	/// (CNPJ obrigatório).
 	///
+	/// `corretor.tipo`: 1 = CORRETOR, 2 = COLABORADOR. `corretor.cdSituacao`:
+	/// 1 = ATIVO, 2 = INATIVO (omitida: 1). `corretor.sqPesRepresentante`:
+	/// outro corretor, pessoa jurídica, da mesma filial (`cdFil` obrigatória
+	/// junto). Agente e gerente de vendas: GET /api/corretores/agentes e
+	/// /gerentes-vendas.
+	///
 	/// CPF ou CNPJ de uma pessoa que já existe mas ainda não é corretor (por
 	/// exemplo, um associado): a pessoa é aproveitada e só o T009CRRT é criado.
 	/// Os dados pessoais já gravados (nome inclusive) não mudam; só os campos
@@ -145,7 +156,7 @@ public sealed class CorretoresController : ControllerBase
 	///       "nome": "JOAO CORRETOR",
 	///       "email": "joao@exemplo.com",
 	///       "pessoaFisica": { "cpf": "529.982.247-25", "sexo": "M" },
-	///       "corretor": { "cdFil": 1, "cdSituacao": 1, "comissaoAdesao": 10, "senhaRepresentante": "1234" }
+	///       "corretor": { "cdFil": 1, "tipo": 1, "comissaoAdesao": 10, "sqPesRepresentante": 500, "senhaRepresentante": "1234" }
 	///     }
 	///
 	///     POST /api/corretores
@@ -314,6 +325,184 @@ public sealed class CorretoresController : ControllerBase
 	{
 		var resultado = await _orgaos.ExcluirCargoAsync(Sistema, cdCargo, cancellationToken);
 		Registrar(resultado.Status, "Cargo excluído", cdCargo);
+		return this.Converter(resultado);
+	}
+
+	// ===================== Tabela de apoio: agentes =====================
+
+	/// <summary>
+	/// Agentes (T009AGENT), para o campo corretor.sqAgente.
+	/// </summary>
+	/// <param name="busca">Começo do nome ou código (opcional). Até 500 itens.</param>
+	/// <param name="cancellationToken">Cancelamento da requisição.</param>
+	/// <response code="200">Agentes ordenados pelo nome, com dados bancários.</response>
+	[HttpGet("agentes")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	public async Task<IActionResult> Agentes([FromQuery] string? busca, CancellationToken cancellationToken)
+	{
+		var agentes = await _apoio.ListarAgentesAsync(busca, cancellationToken);
+
+		return Ok(new { quantidade = agentes.Count, agentes });
+	}
+
+	/// <summary>
+	/// Inclui um agente (T009AGENT). Somente administradores.
+	/// </summary>
+	/// <remarks>
+	/// `sqAgente` omitido: MAX + 1. Obrigatório: `descricao` (até 100).
+	/// Banco conferido em T000BANC.
+	///
+	///     POST /api/corretores/agentes
+	///     {
+	///       "descricao": "AGENTE CENTRO",
+	///       "cdBanco": 104, "agencia": 1234, "digitoAgencia": "5",
+	///       "conta": 98765, "digitoConta": "1", "operacao": 13
+	///     }
+	/// </remarks>
+	/// <response code="201">Incluído.</response>
+	/// <response code="400">Dados inválidos ou banco inexistente.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="409">Código já existe.</response>
+	[HttpPost("agentes")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(AgenteDados), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> IncluirAgente([FromBody] AgenteDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.IncluirAgenteAsync(dados, cancellationToken);
+		Registrar(resultado.Status, "Agente incluído", resultado.Item?.SqAgente);
+		return this.Converter(resultado, criado: true);
+	}
+
+	/// <summary>
+	/// Altera um agente (envie todos os campos). Somente administradores.
+	/// </summary>
+	/// <response code="200">Alterado.</response>
+	/// <response code="400">Dados inválidos ou banco inexistente.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	[HttpPut("agentes/{sqAgente:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(AgenteDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	public async Task<IActionResult> AlterarAgente(decimal sqAgente, [FromBody] AgenteDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.AlterarAgenteAsync(sqAgente, dados, cancellationToken);
+		Registrar(resultado.Status, "Agente alterado", sqAgente);
+		return this.Converter(resultado);
+	}
+
+	/// <summary>
+	/// Exclui um agente. Somente administradores.
+	/// </summary>
+	/// <remarks>Recusada (409) se houver corretores com o agente.</remarks>
+	/// <response code="200">Excluído.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	/// <response code="409">Em uso.</response>
+	[HttpDelete("agentes/{sqAgente:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> ExcluirAgente(decimal sqAgente, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.ExcluirAgenteAsync(sqAgente, cancellationToken);
+		Registrar(resultado.Status, "Agente excluído", sqAgente);
+		return this.Converter(resultado);
+	}
+
+	// ===================== Tabela de apoio: gerentes de vendas =====================
+
+	/// <summary>
+	/// Gerentes de vendas (T009GVED), para o campo corretor.sqGerenteVendas.
+	/// </summary>
+	/// <param name="busca">Começo do nome ou código (opcional). Até 500 itens.</param>
+	/// <param name="cancellationToken">Cancelamento da requisição.</param>
+	/// <response code="200">Gerentes ordenados pelo nome, com percentual de comissão.</response>
+	[HttpGet("gerentes-vendas")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	public async Task<IActionResult> GerentesVendas([FromQuery] string? busca, CancellationToken cancellationToken)
+	{
+		var gerentes = await _apoio.ListarGerentesVendasAsync(busca, cancellationToken);
+
+		return Ok(new { quantidade = gerentes.Count, gerentesVendas = gerentes });
+	}
+
+	/// <summary>
+	/// Inclui um gerente de vendas (T009GVED). Somente administradores.
+	/// </summary>
+	/// <remarks>
+	/// `sqGerenteVendas` omitido: MAX + 1. Obrigatório: `descricao` (até 100).
+	/// `percentualComissao` de 0 a 100, com até 2 casas.
+	///
+	///     POST /api/corretores/gerentes-vendas
+	///     { "descricao": "JOSE GERENTE", "percentualComissao": 2.5 }
+	/// </remarks>
+	/// <response code="201">Incluído.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="409">Código já existe.</response>
+	[HttpPost("gerentes-vendas")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(GerenteVendasDados), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> IncluirGerenteVendas([FromBody] GerenteVendasDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.IncluirGerenteVendasAsync(dados, cancellationToken);
+		Registrar(resultado.Status, "Gerente de vendas incluído", resultado.Item?.SqGerenteVendas);
+		return this.Converter(resultado, criado: true);
+	}
+
+	/// <summary>
+	/// Altera um gerente de vendas. Somente administradores.
+	/// </summary>
+	/// <response code="200">Alterado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	[HttpPut("gerentes-vendas/{sqGerenteVendas:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(GerenteVendasDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	public async Task<IActionResult> AlterarGerenteVendas(decimal sqGerenteVendas, [FromBody] GerenteVendasDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.AlterarGerenteVendasAsync(sqGerenteVendas, dados, cancellationToken);
+		Registrar(resultado.Status, "Gerente de vendas alterado", sqGerenteVendas);
+		return this.Converter(resultado);
+	}
+
+	/// <summary>
+	/// Exclui um gerente de vendas. Somente administradores.
+	/// </summary>
+	/// <remarks>Recusada (409) se houver corretores com o gerente.</remarks>
+	/// <response code="200">Excluído.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	/// <response code="409">Em uso.</response>
+	[HttpDelete("gerentes-vendas/{sqGerenteVendas:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> ExcluirGerenteVendas(decimal sqGerenteVendas, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.ExcluirGerenteVendasAsync(sqGerenteVendas, cancellationToken);
+		Registrar(resultado.Status, "Gerente de vendas excluído", sqGerenteVendas);
 		return this.Converter(resultado);
 	}
 

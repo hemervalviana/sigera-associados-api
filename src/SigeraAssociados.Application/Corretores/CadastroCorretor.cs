@@ -82,14 +82,22 @@ public sealed class DadosCorretor
 	/// <summary>Município de atuação (CD_MUN), de GET /api/cadastros/municipios.</summary>
 	public decimal? CdMunicipio { get; init; }
 
-	/// <summary>Situação (CD_SIT_CRRT, 0 a 9, valores do legado).</summary>
+	/// <summary>
+	/// Situação (CD_SIT_CRRT): 1 = ATIVO, 2 = INATIVO. Omitida na inclusão: 1.
+	/// </summary>
 	public decimal? CdSituacao { get; init; }
+
+	/// <summary>ATIVO ou INATIVO. Só na resposta.</summary>
+	public string? Situacao { get; init; }
 
 	/// <summary>Classe (CL_CRO, 1 caractere, valores do legado).</summary>
 	public string? Classe { get; init; }
 
-	/// <summary>Tipo (TP_CRRT, número inteiro, valores do legado).</summary>
+	/// <summary>Tipo (TP_CRRT): 1 = CORRETOR, 2 = COLABORADOR.</summary>
 	public int? Tipo { get; init; }
+
+	/// <summary>CORRETOR ou COLABORADOR. Só na resposta.</summary>
+	public string? DescricaoTipo { get; init; }
 
 	/// <summary>Inscrição na SUSEP (NR_ISC_SUS, até 15 dígitos).</summary>
 	public decimal? InscricaoSusep { get; init; }
@@ -103,7 +111,10 @@ public sealed class DadosCorretor
 	/// <summary>Percentual de comissão PC_CMS_PLN (0 a 100, 2 casas).</summary>
 	public decimal? ComissaoPlano { get; init; }
 
-	/// <summary>Corretor representante (SQ_PES_RPR): outro corretor da base.</summary>
+	/// <summary>
+	/// Corretor representante (SQ_PES_RPR): outro corretor, pessoa jurídica,
+	/// não excluído e da mesma filial (exige cdFil). Nunca o próprio corretor.
+	/// </summary>
 	public decimal? SqPesRepresentante { get; init; }
 
 	/// <summary>
@@ -117,11 +128,17 @@ public sealed class DadosCorretor
 	/// <summary>Coordenador (SQ_CDR), conferido em T009COOR.</summary>
 	public decimal? SqCoordenador { get; init; }
 
-	/// <summary>Agente (SQ_AGEN), conferido em T009AGENT.</summary>
+	/// <summary>Agente (SQ_AGEN), de GET /api/corretores/agentes.</summary>
 	public decimal? SqAgente { get; init; }
 
-	/// <summary>SQ_GVED (sem chave estrangeira no banco; até 8 dígitos).</summary>
-	public decimal? SqGved { get; init; }
+	/// <summary>Nome do agente. Só na resposta.</summary>
+	public string? Agente { get; init; }
+
+	/// <summary>Gerente de vendas (SQ_GVED), de GET /api/corretores/gerentes-vendas.</summary>
+	public decimal? SqGerenteVendas { get; init; }
+
+	/// <summary>Nome do gerente de vendas. Só na resposta.</summary>
+	public string? GerenteVendas { get; init; }
 }
 
 /// <summary>
@@ -156,7 +173,7 @@ public sealed class CorretorCadastroDto
 
 	public DadosCorretor Corretor { get; init; } = new();
 
-	/// <summary>Nome do corretor representante, quando há.</summary>
+	/// <summary>Nome do corretor representante (em maiúsculas, como no legado), quando há.</summary>
 	public string? NomeRepresentante { get; init; }
 }
 
@@ -180,9 +197,15 @@ public sealed class CorretorResumoDto
 
 	public decimal? CdSituacao { get; init; }
 
+	/// <summary>ATIVO ou INATIVO.</summary>
+	public string? Situacao { get; init; }
+
 	public string? Classe { get; init; }
 
 	public int? Tipo { get; init; }
+
+	/// <summary>CORRETOR ou COLABORADOR.</summary>
+	public string? DescricaoTipo { get; init; }
 }
 
 public sealed class PesquisaCorretoresRequest

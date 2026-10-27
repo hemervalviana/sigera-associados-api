@@ -32,6 +32,11 @@ public sealed class SituacaoAtivoInativo
 	/// </summary>
 	public static SituacaoAtivoInativo Banco { get; } = new(1, 0);
 
+	/// <summary>
+	/// Corretor (T009CRRT.CD_SIT_CRRT): 1 = ATIVO, 2 = INATIVO.
+	/// </summary>
+	public static SituacaoAtivoInativo Corretor { get; } = new(1, 2);
+
 	public decimal Ativo { get; }
 
 	public decimal Inativo { get; }

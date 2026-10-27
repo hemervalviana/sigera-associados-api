@@ -168,7 +168,7 @@ public sealed class ValidacaoCadastroCorretorTests
 			SenhaRepresentante = "Senha@2026",
 			SqCoordenador = 1,
 			SqAgente = 1,
-			SqGved = 1
+			SqGerenteVendas = 1
 		})));
 	}
 
@@ -188,10 +188,91 @@ public sealed class ValidacaoCadastroCorretorTests
 		Assert.Contains("classe", ValidacaoCadastroCorretor.Validar(Fisica(corretor: new DadosCorretor { Classe = "AB" })));
 	}
 
-	[Fact]
-	public void SituacaoAcimaDe9_DeveSerRecusada()
+	[Theory]
+	[InlineData(1)]
+	[InlineData(2)]
+	public void SituacaoAtivoOuInativo_DeveSerValida(int situacao)
 	{
-		Assert.Contains("cdSituacao", ValidacaoCadastroCorretor.Validar(Fisica(corretor: new DadosCorretor { CdSituacao = 10 })));
+		Assert.Null(ValidacaoCadastroCorretor.Validar(Fisica(corretor: new DadosCorretor { CdSituacao = situacao })));
+	}
+
+	[Theory]
+	[InlineData(0)]
+	[InlineData(3)]
+	[InlineData(10)]
+	public void SituacaoForaDaLista_DeveSerRecusada(int situacao)
+	{
+		Assert.Contains("cdSituacao", ValidacaoCadastroCorretor.Validar(Fisica(corretor: new DadosCorretor { CdSituacao = situacao })));
+	}
+
+	[Theory]
+	[InlineData(0)]
+	[InlineData(3)]
+	public void TipoForaDaLista_DeveSerRecusado(int tipo)
+	{
+		Assert.Contains("tipo", ValidacaoCadastroCorretor.Validar(Fisica(corretor: new DadosCorretor { Tipo = tipo })));
+	}
+
+	[Fact]
+	public void RepresentanteSemFilial_DeveSerRecusado()
+	{
+		Assert.Contains("cdFil", ValidacaoCadastroCorretor.Validar(Fisica(corretor: new DadosCorretor { SqPesRepresentante = 500 })));
+	}
+
+	[Fact]
+	public void TipoESituacao_DevemTrazerADescricaoDoLegado()
+	{
+		Assert.Equal("CORRETOR", TipoCorretor.Descricao(1));
+		Assert.Equal("COLABORADOR", TipoCorretor.Descricao(2));
+		Assert.Null(TipoCorretor.Descricao(3));
+		Assert.Equal("ATIVO", SigeraAssociados.Application.Orgaos.SituacaoAtivoInativo.Corretor.Descricao(1));
+		Assert.Equal("INATIVO", SigeraAssociados.Application.Orgaos.SituacaoAtivoInativo.Corretor.Descricao(2));
+	}
+
+	// ----- Agentes e gerentes de vendas -----
+
+	[Fact]
+	public void AgenteCompleto_DeveSerValido()
+	{
+		Assert.Null(ValidacaoApoioCorretor.Agente(new AgenteDados
+		{
+			Descricao = "AGENTE CENTRO",
+			CdBanco = 104,
+			DigitoBanco = "0",
+			Agencia = 1234,
+			DigitoAgencia = "5",
+			Conta = 98765,
+			DigitoConta = "1",
+			Operacao = 13
+		}, inclusao: true));
+	}
+
+	[Fact]
+	public void AgenteSemNome_DeveSerRecusado()
+	{
+		Assert.Contains("descricao", ValidacaoApoioCorretor.Agente(new AgenteDados { CdBanco = 104 }, inclusao: true));
+	}
+
+	[Fact]
+	public void AgenteComDigitoDaContaLongo_DeveSerRecusado()
+	{
+		Assert.Contains("digitoConta", ValidacaoApoioCorretor.Agente(new AgenteDados { Descricao = "X", DigitoConta = "123" }, inclusao: false));
+	}
+
+	[Fact]
+	public void GerenteVendasCompleto_DeveSerValido()
+	{
+		Assert.Null(ValidacaoApoioCorretor.GerenteVendas(new GerenteVendasDados { Descricao = "JOSE", PercentualComissao = 2.5m }, inclusao: true));
+	}
+
+	[Theory]
+	[InlineData(-1)]
+	[InlineData(100.5)]
+	[InlineData(1.234)]
+	public void GerenteVendasComPercentualInvalido_DeveSerRecusado(double percentual)
+	{
+		Assert.Contains("percentualComissao",
+			ValidacaoApoioCorretor.GerenteVendas(new GerenteVendasDados { Descricao = "JOSE", PercentualComissao = (decimal)percentual }, inclusao: false));
 	}
 
 	// ----- Senha do representante -----

@@ -153,6 +153,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ICadastrosFinanceirosService, CadastrosFinanceirosService>();
         services.AddScoped<ICreditosAssociadoService, CreditosAssociadoService>();
         services.AddScoped<ICadastroCorretoresService, CadastroCorretoresService>();
+        services.AddScoped<ITabelasApoioCorretorService, TabelasApoioCorretorService>();
         services.AddScoped<IContasBancariasService, ContasBancariasService>();
         services.AddScoped<ICadastroAssociadosService, CadastroAssociadosService>();
 

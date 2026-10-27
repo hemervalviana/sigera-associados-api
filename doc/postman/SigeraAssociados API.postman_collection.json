@@ -5458,7 +5458,7 @@
             "description": "## O que faz\nInclui um corretor pessoa física (T000PESS + T000PFIS + T009CRRT). A API gera o `sqPesCorretor` (MAX + 1), salvo na variável `sqPesCorretor`.\n\nTroque o CPF por um válido que não exista na base. Física leva só `pessoaFisica`.\n\n## Respostas\n- **201**: incluído.\n- **400**: dados inválidos (ex.: bloco de jurídica junto).\n- **403**: não é Administrador nem Gestor.\n- **409**: CPF de outra pessoa.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tipoPessoa\": \"F\",\n  \"nome\": \"CORRETOR TESTE API\",\n  \"email\": \"corretor.teste@exemplo.com\",\n  \"pessoaFisica\": {\n    \"cpf\": \"529.982.247-25\",\n    \"sexo\": \"M\"\n  },\n  \"corretor\": {\n    \"cdFil\": 1,\n    \"cdSituacao\": 1,\n    \"comissaoAdesao\": 10,\n    \"senhaRepresentante\": \"1234\"\n  }\n}",
+              "raw": "{\n  \"tipoPessoa\": \"F\",\n  \"nome\": \"CORRETOR TESTE API\",\n  \"email\": \"corretor.teste@exemplo.com\",\n  \"pessoaFisica\": {\n    \"cpf\": \"529.982.247-25\",\n    \"sexo\": \"M\"\n  },\n  \"corretor\": {\n    \"cdFil\": 1,\n    \"cdSituacao\": 1,\n    \"comissaoAdesao\": 10,\n    \"senhaRepresentante\": \"1234\",\n    \"tipo\": 1\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -5560,7 +5560,7 @@
             "description": "Altera o corretor `sqPesCorretor` (cadastro inteiro). O tipo de pessoa não muda (400). Bloco `corretor` omitido mantém T009CRRT; `senhaRepresentante` omitida mantém, `\"\"` apaga.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tipoPessoa\": \"F\",\n  \"nome\": \"CORRETOR TESTE API ALTERADO\",\n  \"pessoaFisica\": {\n    \"cpf\": \"529.982.247-25\",\n    \"sexo\": \"M\"\n  },\n  \"corretor\": {\n    \"cdFil\": 1,\n    \"cdSituacao\": 1,\n    \"comissaoAdesao\": 12.5\n  }\n}",
+              "raw": "{\n  \"tipoPessoa\": \"F\",\n  \"nome\": \"CORRETOR TESTE API ALTERADO\",\n  \"pessoaFisica\": {\n    \"cpf\": \"529.982.247-25\",\n    \"sexo\": \"M\"\n  },\n  \"corretor\": {\n    \"cdFil\": 1,\n    \"cdSituacao\": 1,\n    \"comissaoAdesao\": 12.5,\n    \"tipo\": 1\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -5685,6 +5685,106 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"descricao\": \"CARGO TESTE API\",\n  \"cdSituacao\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.9 - Incluir agente (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/agentes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "agentes"
+              ]
+            },
+            "description": "Inclui em /api/corretores/agentes. Código omitido: MAX + 1. `GET /api/corretores/agentes` lista.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"AGENTE TESTE API\",\n  \"cdBanco\": 104,\n  \"agencia\": 1234,\n  \"digitoAgencia\": \"5\",\n  \"conta\": 98765,\n  \"digitoConta\": \"1\",\n  \"operacao\": 13\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.10 - Incluir gerente de vendas (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/gerentes-vendas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "gerentes-vendas"
+              ]
+            },
+            "description": "Inclui em /api/corretores/gerentes-vendas. Código omitido: MAX + 1. `GET /api/corretores/gerentes-vendas` lista.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"GERENTE TESTE API\",\n  \"percentualComissao\": 2.5\n}",
               "options": {
                 "raw": {
                   "language": "json"
