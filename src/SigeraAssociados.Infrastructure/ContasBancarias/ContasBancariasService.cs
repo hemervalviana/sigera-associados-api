@@ -3,7 +3,8 @@ using SigeraAssociados.Application.Cadastros;
 using SigeraAssociados.Application.ContasBancarias;
 using SigeraAssociados.Application.Interfaces.Acesso;
 using SigeraAssociados.Application.Interfaces.ContasBancarias;
-using SigeraAssociados.Infrastructure.Associados;
+using SigeraAssociados.Application.Pessoas;
+using SigeraAssociados.Infrastructure.Pessoas;
 using SigeraAssociados.Infrastructure.Persistence.Context;
 using SigeraAssociados.Infrastructure.Persistence.Entities;
 using SigeraAssociados.Infrastructure.Persistence.Factories;
@@ -34,12 +35,13 @@ public sealed class ContasBancariasService : IContasBancariasService
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<ContaBancariaDto>?> ListarAsync(
+		TitularCadastro titular,
 		decimal sqPesCli,
 		CancellationToken cancellationToken = default)
 	{
 		await using var db = CriarContexto();
 
-		if (await AbrirAssociadoAsync(db, sqPesCli, cancellationToken) is not decimal emp)
+		if (await AbrirTitularAsync(db, titular, sqPesCli, cancellationToken) is not decimal emp)
 		{
 			return null;
 		}
@@ -49,6 +51,7 @@ public sealed class ContasBancariasService : IContasBancariasService
 
 	/// <inheritdoc />
 	public async Task<ResultadoTabelaApoio<ContaBancariaDto>> IncluirAsync(
+		TitularCadastro titular,
 		decimal sqPesCli,
 		ContaBancariaDados dados,
 		CancellationToken cancellationToken = default)
@@ -60,9 +63,9 @@ public sealed class ContasBancariasService : IContasBancariasService
 
 		await using var db = CriarContexto();
 
-		if (await AbrirAssociadoAsync(db, sqPesCli, cancellationToken) is not decimal emp)
+		if (await AbrirTitularAsync(db, titular, sqPesCli, cancellationToken) is not decimal emp)
 		{
-			return NaoEncontrado<ContaBancariaDto>("Associado não encontrado.");
+			return NaoEncontrado<ContaBancariaDto>(AcessoTitular.NaoEncontrado(titular));
 		}
 
 		if (await ValidarBancoAsync(db, emp, dados, cancellationToken) is string erroBanco)
@@ -105,6 +108,7 @@ public sealed class ContasBancariasService : IContasBancariasService
 
 	/// <inheritdoc />
 	public async Task<ResultadoTabelaApoio<ContaBancariaDto>> AlterarAsync(
+		TitularCadastro titular,
 		decimal sqPesCli,
 		decimal sqConta,
 		ContaBancariaDados dados,
@@ -117,9 +121,9 @@ public sealed class ContasBancariasService : IContasBancariasService
 
 		await using var db = CriarContexto();
 
-		if (await AbrirAssociadoAsync(db, sqPesCli, cancellationToken) is not decimal emp)
+		if (await AbrirTitularAsync(db, titular, sqPesCli, cancellationToken) is not decimal emp)
 		{
-			return NaoEncontrado<ContaBancariaDto>("Associado não encontrado.");
+			return NaoEncontrado<ContaBancariaDto>(AcessoTitular.NaoEncontrado(titular));
 		}
 
 		var conta = await db.ContasBancarias.FirstOrDefaultAsync(
@@ -150,15 +154,16 @@ public sealed class ContasBancariasService : IContasBancariasService
 
 	/// <inheritdoc />
 	public async Task<ResultadoTabelaApoio<ContaBancariaDto>> ExcluirAsync(
+		TitularCadastro titular,
 		decimal sqPesCli,
 		decimal sqConta,
 		CancellationToken cancellationToken = default)
 	{
 		await using var db = CriarContexto();
 
-		if (await AbrirAssociadoAsync(db, sqPesCli, cancellationToken) is not decimal emp)
+		if (await AbrirTitularAsync(db, titular, sqPesCli, cancellationToken) is not decimal emp)
 		{
-			return NaoEncontrado<ContaBancariaDto>("Associado não encontrado.");
+			return NaoEncontrado<ContaBancariaDto>(AcessoTitular.NaoEncontrado(titular));
 		}
 
 		var dto = await ObterAsync(db, emp, sqPesCli, sqConta, cancellationToken);
@@ -190,24 +195,15 @@ public sealed class ContasBancariasService : IContasBancariasService
 	}
 
 	/// <summary>
-	/// Empresa da base, quando o associado existe e está no escopo do usuário.
+	/// Empresa da base quando o titular (associado no escopo do usuário, ou
+	/// corretor não excluído) existe; null para tratar como não encontrado.
 	/// </summary>
-	private async Task<decimal?> AbrirAssociadoAsync(
+	private Task<decimal?> AbrirTitularAsync(
 		SigeraDbContext db,
-		decimal sqPesCli,
-		CancellationToken cancellationToken)
-	{
-		var escopo = await _escopoAcesso.ObterEscopoAsync(cancellationToken);
-
-		if (escopo.SemAcesso || await ObterEmpresaAsync(db, cancellationToken) is not decimal emp)
-		{
-			return null;
-		}
-
-		return await AcessoAssociado.PermitidoAsync(db, emp, sqPesCli, escopo, cancellationToken)
-			? emp
-			: null;
-	}
+		TitularCadastro titular,
+		decimal sqPes,
+		CancellationToken cancellationToken) =>
+		AcessoTitular.AbrirAsync(db, _escopoAcesso, titular, sqPes, cancellationToken);
 
 	private static async Task<string?> ValidarBancoAsync(
 		SigeraDbContext db,

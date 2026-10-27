@@ -1,4 +1,4 @@
-# SigeraAssociados API — Roteiro de testes no Postman
+﻿# SigeraAssociados API — Roteiro de testes no Postman
 
 Siga na ordem e marque cada item. Os números são os nomes das requisições na coleção (por exemplo, **05.2**). A coluna **Esperado** é o status que deve aparecer no canto direito da resposta. A aba **Test Results** também mostra *PASS* ou *FAIL*.
 
@@ -110,7 +110,24 @@ Antes de começar:
 | [ ] | 16.5 | Representante de outra filial | Corretor J de outra filial | **400** |
 | [ ] | 16.5 | Representante sem filial | Tire `cdFil` | **400** |
 | [ ] | 16.5 | Situação ou tipo fora da lista | `"cdSituacao": 3` ou `"tipo": 3` | **400** |
+| [ ] | 16.11 | Pesquisa da parametrização | `tipo`, `sqAgente` e `sqGerenteVendas` do 16.9/16.10 | **200**, só corretores com esses valores; linhas com `agente` e `gerenteVendas` |
+| [ ] | 16.11 | Pesquisa com TODOS | `tipo=0` e `cdSituacao=0` | **200**, mesmo total de quando os filtros são desmarcados |
+| [ ] | 16.11 | Classificação fora da lista | `tipo=3` | **400** |
+| [ ] | 16.12 | Parametrizar corretor | `sqPesCorretor` do 16.3, agente e gerente do 16.9/16.10 | **200**, linha com classificação, status e nomes novos; 16.2 mostra o resto do cadastro igual |
+| [ ] | 16.12 | Parametrizar limpando agente e gerente | `"sqAgente": null, "sqGerenteVendas": null` | **200**, `agente` e `gerenteVendas` nulos |
+| [ ] | 16.12 | Parametrizar com agente inexistente | `"sqAgente": 99999999` | **400** "não está cadastrado" |
+| [ ] | 16.12 | Parametrizar sem tipo ou com status 3 | Tire `tipo` ou `"cdSituacao": 3` | **400** |
+| [ ] | 16.12 | Parametrizar como Corretor ou Atendimento | Outro usuário | **403** |
 | [ ] | 16.9 | Excluir agente usado por corretor | — | **409** |
+| [ ] | 17.1 | Endereços do corretor de teste | `sqPesCorretor` do 16.3 | **200** |
+| [ ] | 17.2 | Incluir endereço no corretor | Como administrador | **201**, principal |
+| [ ] | 17.3 | Incluir telefone no corretor | — | **201** |
+| [ ] | 17.4 | Incluir conta no corretor | `cdBanco` do 11.5 | **201** |
+| [ ] | 17.5 | Incluir referência no corretor | — | **201** |
+| [ ] | 17.6 | Incluir chave Pix no corretor | — | **201** |
+| [ ] | 17.2 | Incluir como Atendimento | Outro usuário | **403** |
+| [ ] | 17.1 | Corretor excluído | Depois do 16.6 | **404** "Corretor não encontrado" |
+| [ ] | 04.x | Associado que também é corretor | Listar endereços pelo associado e pelo corretor | Mesma lista nas duas rotas |
 | [ ] | 16.2 | Detalhe como administrador | — | **200**, com `senhaRepresentante` |
 | [ ] | 16.2 | Detalhe como Atendimento | Outro usuário | **200**, `senhaRepresentante` nula |
 | [ ] | 16.5 | Alterar trocando o tipo para J | `"tipoPessoa": "J"` | **400** |

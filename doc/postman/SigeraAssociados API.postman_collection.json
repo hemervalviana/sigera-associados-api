@@ -1,4 +1,4 @@
-{
+﻿{
   "info": {
     "_postman_id": "7110bc6d-78fe-4d5c-93bf-57d0b1d0652a",
     "name": "SigeraAssociados API",
@@ -5378,7 +5378,7 @@
                 }
               ]
             },
-            "description": "Pesquisa corretores não excluídos e coerentes com o tipo. `busca`: CPF, CNPJ, código ou começo do nome. Filtros opcionais: `cdFil`, `tipoPessoa` (F/J), `cdSituacao`. Sem senha."
+            "description": "Pesquisa corretores não excluídos e coerentes com o tipo. `busca`: CPF, CNPJ, código ou começo do nome. Filtros opcionais: `cdFil`, `tipoPessoa` (F/J), `cdSituacao`, `tipo` (1/2), `sqAgente`, `sqGerenteVendas`. Cada linha traz agente e gerente. Sem senha."
           },
           "response": [],
           "event": [
@@ -5749,7 +5749,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"sqAgente\", pm.response.json().item.sqAgente);"
                 ]
               }
             }
@@ -5785,6 +5786,419 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"descricao\": \"GERENTE TESTE API\",\n  \"percentualComissao\": 2.5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"sqGerenteVendas\", pm.response.json().item.sqGerenteVendas);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.11 - Pesquisa da parametrização (tipo, status, agente, gerente)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores?tipo=1&cdSituacao=1&sqAgente={{sqAgente}}&sqGerenteVendas={{sqGerenteVendas}}&pagina=1&tamanhoPagina=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores"
+              ],
+              "query": [
+                {
+                  "key": "tipo",
+                  "value": "1"
+                },
+                {
+                  "key": "cdSituacao",
+                  "value": "1"
+                },
+                {
+                  "key": "sqAgente",
+                  "value": "{{sqAgente}}"
+                },
+                {
+                  "key": "sqGerenteVendas",
+                  "value": "{{sqGerenteVendas}}"
+                },
+                {
+                  "key": "pagina",
+                  "value": "1"
+                },
+                {
+                  "key": "tamanhoPagina",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Lista da tela de parametrização: filtros de classificação (`tipo`), status (`cdSituacao`), agente e gerente; cada linha traz os nomes. Desmarque os filtros que não quiser."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.12 - Parametrizar corretor (Administradores e Gestores)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/{{sqPesCorretor}}/parametrizacao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "{{sqPesCorretor}}",
+                "parametrizacao"
+              ]
+            },
+            "description": "Troca só classificação (`tipo` 1/2), status (`cdSituacao` 1/2), agente e gerente. Envie os quatro: agente ou gerente `null` limpa. O resto do cadastro não muda. Devolve a linha da pesquisa.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": 2,\n  \"cdSituacao\": 1,\n  \"sqAgente\": {{sqAgente}},\n  \"sqGerenteVendas\": {{sqGerenteVendas}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "17 - Endereços, telefones, contas, referências e Pix do corretor",
+      "description": "Mesmas tabelas e regras do associado, em `/api/corretores/{sqPesCorretor}/...`. Consultar: quem tem acesso ao sistema; gravar: Administradores e Gestores. Use o corretor do 16.3 (`sqPesCorretor`).",
+      "item": [
+        {
+          "name": "17.1 - Listar endereços do corretor",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/{{sqPesCorretor}}/enderecos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "{{sqPesCorretor}}",
+                "enderecos"
+              ]
+            },
+            "description": "Endereços do corretor `sqPesCorretor`. Troque `enderecos` por `telefones`, `contas`, `referencias` ou `pix` para as outras listas."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 404)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.2 - Incluir endereço no corretor (Administradores e Gestores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/{{sqPesCorretor}}/enderecos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "{{sqPesCorretor}}",
+                "enderecos"
+              ]
+            },
+            "description": "Inclui endereço no corretor `sqPesCorretor`, com as mesmas regras do associado (pasta 10).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdTipo\": 1,\n  \"logradouro\": \"RUA TESTE API\",\n  \"numero\": 100,\n  \"complemento\": null,\n  \"bairro\": \"CENTRO\",\n  \"cep\": \"63010-000\",\n  \"cdMunicipio\": 2307304,\n  \"principal\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.3 - Incluir telefone no corretor (Administradores e Gestores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/{{sqPesCorretor}}/telefones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "{{sqPesCorretor}}",
+                "telefones"
+              ]
+            },
+            "description": "Inclui telefone no corretor `sqPesCorretor`, com as mesmas regras do associado (pasta 12).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ddd\": 88,\n  \"numero\": \"99999-1234\",\n  \"cdTipo\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.4 - Incluir conta bancária no corretor (Administradores e Gestores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/{{sqPesCorretor}}/contas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "{{sqPesCorretor}}",
+                "contas"
+              ]
+            },
+            "description": "Inclui conta bancária no corretor `sqPesCorretor`, com as mesmas regras do associado (pasta 11).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdBanco\": 104,\n  \"digitoBanco\": null,\n  \"agencia\": 1234,\n  \"digitoAgencia\": \"5\",\n  \"numeroConta\": 123456,\n  \"digitoConta\": \"7\",\n  \"operacao\": \"013\",\n  \"cdTipoConta\": 1,\n  \"titular\": \"TESTE API\",\n  \"chavePix\": null,\n  \"identificador\": null,\n  \"identificadorCef\": null,\n  \"cdSituacao\": 1,\n  \"enviarOptanteCef\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.5 - Incluir referência no corretor (Administradores e Gestores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/{{sqPesCorretor}}/referencias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "{{sqPesCorretor}}",
+                "referencias"
+              ]
+            },
+            "description": "Inclui referência no corretor `sqPesCorretor`, com as mesmas regras do associado (pasta 14).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"REFERENCIA TESTE API\",\n  \"dataNascimento\": \"1970-05-20\",\n  \"telefone1\": \"(88) 99999-1234\",\n  \"telefone2\": \"(88) 3521-1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17.6 - Incluir chave Pix no corretor (Administradores e Gestores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/{{sqPesCorretor}}/pix",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "{{sqPesCorretor}}",
+                "pix"
+              ]
+            },
+            "description": "Inclui chave Pix no corretor `sqPesCorretor`, com as mesmas regras do associado (pasta 13).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdTipo\": 2,\n  \"chave\": \"+55 (88) 99999-1234\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -5992,6 +6406,16 @@
       "key": "sqPesCorretor",
       "value": "",
       "description": "Preenchido pelo 10.2 (endereço do associado de teste)."
+    },
+    {
+      "key": "sqAgente",
+      "description": "Preenchido pelo 16.9 (agente de teste).",
+      "value": ""
+    },
+    {
+      "key": "sqGerenteVendas",
+      "description": "Preenchido pelo 16.10 (gerente de vendas de teste).",
+      "value": ""
     }
   ]
 }

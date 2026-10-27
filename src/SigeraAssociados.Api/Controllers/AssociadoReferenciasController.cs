@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using SigeraAssociados.Application.Pessoas;
 using Microsoft.AspNetCore.Mvc;
 using SigeraAssociados.Api.Erros;
 using SigeraAssociados.Application.Cadastros;
@@ -42,7 +43,7 @@ public sealed class AssociadoReferenciasController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Listar(decimal sqPesCli, CancellationToken cancellationToken)
 	{
-		var referencias = await _referencias.ListarAsync(sqPesCli, cancellationToken);
+		var referencias = await _referencias.ListarAsync(TitularCadastro.Associado, sqPesCli, cancellationToken);
 
 		return referencias is null
 			? this.Erro(StatusCodes.Status404NotFound, "Associado não encontrado.")
@@ -79,7 +80,7 @@ public sealed class AssociadoReferenciasController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
 	public async Task<IActionResult> Incluir(decimal sqPesCli, [FromBody] ReferenciaAssociadoDados dados, CancellationToken cancellationToken)
 	{
-		var resultado = await _referencias.IncluirAsync(sqPesCli, dados, cancellationToken);
+		var resultado = await _referencias.IncluirAsync(TitularCadastro.Associado, sqPesCli, dados, cancellationToken);
 		Registrar(resultado.Status, "Referência incluída", sqPesCli, resultado.Item?.SqReferencia);
 		return this.Converter(resultado, criado: true);
 	}
@@ -104,7 +105,7 @@ public sealed class AssociadoReferenciasController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
 	public async Task<IActionResult> Alterar(decimal sqPesCli, decimal sqReferencia, [FromBody] ReferenciaAssociadoDados dados, CancellationToken cancellationToken)
 	{
-		var resultado = await _referencias.AlterarAsync(sqPesCli, sqReferencia, dados, cancellationToken);
+		var resultado = await _referencias.AlterarAsync(TitularCadastro.Associado, sqPesCli, sqReferencia, dados, cancellationToken);
 		Registrar(resultado.Status, "Referência alterada", sqPesCli, sqReferencia);
 		return this.Converter(resultado);
 	}
@@ -122,7 +123,7 @@ public sealed class AssociadoReferenciasController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Excluir(decimal sqPesCli, decimal sqReferencia, CancellationToken cancellationToken)
 	{
-		var resultado = await _referencias.ExcluirAsync(sqPesCli, sqReferencia, cancellationToken);
+		var resultado = await _referencias.ExcluirAsync(TitularCadastro.Associado, sqPesCli, sqReferencia, cancellationToken);
 		Registrar(resultado.Status, "Referência excluída", sqPesCli, sqReferencia);
 		return this.Converter(resultado);
 	}

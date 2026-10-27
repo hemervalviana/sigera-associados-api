@@ -3,7 +3,8 @@ using SigeraAssociados.Application.Cadastros;
 using SigeraAssociados.Application.Enderecos;
 using SigeraAssociados.Application.Interfaces.Acesso;
 using SigeraAssociados.Application.Interfaces.Enderecos;
-using SigeraAssociados.Infrastructure.Associados;
+using SigeraAssociados.Application.Pessoas;
+using SigeraAssociados.Infrastructure.Pessoas;
 using SigeraAssociados.Infrastructure.Persistence.Context;
 using SigeraAssociados.Infrastructure.Persistence.Entities;
 using SigeraAssociados.Infrastructure.Persistence.Factories;
@@ -34,12 +35,13 @@ public sealed class EnderecosAssociadoService : IEnderecosAssociadoService
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<EnderecoAssociadoDto>?> ListarAsync(
+		TitularCadastro titular,
 		decimal sqPesCli,
 		CancellationToken cancellationToken = default)
 	{
 		await using var db = CriarContexto();
 
-		if (await AbrirAssociadoAsync(db, sqPesCli, cancellationToken) is not decimal emp)
+		if (await AbrirTitularAsync(db, titular, sqPesCli, cancellationToken) is not decimal emp)
 		{
 			return null;
 		}
@@ -51,6 +53,7 @@ public sealed class EnderecosAssociadoService : IEnderecosAssociadoService
 
 	/// <inheritdoc />
 	public async Task<ResultadoTabelaApoio<EnderecoAssociadoDto>> IncluirAsync(
+		TitularCadastro titular,
 		decimal sqPesCli,
 		EnderecoAssociadoDados dados,
 		CancellationToken cancellationToken = default)
@@ -62,9 +65,9 @@ public sealed class EnderecosAssociadoService : IEnderecosAssociadoService
 
 		await using var db = CriarContexto();
 
-		if (await AbrirAssociadoAsync(db, sqPesCli, cancellationToken) is not decimal emp)
+		if (await AbrirTitularAsync(db, titular, sqPesCli, cancellationToken) is not decimal emp)
 		{
-			return NaoEncontrado<EnderecoAssociadoDto>("Associado não encontrado.");
+			return NaoEncontrado<EnderecoAssociadoDto>(AcessoTitular.NaoEncontrado(titular));
 		}
 
 		if (await ValidarReferenciasAsync(db, emp, dados, cancellationToken) is string erroReferencia)
@@ -112,6 +115,7 @@ public sealed class EnderecosAssociadoService : IEnderecosAssociadoService
 
 	/// <inheritdoc />
 	public async Task<ResultadoTabelaApoio<EnderecoAssociadoDto>> AlterarAsync(
+		TitularCadastro titular,
 		decimal sqPesCli,
 		decimal sqEndereco,
 		EnderecoAssociadoDados dados,
@@ -124,9 +128,9 @@ public sealed class EnderecosAssociadoService : IEnderecosAssociadoService
 
 		await using var db = CriarContexto();
 
-		if (await AbrirAssociadoAsync(db, sqPesCli, cancellationToken) is not decimal emp)
+		if (await AbrirTitularAsync(db, titular, sqPesCli, cancellationToken) is not decimal emp)
 		{
-			return NaoEncontrado<EnderecoAssociadoDto>("Associado não encontrado.");
+			return NaoEncontrado<EnderecoAssociadoDto>(AcessoTitular.NaoEncontrado(titular));
 		}
 
 		var enderecos = await db.Enderecos
@@ -185,15 +189,16 @@ public sealed class EnderecosAssociadoService : IEnderecosAssociadoService
 
 	/// <inheritdoc />
 	public async Task<ResultadoTabelaApoio<EnderecoAssociadoDto>> ExcluirAsync(
+		TitularCadastro titular,
 		decimal sqPesCli,
 		decimal sqEndereco,
 		CancellationToken cancellationToken = default)
 	{
 		await using var db = CriarContexto();
 
-		if (await AbrirAssociadoAsync(db, sqPesCli, cancellationToken) is not decimal emp)
+		if (await AbrirTitularAsync(db, titular, sqPesCli, cancellationToken) is not decimal emp)
 		{
-			return NaoEncontrado<EnderecoAssociadoDto>("Associado não encontrado.");
+			return NaoEncontrado<EnderecoAssociadoDto>(AcessoTitular.NaoEncontrado(titular));
 		}
 
 		var dto = await ObterAsync(db, emp, sqPesCli, sqEndereco, cancellationToken);
@@ -248,24 +253,15 @@ public sealed class EnderecosAssociadoService : IEnderecosAssociadoService
 	}
 
 	/// <summary>
-	/// Empresa da base, quando o associado existe e está no escopo do usuário.
+	/// Empresa da base quando o titular (associado no escopo do usuário, ou
+	/// corretor não excluído) existe; null para tratar como não encontrado.
 	/// </summary>
-	private async Task<decimal?> AbrirAssociadoAsync(
+	private Task<decimal?> AbrirTitularAsync(
 		SigeraDbContext db,
-		decimal sqPesCli,
-		CancellationToken cancellationToken)
-	{
-		var escopo = await _escopoAcesso.ObterEscopoAsync(cancellationToken);
-
-		if (escopo.SemAcesso || await ObterEmpresaAsync(db, cancellationToken) is not decimal emp)
-		{
-			return null;
-		}
-
-		return await AcessoAssociado.PermitidoAsync(db, emp, sqPesCli, escopo, cancellationToken)
-			? emp
-			: null;
-	}
+		TitularCadastro titular,
+		decimal sqPes,
+		CancellationToken cancellationToken) =>
+		AcessoTitular.AbrirAsync(db, _escopoAcesso, titular, sqPes, cancellationToken);
 
 	private static async Task<string?> ValidarReferenciasAsync(
 		SigeraDbContext db,

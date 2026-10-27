@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using SigeraAssociados.Application.Pessoas;
 using Microsoft.AspNetCore.Mvc;
 using SigeraAssociados.Api.Erros;
 using SigeraAssociados.Application.Cadastros;
@@ -42,7 +43,7 @@ public sealed class AssociadoTelefonesController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Listar(decimal sqPesCli, CancellationToken cancellationToken)
 	{
-		var telefones = await _telefones.ListarAsync(sqPesCli, cancellationToken);
+		var telefones = await _telefones.ListarAsync(TitularCadastro.Associado, sqPesCli, cancellationToken);
 
 		return telefones is null
 			? this.Erro(StatusCodes.Status404NotFound, "Associado não encontrado.")
@@ -77,7 +78,7 @@ public sealed class AssociadoTelefonesController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
 	public async Task<IActionResult> Incluir(decimal sqPesCli, [FromBody] TelefoneAssociadoDados dados, CancellationToken cancellationToken)
 	{
-		var resultado = await _telefones.IncluirAsync(sqPesCli, dados, cancellationToken);
+		var resultado = await _telefones.IncluirAsync(TitularCadastro.Associado, sqPesCli, dados, cancellationToken);
 		Registrar(resultado.Status, "Telefone incluído", sqPesCli, resultado.Item?.SqTelefone);
 		return this.Converter(resultado, criado: true);
 	}
@@ -102,7 +103,7 @@ public sealed class AssociadoTelefonesController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
 	public async Task<IActionResult> Alterar(decimal sqPesCli, decimal sqTelefone, [FromBody] TelefoneAssociadoDados dados, CancellationToken cancellationToken)
 	{
-		var resultado = await _telefones.AlterarAsync(sqPesCli, sqTelefone, dados, cancellationToken);
+		var resultado = await _telefones.AlterarAsync(TitularCadastro.Associado, sqPesCli, sqTelefone, dados, cancellationToken);
 		Registrar(resultado.Status, "Telefone alterado", sqPesCli, sqTelefone);
 		return this.Converter(resultado);
 	}
@@ -120,7 +121,7 @@ public sealed class AssociadoTelefonesController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Excluir(decimal sqPesCli, decimal sqTelefone, CancellationToken cancellationToken)
 	{
-		var resultado = await _telefones.ExcluirAsync(sqPesCli, sqTelefone, cancellationToken);
+		var resultado = await _telefones.ExcluirAsync(TitularCadastro.Associado, sqPesCli, sqTelefone, cancellationToken);
 		Registrar(resultado.Status, "Telefone excluído", sqPesCli, sqTelefone);
 		return this.Converter(resultado);
 	}

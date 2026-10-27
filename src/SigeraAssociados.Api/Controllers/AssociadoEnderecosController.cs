@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using SigeraAssociados.Application.Pessoas;
 using Microsoft.AspNetCore.Mvc;
 using SigeraAssociados.Api.Erros;
 using SigeraAssociados.Application.Cadastros;
@@ -43,7 +44,7 @@ public sealed class AssociadoEnderecosController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Listar(decimal sqPesCli, CancellationToken cancellationToken)
 	{
-		var enderecos = await _enderecos.ListarAsync(sqPesCli, cancellationToken);
+		var enderecos = await _enderecos.ListarAsync(TitularCadastro.Associado, sqPesCli, cancellationToken);
 
 		return enderecos is null
 			? this.Erro(StatusCodes.Status404NotFound, "Associado não encontrado.")
@@ -83,7 +84,7 @@ public sealed class AssociadoEnderecosController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Incluir(decimal sqPesCli, [FromBody] EnderecoAssociadoDados dados, CancellationToken cancellationToken)
 	{
-		var resultado = await _enderecos.IncluirAsync(sqPesCli, dados, cancellationToken);
+		var resultado = await _enderecos.IncluirAsync(TitularCadastro.Associado, sqPesCli, dados, cancellationToken);
 		Registrar(resultado.Status, "Endereço incluído", sqPesCli, resultado.Item?.SqEndereco);
 		return this.Converter(resultado, criado: true);
 	}
@@ -110,7 +111,7 @@ public sealed class AssociadoEnderecosController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Alterar(decimal sqPesCli, decimal sqEndereco, [FromBody] EnderecoAssociadoDados dados, CancellationToken cancellationToken)
 	{
-		var resultado = await _enderecos.AlterarAsync(sqPesCli, sqEndereco, dados, cancellationToken);
+		var resultado = await _enderecos.AlterarAsync(TitularCadastro.Associado, sqPesCli, sqEndereco, dados, cancellationToken);
 		Registrar(resultado.Status, "Endereço alterado", sqPesCli, sqEndereco);
 		return this.Converter(resultado);
 	}
@@ -131,7 +132,7 @@ public sealed class AssociadoEnderecosController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Excluir(decimal sqPesCli, decimal sqEndereco, CancellationToken cancellationToken)
 	{
-		var resultado = await _enderecos.ExcluirAsync(sqPesCli, sqEndereco, cancellationToken);
+		var resultado = await _enderecos.ExcluirAsync(TitularCadastro.Associado, sqPesCli, sqEndereco, cancellationToken);
 		Registrar(resultado.Status, "Endereço excluído", sqPesCli, sqEndereco);
 		return this.Converter(resultado);
 	}

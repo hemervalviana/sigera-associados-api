@@ -206,6 +206,36 @@ public sealed class CorretorResumoDto
 
 	/// <summary>CORRETOR ou COLABORADOR.</summary>
 	public string? DescricaoTipo { get; init; }
+
+	public decimal? SqAgente { get; init; }
+
+	/// <summary>Nome do agente.</summary>
+	public string? Agente { get; init; }
+
+	public decimal? SqGerenteVendas { get; init; }
+
+	/// <summary>Nome do gerente de vendas.</summary>
+	public string? GerenteVendas { get; init; }
+}
+
+/// <summary>
+/// Parametrização do corretor: só classificação, status, agente e gerente
+/// (T009CRRT.TP_CRRT, CD_SIT_CRRT, SQ_AGEN e SQ_GVED). Envie sempre os
+/// quatro: agente ou gerente nulo limpa o campo.
+/// </summary>
+public sealed class ParametrizacaoCorretorDados
+{
+	/// <summary>Classificação (TP_CRRT): 1 = CORRETOR, 2 = COLABORADOR. Obrigatória.</summary>
+	public int? Tipo { get; init; }
+
+	/// <summary>Status (CD_SIT_CRRT): 1 = ATIVO, 2 = INATIVO. Obrigatório.</summary>
+	public decimal? CdSituacao { get; init; }
+
+	/// <summary>Agente (SQ_AGEN), de GET /api/corretores/agentes. Nulo: sem agente.</summary>
+	public decimal? SqAgente { get; init; }
+
+	/// <summary>Gerente de vendas (SQ_GVED), de GET /api/corretores/gerentes-vendas. Nulo: sem gerente.</summary>
+	public decimal? SqGerenteVendas { get; init; }
 }
 
 public sealed class PesquisaCorretoresRequest
@@ -219,6 +249,15 @@ public sealed class PesquisaCorretoresRequest
 	public string? TipoPessoa { get; init; }
 
 	public decimal? CdSituacao { get; init; }
+
+	/// <summary>Classificação (TP_CRRT): 0 ou omitido = TODOS, 1 = CORRETOR, 2 = COLABORADOR.</summary>
+	public int? Tipo { get; init; }
+
+	/// <summary>Agente (SQ_AGEN) (opcional).</summary>
+	public decimal? SqAgente { get; init; }
+
+	/// <summary>Gerente de vendas (SQ_GVED) (opcional).</summary>
+	public decimal? SqGerenteVendas { get; init; }
 
 	public int Pagina { get; init; } = 1;
 

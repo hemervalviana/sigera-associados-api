@@ -3,7 +3,8 @@ using SigeraAssociados.Application.Cadastros;
 using SigeraAssociados.Application.Interfaces.Acesso;
 using SigeraAssociados.Application.Interfaces.Pix;
 using SigeraAssociados.Application.Pix;
-using SigeraAssociados.Infrastructure.Associados;
+using SigeraAssociados.Application.Pessoas;
+using SigeraAssociados.Infrastructure.Pessoas;
 using SigeraAssociados.Infrastructure.Persistence.Context;
 using SigeraAssociados.Infrastructure.Persistence.Entities;
 using SigeraAssociados.Infrastructure.Persistence.Factories;
@@ -34,12 +35,13 @@ public sealed class ChavesPixService : IChavesPixService
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<ChavePixDto>?> ListarAsync(
+		TitularCadastro titular,
 		decimal sqPesCli,
 		CancellationToken cancellationToken = default)
 	{
 		await using var db = CriarContexto();
 
-		if (await AbrirAssociadoAsync(db, sqPesCli, cancellationToken) is not decimal emp)
+		if (await AbrirTitularAsync(db, titular, sqPesCli, cancellationToken) is not decimal emp)
 		{
 			return null;
 		}
@@ -51,6 +53,7 @@ public sealed class ChavesPixService : IChavesPixService
 
 	/// <inheritdoc />
 	public async Task<ResultadoTabelaApoio<ChavePixDto>> IncluirAsync(
+		TitularCadastro titular,
 		decimal sqPesCli,
 		ChavePixDados dados,
 		CancellationToken cancellationToken = default)
@@ -62,9 +65,9 @@ public sealed class ChavesPixService : IChavesPixService
 
 		await using var db = CriarContexto();
 
-		if (await AbrirAssociadoAsync(db, sqPesCli, cancellationToken) is not decimal emp)
+		if (await AbrirTitularAsync(db, titular, sqPesCli, cancellationToken) is not decimal emp)
 		{
-			return NaoEncontrado<ChavePixDto>("Associado não encontrado.");
+			return NaoEncontrado<ChavePixDto>(AcessoTitular.NaoEncontrado(titular));
 		}
 
 		if (await DuplicadaAsync(db, emp, sqPesCli, null, dados, cancellationToken))
@@ -99,6 +102,7 @@ public sealed class ChavesPixService : IChavesPixService
 
 	/// <inheritdoc />
 	public async Task<ResultadoTabelaApoio<ChavePixDto>> AlterarAsync(
+		TitularCadastro titular,
 		decimal sqPesCli,
 		decimal sqPix,
 		ChavePixDados dados,
@@ -111,9 +115,9 @@ public sealed class ChavesPixService : IChavesPixService
 
 		await using var db = CriarContexto();
 
-		if (await AbrirAssociadoAsync(db, sqPesCli, cancellationToken) is not decimal emp)
+		if (await AbrirTitularAsync(db, titular, sqPesCli, cancellationToken) is not decimal emp)
 		{
-			return NaoEncontrado<ChavePixDto>("Associado não encontrado.");
+			return NaoEncontrado<ChavePixDto>(AcessoTitular.NaoEncontrado(titular));
 		}
 
 		var chave = await db.ChavesPix.FirstOrDefaultAsync(
@@ -142,15 +146,16 @@ public sealed class ChavesPixService : IChavesPixService
 
 	/// <inheritdoc />
 	public async Task<ResultadoTabelaApoio<ChavePixDto>> ExcluirAsync(
+		TitularCadastro titular,
 		decimal sqPesCli,
 		decimal sqPix,
 		CancellationToken cancellationToken = default)
 	{
 		await using var db = CriarContexto();
 
-		if (await AbrirAssociadoAsync(db, sqPesCli, cancellationToken) is not decimal emp)
+		if (await AbrirTitularAsync(db, titular, sqPesCli, cancellationToken) is not decimal emp)
 		{
-			return NaoEncontrado<ChavePixDto>("Associado não encontrado.");
+			return NaoEncontrado<ChavePixDto>(AcessoTitular.NaoEncontrado(titular));
 		}
 
 		var chave = await db.ChavesPix.FirstOrDefaultAsync(
@@ -181,24 +186,15 @@ public sealed class ChavesPixService : IChavesPixService
 	}
 
 	/// <summary>
-	/// Empresa da base, quando o associado existe e está no escopo do usuário.
+	/// Empresa da base quando o titular (associado no escopo do usuário, ou
+	/// corretor não excluído) existe; null para tratar como não encontrado.
 	/// </summary>
-	private async Task<decimal?> AbrirAssociadoAsync(
+	private Task<decimal?> AbrirTitularAsync(
 		SigeraDbContext db,
-		decimal sqPesCli,
-		CancellationToken cancellationToken)
-	{
-		var escopo = await _escopoAcesso.ObterEscopoAsync(cancellationToken);
-
-		if (escopo.SemAcesso || await ObterEmpresaAsync(db, cancellationToken) is not decimal emp)
-		{
-			return null;
-		}
-
-		return await AcessoAssociado.PermitidoAsync(db, emp, sqPesCli, escopo, cancellationToken)
-			? emp
-			: null;
-	}
+		TitularCadastro titular,
+		decimal sqPes,
+		CancellationToken cancellationToken) =>
+		AcessoTitular.AbrirAsync(db, _escopoAcesso, titular, sqPes, cancellationToken);
 
 	private static IQueryable<T009PIX> Consultar(SigeraDbContext db, decimal emp, decimal sqPesCli) =>
 		db.ChavesPix

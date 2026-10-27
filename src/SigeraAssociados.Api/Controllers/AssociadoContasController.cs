@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using SigeraAssociados.Application.Pessoas;
 using Microsoft.AspNetCore.Mvc;
 using SigeraAssociados.Api.Erros;
 using SigeraAssociados.Application.Cadastros;
@@ -42,7 +43,7 @@ public sealed class AssociadoContasController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Listar(decimal sqPesCli, CancellationToken cancellationToken)
 	{
-		var contas = await _contas.ListarAsync(sqPesCli, cancellationToken);
+		var contas = await _contas.ListarAsync(TitularCadastro.Associado, sqPesCli, cancellationToken);
 
 		return contas is null
 			? this.Erro(StatusCodes.Status404NotFound, "Associado não encontrado.")
@@ -88,7 +89,7 @@ public sealed class AssociadoContasController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
 	public async Task<IActionResult> Incluir(decimal sqPesCli, [FromBody] ContaBancariaDados dados, CancellationToken cancellationToken)
 	{
-		var resultado = await _contas.IncluirAsync(sqPesCli, dados, cancellationToken);
+		var resultado = await _contas.IncluirAsync(TitularCadastro.Associado, sqPesCli, dados, cancellationToken);
 		Registrar(resultado.Status, "Conta incluída", sqPesCli, resultado.Item?.SqConta);
 		return this.Converter(resultado, criado: true);
 	}
@@ -112,7 +113,7 @@ public sealed class AssociadoContasController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
 	public async Task<IActionResult> Alterar(decimal sqPesCli, decimal sqConta, [FromBody] ContaBancariaDados dados, CancellationToken cancellationToken)
 	{
-		var resultado = await _contas.AlterarAsync(sqPesCli, sqConta, dados, cancellationToken);
+		var resultado = await _contas.AlterarAsync(TitularCadastro.Associado, sqPesCli, sqConta, dados, cancellationToken);
 		Registrar(resultado.Status, "Conta alterada", sqPesCli, sqConta);
 		return this.Converter(resultado);
 	}
@@ -132,7 +133,7 @@ public sealed class AssociadoContasController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
 	public async Task<IActionResult> Excluir(decimal sqPesCli, decimal sqConta, CancellationToken cancellationToken)
 	{
-		var resultado = await _contas.ExcluirAsync(sqPesCli, sqConta, cancellationToken);
+		var resultado = await _contas.ExcluirAsync(TitularCadastro.Associado, sqPesCli, sqConta, cancellationToken);
 		Registrar(resultado.Status, "Conta excluída", sqPesCli, sqConta);
 		return this.Converter(resultado);
 	}

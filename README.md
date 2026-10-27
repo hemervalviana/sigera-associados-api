@@ -1,4 +1,4 @@
-# SigeraAssociados API
+﻿# SigeraAssociados API
 
 API REST em **C# / ASP.NET Core (.NET 10)** para consultar associados dos sistemas **PROASP, SONASP, ABSP e GSP**, com autenticação JWT, controle de acesso por sistema, filial e carteira do corretor, e gestão de usuários.
 
@@ -294,12 +294,15 @@ Implementação: `Api/Erros/RespostasErro.cs` (formato e títulos), `Api/Erros/T
 | PUT / DELETE | `/api/associados/{sqPesCli}/creditos/{sqCredito}` | Conforme acessos; DELETE só Admin e Gestores, e só com valor = saldo |
 | GET | `/api/cadastros/formas-pagamento`, `/api/cadastros/produtos`, `/api/convenios`, `/api/convenios/{cdCvn}`, `/api/convenios/tipos-governo` | Quem tem acesso ao sistema |
 | POST / PUT / DELETE | `/api/cadastros/formas-pagamento`, `/api/cadastros/produtos`, `/api/convenios` (PUT e DELETE com `/{codigo}` ou `/{cdCvn}`) | Admin |
-| GET | `/api/corretores?busca=&cdFil=&tipoPessoa=&cdSituacao=`, `/api/corretores/{sqPesCorretor}` | Quem tem acesso ao sistema (senha do representante só para Admin e Gestores) |
+| GET | `/api/corretores?busca=&cdFil=&tipoPessoa=&cdSituacao=&tipo=&sqAgente=&sqGerenteVendas=`, `/api/corretores/{sqPesCorretor}` | Quem tem acesso ao sistema (senha do representante só para Admin e Gestores; cada linha da pesquisa traz classificação, status, agente e gerente; `tipo=0` e `cdSituacao=0` = TODOS) |
 | POST / PUT / DELETE | `/api/corretores` (PUT e DELETE com `/{sqPesCorretor}`) | Admin e Gestores (DELETE = exclusão lógica) |
+| PUT | `/api/corretores/{sqPesCorretor}/parametrizacao` | Admin e Gestores (troca só `tipo`, `cdSituacao`, `sqAgente` e `sqGerenteVendas`) |
 | GET | `/api/corretores/cargos?busca=` | Quem tem acesso ao sistema (T000CARG, mesma tabela de `/api/orgaos/cargos`) |
 | POST / PUT / DELETE | `/api/corretores/cargos` (PUT e DELETE com `/{cdCargo}`) | Admin |
 | GET | `/api/corretores/agentes?busca=`, `/api/corretores/gerentes-vendas?busca=` | Quem tem acesso ao sistema |
 | POST / PUT / DELETE | `/api/corretores/agentes`, `/api/corretores/gerentes-vendas` (PUT e DELETE com `/{codigo}`) | Admin |
+| GET | `/api/corretores/{sqPesCorretor}/enderecos`, `/telefones`, `/contas`, `/referencias`, `/pix` | Quem tem acesso ao sistema (mesmas tabelas e regras do associado) |
+| POST / PUT / DELETE | `/api/corretores/{sqPesCorretor}/enderecos`, `/telefones`, `/contas`, `/referencias`, `/pix` (PUT e DELETE com `/{sequencia}`) | Admin e Gestores |
 | GET / POST | `/api/associados/{sqPesCli}/orgaos` | Conforme acessos (vínculos do associado com órgãos) |
 | PUT / DELETE | `/api/associados/{sqPesCli}/orgaos/{sqOrg}` | Conforme acessos; DELETE só Admin e Gestores |
 | GET | `/api/cadastros/filiais`, `/filiais/{cdFil}`, `/situacoes`, `/tratamentos`, `/municipios?uf=&busca=` | Quem tem acesso ao sistema (`X-Sigera-Sistema`) |

@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using SigeraAssociados.Application.Pessoas;
 using Microsoft.AspNetCore.Mvc;
 using SigeraAssociados.Api.Erros;
 using SigeraAssociados.Application.Cadastros;
@@ -40,7 +41,7 @@ public sealed class AssociadoPixController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Listar(decimal sqPesCli, CancellationToken cancellationToken)
 	{
-		var chaves = await _pix.ListarAsync(sqPesCli, cancellationToken);
+		var chaves = await _pix.ListarAsync(TitularCadastro.Associado, sqPesCli, cancellationToken);
 
 		return chaves is null
 			? this.Erro(StatusCodes.Status404NotFound, "Associado não encontrado.")
@@ -76,7 +77,7 @@ public sealed class AssociadoPixController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
 	public async Task<IActionResult> Incluir(decimal sqPesCli, [FromBody] ChavePixDados dados, CancellationToken cancellationToken)
 	{
-		var resultado = await _pix.IncluirAsync(sqPesCli, dados, cancellationToken);
+		var resultado = await _pix.IncluirAsync(TitularCadastro.Associado, sqPesCli, dados, cancellationToken);
 		Registrar(resultado.Status, "Chave Pix incluída", sqPesCli, resultado.Item?.SqPix);
 		return this.Converter(resultado, criado: true);
 	}
@@ -100,7 +101,7 @@ public sealed class AssociadoPixController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
 	public async Task<IActionResult> Alterar(decimal sqPesCli, decimal sqPix, [FromBody] ChavePixDados dados, CancellationToken cancellationToken)
 	{
-		var resultado = await _pix.AlterarAsync(sqPesCli, sqPix, dados, cancellationToken);
+		var resultado = await _pix.AlterarAsync(TitularCadastro.Associado, sqPesCli, sqPix, dados, cancellationToken);
 		Registrar(resultado.Status, "Chave Pix alterada", sqPesCli, sqPix);
 		return this.Converter(resultado);
 	}
@@ -118,7 +119,7 @@ public sealed class AssociadoPixController : ControllerBase
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
 	public async Task<IActionResult> Excluir(decimal sqPesCli, decimal sqPix, CancellationToken cancellationToken)
 	{
-		var resultado = await _pix.ExcluirAsync(sqPesCli, sqPix, cancellationToken);
+		var resultado = await _pix.ExcluirAsync(TitularCadastro.Associado, sqPesCli, sqPix, cancellationToken);
 		Registrar(resultado.Status, "Chave Pix excluída", sqPesCli, sqPix);
 		return this.Converter(resultado);
 	}

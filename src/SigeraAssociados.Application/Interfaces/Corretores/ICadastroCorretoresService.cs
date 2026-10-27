@@ -25,6 +25,12 @@ public interface ICadastroCorretoresService
 	/// <summary>Altera; o tipo de pessoa não muda.</summary>
 	Task<ResultadoTabelaApoio<CorretorCadastroDto>> AlterarAsync(decimal sqPesCorretor, CadastroCorretorDados dados, CancellationToken cancellationToken = default);
 
+	/// <summary>
+	/// Grava só classificação, status, agente e gerente (tela de parametrização)
+	/// e devolve a linha da pesquisa atualizada.
+	/// </summary>
+	Task<ResultadoTabelaApoio<CorretorResumoDto>> AlterarParametrizacaoAsync(decimal sqPesCorretor, ParametrizacaoCorretorDados dados, CancellationToken cancellationToken = default);
+
 	/// <summary>Exclusão lógica: grava data e usuário em T009CRRT; nada é apagado.</summary>
 	Task<ResultadoTabelaApoio<CorretorCadastroDto>> ExcluirAsync(decimal sqPesCorretor, string login, CancellationToken cancellationToken = default);
 }

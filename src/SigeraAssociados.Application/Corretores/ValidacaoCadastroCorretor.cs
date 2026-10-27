@@ -88,6 +88,33 @@ public static class ValidacaoCadastroCorretor
 		return erro ?? Corretor(dados.Corretor);
 	}
 
+	/// <summary>
+	/// Parametrização: classificação e status obrigatórios e da lista;
+	/// agente e gerente opcionais (nulo limpa).
+	/// </summary>
+	public static string? Parametrizacao(ParametrizacaoCorretorDados? dados)
+	{
+		if (dados is null)
+		{
+			return "Informe a parametrização do corretor.";
+		}
+
+		if (dados.Tipo is null)
+		{
+			return "A classificação (tipo) é obrigatória: 1 (CORRETOR) ou 2 (COLABORADOR).";
+		}
+
+		if (dados.CdSituacao is null)
+		{
+			return "O status (cdSituacao) é obrigatório: 1 (ATIVO) ou 2 (INATIVO).";
+		}
+
+		return (TipoCorretor.Valido(dados.Tipo) ? null : "O campo tipo deve ser 1 (CORRETOR) ou 2 (COLABORADOR).")
+			?? SituacaoAtivoInativo.Corretor.Validar(dados.CdSituacao, "cdSituacao")
+			?? RegrasCampos.Inteiro(dados.SqAgente, 1, 99_999_999, "sqAgente")
+			?? RegrasCampos.Inteiro(dados.SqGerenteVendas, 1, 99_999_999, "sqGerenteVendas");
+	}
+
 	private static string? Fisica(PessoaFisicaDados pf)
 	{
 		if (string.IsNullOrWhiteSpace(pf.Cpf))

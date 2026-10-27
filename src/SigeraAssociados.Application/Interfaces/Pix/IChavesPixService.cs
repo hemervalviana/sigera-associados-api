@@ -1,4 +1,5 @@
 ﻿using SigeraAssociados.Application.Cadastros;
+using SigeraAssociados.Application.Pessoas;
 using SigeraAssociados.Application.Pix;
 
 namespace SigeraAssociados.Application.Interfaces.Pix;
@@ -13,15 +14,15 @@ public interface IChavesPixService
 	/// <summary>
 	/// Null quando o associado não existe, foi excluído ou está fora dos acessos.
 	/// </summary>
-	Task<IReadOnlyList<ChavePixDto>?> ListarAsync(decimal sqPesCli, CancellationToken cancellationToken = default);
+	Task<IReadOnlyList<ChavePixDto>?> ListarAsync(TitularCadastro titular, decimal sqPesCli, CancellationToken cancellationToken = default);
 
 	/// <summary>
 	/// Inclui uma chave; SQ_REG = MAX + 1 da pessoa. Recusa a mesma chave repetida no associado.
 	/// </summary>
-	Task<ResultadoTabelaApoio<ChavePixDto>> IncluirAsync(decimal sqPesCli, ChavePixDados dados, CancellationToken cancellationToken = default);
+	Task<ResultadoTabelaApoio<ChavePixDto>> IncluirAsync(TitularCadastro titular, decimal sqPesCli, ChavePixDados dados, CancellationToken cancellationToken = default);
 
-	Task<ResultadoTabelaApoio<ChavePixDto>> AlterarAsync(decimal sqPesCli, decimal sqPix, ChavePixDados dados, CancellationToken cancellationToken = default);
+	Task<ResultadoTabelaApoio<ChavePixDto>> AlterarAsync(TitularCadastro titular, decimal sqPesCli, decimal sqPix, ChavePixDados dados, CancellationToken cancellationToken = default);
 
 	/// <summary>Exclusão física.</summary>
-	Task<ResultadoTabelaApoio<ChavePixDto>> ExcluirAsync(decimal sqPesCli, decimal sqPix, CancellationToken cancellationToken = default);
+	Task<ResultadoTabelaApoio<ChavePixDto>> ExcluirAsync(TitularCadastro titular, decimal sqPesCli, decimal sqPix, CancellationToken cancellationToken = default);
 }

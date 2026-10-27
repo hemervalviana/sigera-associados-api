@@ -605,6 +605,21 @@ public sealed class GestaoUsuariosEndpointsTests
 	}
 
 	[Theory]
+	[InlineData("Corretores")]
+	[InlineData("Atendimento")]
+	[InlineData("Financeiro")]
+	public async Task ParametrizarCorretor_SemSerAdministradorOuGestor_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.PutAsJsonAsync("/api/corretores/123/parametrizacao",
+			new { tipo = 1, cdSituacao = 1, sqAgente = (decimal?)null, sqGerenteVendas = (decimal?)null });
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	[Theory]
 	[InlineData("Gestores")]
 	[InlineData("Corretores")]
 	public async Task IncluirCargoPeloCorretor_SemSerAdministrador_DeveRetornar403(string grupo)
@@ -630,6 +645,28 @@ public sealed class GestaoUsuariosEndpointsTests
 		using var resposta = await cliente.PostAsJsonAsync(rota, new { descricao = "TESTE" });
 
 		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	// ----- Endereços, telefones, contas, referências e Pix do corretor: permissões -----
+
+	[Theory]
+	[InlineData("Corretores", "enderecos")]
+	[InlineData("Atendimento", "telefones")]
+	[InlineData("Financeiro", "contas")]
+	[InlineData("Corretores", "referencias")]
+	[InlineData("Atendimento", "pix")]
+	public async Task GravarDadosDoCorretor_SemSerAdministradorOuGestor_DeveRetornar403(string grupo, string lista)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var incluir = await cliente.PostAsJsonAsync($"/api/corretores/123/{lista}", new { });
+		using var alterar = await cliente.PutAsJsonAsync($"/api/corretores/123/{lista}/1", new { });
+		using var excluir = await cliente.DeleteAsync($"/api/corretores/123/{lista}/1");
+
+		Assert.Equal(HttpStatusCode.Forbidden, incluir.StatusCode);
+		Assert.Equal(HttpStatusCode.Forbidden, alterar.StatusCode);
+		Assert.Equal(HttpStatusCode.Forbidden, excluir.StatusCode);
 	}
 
 	// ----- Contas bancárias e bancos: permissões -----

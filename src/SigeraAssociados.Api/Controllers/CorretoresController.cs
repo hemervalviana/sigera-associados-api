@@ -57,14 +57,21 @@ public sealed class CorretoresController : ControllerBase
 	/// </summary>
 	/// <remarks>
 	/// `busca`: CPF ou CNPJ (com ou sem pontuação), código do corretor ou
-	/// começo do nome. A pesquisa não traz a senha do representante.
+	/// começo do nome. Cada linha traz classificação, status, agente e gerente
+	/// (a lista da tela de parametrização). A pesquisa não traz a senha do
+	/// representante.
 	///
 	///     GET /api/corretores?busca=MARIA&amp;cdFil=1&amp;tipoPessoa=F
+	///     GET /api/corretores?tipo=1&amp;cdSituacao=1&amp;sqAgente=15
+	///     GET /api/corretores?tipo=0&amp;cdSituacao=0   (TODOS)
 	/// </remarks>
 	/// <param name="busca">CPF, CNPJ, código ou começo do nome (opcional).</param>
 	/// <param name="cdFil">Filial (opcional).</param>
 	/// <param name="tipoPessoa">F (física) ou J (jurídica) (opcional).</param>
-	/// <param name="cdSituacao">Situação: 1 = ATIVO, 2 = INATIVO (opcional).</param>
+	/// <param name="cdSituacao">Situação: 0 ou omitido = TODOS, 1 = ATIVO, 2 = INATIVO.</param>
+	/// <param name="tipo">Classificação: 0 ou omitido = TODOS, 1 = CORRETOR, 2 = COLABORADOR.</param>
+	/// <param name="sqAgente">Agente (opcional).</param>
+	/// <param name="sqGerenteVendas">Gerente de vendas (opcional).</param>
 	/// <param name="pagina">Página, a partir de 1.</param>
 	/// <param name="tamanhoPagina">Itens por página, de 1 a 200.</param>
 	/// <param name="cancellationToken">Cancelamento da requisição.</param>
@@ -78,6 +85,9 @@ public sealed class CorretoresController : ControllerBase
 		[FromQuery] decimal? cdFil,
 		[FromQuery] string? tipoPessoa,
 		[FromQuery] decimal? cdSituacao,
+		[FromQuery] int? tipo,
+		[FromQuery] decimal? sqAgente,
+		[FromQuery] decimal? sqGerenteVendas,
 		[FromQuery] int pagina = 1,
 		[FromQuery] int tamanhoPagina = 50,
 		CancellationToken cancellationToken = default)
@@ -89,6 +99,9 @@ public sealed class CorretoresController : ControllerBase
 				CdFil = cdFil,
 				TipoPessoa = tipoPessoa,
 				CdSituacao = cdSituacao,
+				Tipo = tipo,
+				SqAgente = sqAgente,
+				SqGerenteVendas = sqGerenteVendas,
 				Pagina = pagina,
 				TamanhoPagina = tamanhoPagina
 			},
@@ -211,6 +224,41 @@ public sealed class CorretoresController : ControllerBase
 	{
 		var resultado = await _corretores.AlterarAsync(sqPesCorretor, dados, cancellationToken);
 		Registrar(resultado.Status, "Corretor alterado", sqPesCorretor);
+		return this.Converter(resultado);
+	}
+
+	/// <summary>
+	/// Parametrização do corretor: troca só classificação, status, agente e
+	/// gerente de vendas. Administradores e Gestores.
+	/// </summary>
+	/// <remarks>
+	/// Para a tela de parametrização (uma linha por vez). Envie sempre os
+	/// quatro campos: `tipo` (1 = CORRETOR, 2 = COLABORADOR) e `cdSituacao`
+	/// (1 = ATIVO, 2 = INATIVO) obrigatórios; `sqAgente` e `sqGerenteVendas`
+	/// nulos deixam o corretor sem agente ou sem gerente. O resto do cadastro
+	/// não muda. Devolve a linha da pesquisa atualizada.
+	///
+	///     PUT /api/corretores/{sqPesCorretor}/parametrizacao
+	///     { "tipo": 2, "cdSituacao": 1, "sqAgente": 15, "sqGerenteVendas": null }
+	/// </remarks>
+	/// <response code="200">Alterado; devolve a linha com as descrições.</response>
+	/// <response code="400">Dados inválidos, ou agente ou gerente inexistente.</response>
+	/// <response code="403">Não é Administrador nem Gestor.</response>
+	/// <response code="404">Corretor não encontrado.</response>
+	[HttpPut("{sqPesCorretor:decimal}/parametrizacao")]
+	[Authorize(Roles = Grupos.PerfisCadastroCorretores)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(CorretorResumoDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	public async Task<IActionResult> AlterarParametrizacao(
+		decimal sqPesCorretor,
+		[FromBody] ParametrizacaoCorretorDados dados,
+		CancellationToken cancellationToken)
+	{
+		var resultado = await _corretores.AlterarParametrizacaoAsync(sqPesCorretor, dados, cancellationToken);
+		Registrar(resultado.Status, "Parametrização do corretor alterada", sqPesCorretor);
 		return this.Converter(resultado);
 	}
 

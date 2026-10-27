@@ -320,4 +320,60 @@ public sealed class ValidacaoCadastroCorretorTests
 	{
 		Assert.Equal(valido, DocumentoCnpj.Valido(digitos));
 	}
+
+	// ----- Parametrização (classificação, status, agente e gerente) -----
+
+	[Fact]
+	public void ParametrizacaoCompleta_DeveSerValida()
+	{
+		Assert.Null(ValidacaoCadastroCorretor.Parametrizacao(new ParametrizacaoCorretorDados
+		{
+			Tipo = 2, CdSituacao = 1, SqAgente = 15, SqGerenteVendas = 3
+		}));
+	}
+
+	[Fact]
+	public void ParametrizacaoSemAgenteNemGerente_DeveSerValida()
+	{
+		Assert.Null(ValidacaoCadastroCorretor.Parametrizacao(new ParametrizacaoCorretorDados { Tipo = 1, CdSituacao = 2 }));
+	}
+
+	[Fact]
+	public void ParametrizacaoNula_DeveSerRecusada()
+	{
+		Assert.NotNull(ValidacaoCadastroCorretor.Parametrizacao(null));
+	}
+
+	[Theory]
+	[InlineData(null, 1, "tipo")]
+	[InlineData(3, 1, "tipo")]
+	[InlineData(0, 1, "tipo")]
+	[InlineData(1, null, "cdSituacao")]
+	[InlineData(1, 3, "cdSituacao")]
+	public void ParametrizacaoComTipoOuStatusInvalido_DeveSerRecusada(int? tipo, int? situacao, string campo)
+	{
+		var erro = ValidacaoCadastroCorretor.Parametrizacao(new ParametrizacaoCorretorDados
+		{
+			Tipo = tipo, CdSituacao = situacao
+		});
+
+		Assert.NotNull(erro);
+		Assert.Contains(campo, erro);
+	}
+
+	[Theory]
+	[InlineData(0.0, null, "sqAgente")]
+	[InlineData(1.5, null, "sqAgente")]
+	[InlineData(null, -1.0, "sqGerenteVendas")]
+	public void ParametrizacaoComAgenteOuGerenteInvalido_DeveSerRecusada(double? agente, double? gerente, string campo)
+	{
+		var erro = ValidacaoCadastroCorretor.Parametrizacao(new ParametrizacaoCorretorDados
+		{
+			Tipo = 1, CdSituacao = 1,
+			SqAgente = (decimal?)agente, SqGerenteVendas = (decimal?)gerente
+		});
+
+		Assert.NotNull(erro);
+		Assert.Contains(campo, erro);
+	}
 }

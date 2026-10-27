@@ -44,6 +44,9 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 
 	// ===================== Pesquisa =====================
 
+	/// <summary>Valor do filtro de classificação ou status que traz todos.</summary>
+	private const int FiltroTodos = 0;
+
 	/// <summary>Linha da pesquisa, antes de formatar o documento.</summary>
 	private sealed class LinhaCorretor
 	{
@@ -57,6 +60,10 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 		public decimal? CdSituacao { get; init; }
 		public string? Classe { get; init; }
 		public int? TipoCorretor { get; init; }
+		public decimal? SqAgente { get; init; }
+		public string? Agente { get; init; }
+		public decimal? SqGerente { get; init; }
+		public string? Gerente { get; init; }
 	}
 
 	/// <inheritdoc />
@@ -65,6 +72,23 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(request);
+
+		// 0 = TODOS (combo da tela): o mesmo que não filtrar.
+		if (request.Tipo == FiltroTodos || request.CdSituacao == FiltroTodos)
+		{
+			request = new PesquisaCorretoresRequest
+			{
+				Busca = request.Busca,
+				CdFil = request.CdFil,
+				TipoPessoa = request.TipoPessoa,
+				CdSituacao = request.CdSituacao == FiltroTodos ? null : request.CdSituacao,
+				Tipo = request.Tipo == FiltroTodos ? null : request.Tipo,
+				SqAgente = request.SqAgente,
+				SqGerenteVendas = request.SqGerenteVendas,
+				Pagina = request.Pagina,
+				TamanhoPagina = request.TamanhoPagina
+			};
+		}
 
 		if (request.Pagina < 1)
 		{
@@ -76,12 +100,22 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 			throw new DadosInvalidosException($"O tamanho da página deve estar entre 1 e {TamanhoPaginaMaximo}.");
 		}
 
-		string? tipo = null;
+		string? tipoPessoa = null;
 
 		if (!string.IsNullOrWhiteSpace(request.TipoPessoa)
-			&& (tipo = ValidacaoCadastroCorretor.NormalizarTipo(request.TipoPessoa)) is null)
+			&& (tipoPessoa = ValidacaoCadastroCorretor.NormalizarTipo(request.TipoPessoa)) is null)
 		{
 			throw new DadosInvalidosException("O tipo de pessoa deve ser F (física) ou J (jurídica).");
+		}
+
+		if (request.Tipo is not null && !TipoCorretor.Valido(request.Tipo))
+		{
+			throw new DadosInvalidosException("A classificação (tipo) deve ser 0 (TODOS), 1 (CORRETOR) ou 2 (COLABORADOR).");
+		}
+
+		if (request.CdSituacao is decimal situacaoPedida && !SituacaoAtivoInativo.Corretor.Valida(situacaoPedida))
+		{
+			throw new DadosInvalidosException("A situação do corretor deve ser 0 (TODOS), 1 (ATIVO) ou 2 (INATIVO).");
 		}
 
 		await using var db = CriarContexto();
@@ -91,50 +125,36 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 			throw new DadosInvalidosException("Não foi possível identificar a empresa do sistema: a tabela T009EMPS deve ter exatamente uma empresa.");
 		}
 
-		// Só corretores não excluídos e coerentes com o tipo: física com
-		// T000PFIS e sem T000PJUR; jurídica com T000PJUR e sem T000PFIS.
-		var query =
-			from c in db.Corretores.AsNoTracking()
-			where c.CD_EMP == emp && c.DT_EXC_API == null
-			join p in db.Pessoas.AsNoTracking()
-				on new { Empresa = c.CD_EMP, Pessoa = c.SQ_PES_CRO }
-				equals new { Empresa = p.CD_EMP, Pessoa = p.SQ_PES }
-			let temFisica = db.PessoasFisicas.Any(f => f.CD_EMP == p.CD_EMP && f.SQ_PES_FIS == p.SQ_PES)
-			let temJuridica = db.PessoasJuridicas.Any(j => j.CD_EMP == p.CD_EMP && j.SQ_PES_JUR == p.SQ_PES)
-			where (p.TP_PES == ValidacaoCadastroCorretor.PessoaFisica && temFisica && !temJuridica)
-				|| (p.TP_PES == ValidacaoCadastroCorretor.PessoaJuridica && temJuridica && !temFisica)
-			select new LinhaCorretor
-			{
-				Sq = c.SQ_PES_CRO,
-				Nome = p.NM_PES,
-				NomeCurto = p.NC_PES,
-				Tipo = p.TP_PES,
-				Cpf = db.PessoasFisicas.Where(f => f.CD_EMP == p.CD_EMP && f.SQ_PES_FIS == p.SQ_PES).Select(f => f.NR_CPF).FirstOrDefault(),
-				Cnpj = db.PessoasJuridicas.Where(j => j.CD_EMP == p.CD_EMP && j.SQ_PES_JUR == p.SQ_PES).Select(j => j.NR_CPJ).FirstOrDefault(),
-				CdFil = c.CD_FIL,
-				CdSituacao = c.CD_SIT_CRRT,
-				Classe = c.CL_CRO,
-				TipoCorretor = c.TP_CRRT
-			};
+		var query = ConsultaBase(db, emp);
 
 		if (request.CdFil is decimal filial)
 		{
 			query = query.Where(c => c.CdFil == filial);
 		}
 
-		if (tipo is not null)
+		if (tipoPessoa is not null)
 		{
-			query = query.Where(c => c.Tipo == tipo);
+			query = query.Where(c => c.Tipo == tipoPessoa);
 		}
 
 		if (request.CdSituacao is decimal situacao)
 		{
-			if (!SituacaoAtivoInativo.Corretor.Valida(situacao))
-			{
-				throw new DadosInvalidosException("A situação do corretor deve ser 1 (ATIVO) ou 2 (INATIVO).");
-			}
-
 			query = query.Where(c => c.CdSituacao == situacao);
+		}
+
+		if (request.Tipo is int tipoCorretor)
+		{
+			query = query.Where(c => c.TipoCorretor == tipoCorretor);
+		}
+
+		if (request.SqAgente is decimal agente)
+		{
+			query = query.Where(c => c.SqAgente == agente);
+		}
+
+		if (request.SqGerenteVendas is decimal gerente)
+		{
+			query = query.Where(c => c.SqGerente == gerente);
 		}
 
 		if (!string.IsNullOrWhiteSpace(request.Busca))
@@ -157,23 +177,118 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 			TamanhoPagina = request.TamanhoPagina,
 			TotalRegistros = total,
 			TotalPaginas = (int)Math.Ceiling(total / (double)request.TamanhoPagina),
-			Corretores = linhas.Select(l => new CorretorResumoDto
-			{
-				SqPesCorretor = l.Sq,
-				Nome = l.Nome,
-				NomeCurto = l.NomeCurto,
-				TipoPessoa = l.Tipo,
-				Documento = l.Tipo == ValidacaoCadastroCorretor.PessoaFisica
-					? DocumentoCpf.Formatar(l.Cpf)
-					: DocumentoCnpj.Formatar(l.Cnpj),
-				CdFil = l.CdFil,
-				CdSituacao = l.CdSituacao,
-				Situacao = SituacaoAtivoInativo.Corretor.Descricao(l.CdSituacao),
-				Classe = l.Classe,
-				Tipo = l.TipoCorretor,
-				DescricaoTipo = TipoCorretor.Descricao(l.TipoCorretor)
-			}).ToList()
+			Corretores = linhas.Select(ParaResumo).ToList()
 		};
+	}
+
+	/// <summary>
+	/// Só corretores não excluídos e coerentes com o tipo (física com
+	/// T000PFIS e sem T000PJUR; jurídica o contrário), com os nomes do agente
+	/// e do gerente de vendas.
+	/// </summary>
+	private static IQueryable<LinhaCorretor> ConsultaBase(SigeraDbContext db, decimal emp) =>
+		from c in db.Corretores.AsNoTracking()
+		where c.CD_EMP == emp && c.DT_EXC_API == null
+		join p in db.Pessoas.AsNoTracking()
+			on new { Empresa = c.CD_EMP, Pessoa = c.SQ_PES_CRO }
+			equals new { Empresa = p.CD_EMP, Pessoa = p.SQ_PES }
+		let temFisica = db.PessoasFisicas.Any(f => f.CD_EMP == p.CD_EMP && f.SQ_PES_FIS == p.SQ_PES)
+		let temJuridica = db.PessoasJuridicas.Any(j => j.CD_EMP == p.CD_EMP && j.SQ_PES_JUR == p.SQ_PES)
+		where (p.TP_PES == ValidacaoCadastroCorretor.PessoaFisica && temFisica && !temJuridica)
+			|| (p.TP_PES == ValidacaoCadastroCorretor.PessoaJuridica && temJuridica && !temFisica)
+		select new LinhaCorretor
+		{
+			Sq = c.SQ_PES_CRO,
+			Nome = p.NM_PES,
+			NomeCurto = p.NC_PES,
+			Tipo = p.TP_PES,
+			Cpf = db.PessoasFisicas.Where(f => f.CD_EMP == p.CD_EMP && f.SQ_PES_FIS == p.SQ_PES).Select(f => f.NR_CPF).FirstOrDefault(),
+			Cnpj = db.PessoasJuridicas.Where(j => j.CD_EMP == p.CD_EMP && j.SQ_PES_JUR == p.SQ_PES).Select(j => j.NR_CPJ).FirstOrDefault(),
+			CdFil = c.CD_FIL,
+			CdSituacao = c.CD_SIT_CRRT,
+			Classe = c.CL_CRO,
+			TipoCorretor = c.TP_CRRT,
+			SqAgente = c.SQ_AGEN,
+			Agente = db.Agentes.Where(a => a.CD_EMP == c.CD_EMP && a.SQ_AGEN == c.SQ_AGEN).Select(a => a.DE_AGEN).FirstOrDefault(),
+			SqGerente = c.SQ_GVED,
+			Gerente = db.GerentesVendas.Where(g => g.CD_EMP == c.CD_EMP && g.SQ_GVED == c.SQ_GVED).Select(g => g.DE_GVED).FirstOrDefault()
+		};
+
+	private static CorretorResumoDto ParaResumo(LinhaCorretor l) => new()
+	{
+		SqPesCorretor = l.Sq,
+		Nome = l.Nome,
+		NomeCurto = l.NomeCurto,
+		TipoPessoa = l.Tipo,
+		Documento = l.Tipo == ValidacaoCadastroCorretor.PessoaFisica
+			? DocumentoCpf.Formatar(l.Cpf)
+			: DocumentoCnpj.Formatar(l.Cnpj),
+		CdFil = l.CdFil,
+		CdSituacao = l.CdSituacao,
+		Situacao = SituacaoAtivoInativo.Corretor.Descricao(l.CdSituacao),
+		Classe = l.Classe,
+		Tipo = l.TipoCorretor,
+		DescricaoTipo = TipoCorretor.Descricao(l.TipoCorretor),
+		SqAgente = l.SqAgente,
+		Agente = l.Agente,
+		SqGerenteVendas = l.SqGerente,
+		GerenteVendas = l.Gerente
+	};
+
+	// ===================== Parametrização =====================
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<CorretorResumoDto>> AlterarParametrizacaoAsync(
+		decimal sqPesCorretor,
+		ParametrizacaoCorretorDados dados,
+		CancellationToken cancellationToken = default)
+	{
+		if (ValidacaoCadastroCorretor.Parametrizacao(dados) is string erro)
+		{
+			return Invalido<CorretorResumoDto>(erro);
+		}
+
+		await using var db = CriarContexto();
+
+		if (await ObterEmpresaAsync(db, cancellationToken) is not decimal emp)
+		{
+			return EmpresaIndefinida<CorretorResumoDto>();
+		}
+
+		// Mesmo filtro da pesquisa: excluído ou fora da regra física/jurídica não aparece.
+		var cadastro = await CarregarAsync(db, emp, sqPesCorretor, rastrear: true, cancellationToken);
+
+		if (cadastro is null)
+		{
+			return NaoEncontrado<CorretorResumoDto>("Corretor não encontrado.");
+		}
+
+		if (dados.SqAgente is decimal agente
+			&& !await db.Agentes.AnyAsync(a => a.CD_EMP == emp && a.SQ_AGEN == agente, cancellationToken))
+		{
+			return Invalido<CorretorResumoDto>($"O agente {agente:0} não está cadastrado (T009AGENT).");
+		}
+
+		if (dados.SqGerenteVendas is decimal gerente
+			&& !await db.GerentesVendas.AnyAsync(g => g.CD_EMP == emp && g.SQ_GVED == gerente, cancellationToken))
+		{
+			return Invalido<CorretorResumoDto>($"O gerente de vendas {gerente:0} não está cadastrado (T009GVED).");
+		}
+
+		// Só estes quatro campos; o resto do cadastro não é tocado.
+		cadastro.Corretor.TP_CRRT = dados.Tipo;
+		cadastro.Corretor.CD_SIT_CRRT = dados.CdSituacao;
+		cadastro.Corretor.SQ_AGEN = dados.SqAgente;
+		cadastro.Corretor.SQ_GVED = dados.SqGerenteVendas;
+
+		if (await SalvarAsync(db, cancellationToken) is string erroGravacao)
+		{
+			return Invalido<CorretorResumoDto>(erroGravacao);
+		}
+
+		var linha = await ConsultaBase(db, emp).FirstAsync(c => c.Sq == sqPesCorretor, cancellationToken);
+
+		return Sucesso("Parametrização do corretor alterada.", ParaResumo(linha));
 	}
 
 	/// <summary>
