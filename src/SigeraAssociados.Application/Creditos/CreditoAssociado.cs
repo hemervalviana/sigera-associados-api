@@ -63,7 +63,10 @@ public sealed class CreditoDados
 	/// <summary>Dígito da matrícula (DV_MT, até 5).</summary>
 	public string? DigitoMatricula { get; init; }
 
-	/// <summary>Produto (CD_PRD), de GET /api/cadastros/produtos.</summary>
+	/// <summary>
+	/// Produto (CD_PRD), de GET /api/cadastros/produtos, de 0 a 99.
+	/// 0 = TODOS (vale para todos os produtos), como no legado.
+	/// </summary>
 	public decimal? CdProduto { get; init; }
 }
 
@@ -138,6 +141,14 @@ public static class RegrasCredito
 	public const decimal BaixaAutomatica = 1;
 	public const decimal BaixaManual = 2;
 	public const decimal BaixaCredito = 4;
+
+	/// <summary>
+	/// Produto 0 = TODOS: crédito que vale para qualquer produto. É aceito
+	/// mesmo que a T009PRDT não tenha a linha 0.
+	/// </summary>
+	public const decimal ProdutoTodos = 0;
+
+	public const string DescricaoProdutoTodos = "TODOS";
 
 	/// <summary>SQ_PGT é numeric(8,0).</summary>
 	public const decimal SequenciaMaxima = 99_999_999;
@@ -262,7 +273,7 @@ public static class RegrasCredito
 			?? RegrasCampos.Inteiro(dados.CdAverbacao, 1, 99_999, "cdAverbacao")
 			?? RegrasCampos.Tamanho(dados.Matricula, 20, "matricula")
 			?? RegrasCampos.Tamanho(dados.DigitoMatricula, 5, "digitoMatricula")
-			?? RegrasCampos.Inteiro(dados.CdProduto, 1, 999, "cdProduto");
+			?? RegrasCampos.Inteiro(dados.CdProduto, 0, 99, "cdProduto");
 
 		if (erro is not null)
 		{

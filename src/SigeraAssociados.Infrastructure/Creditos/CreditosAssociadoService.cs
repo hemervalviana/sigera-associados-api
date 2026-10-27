@@ -341,7 +341,9 @@ public sealed class CreditosAssociadoService : ICreditosAssociadoService
 			}
 		}
 
+		// Produto 0 (TODOS) não precisa existir em T009PRDT.
 		if (dados.CdProduto is decimal produto
+			&& produto != RegrasCredito.ProdutoTodos
 			&& !await db.Produtos.AnyAsync(p => p.CD_EMP == emp && p.CD_PRD == produto, cancellationToken))
 		{
 			return $"O produto {produto:0} não está cadastrado (T009PRDT).";
@@ -389,7 +391,10 @@ public sealed class CreditosAssociadoService : ICreditosAssociadoService
 		Matricula = c.MT_PES,
 		DigitoMatricula = c.DV_MT,
 		CdProduto = c.CD_PRD,
-		Produto = c.CD_PRD is decimal prd ? descricoes.Produtos.GetValueOrDefault(prd) : null,
+		Produto = c.CD_PRD is decimal prd
+			? descricoes.Produtos.GetValueOrDefault(prd)
+				?? (prd == RegrasCredito.ProdutoTodos ? RegrasCredito.DescricaoProdutoTodos : null)
+			: null,
 		SaldoUtilizado = !RegrasCredito.SaldoIntacto(c.VR_PGT, c.VR_SLD),
 		PodeExcluir = RegrasCredito.PodeExcluir(c.VR_PGT, c.VR_SLD)
 	};

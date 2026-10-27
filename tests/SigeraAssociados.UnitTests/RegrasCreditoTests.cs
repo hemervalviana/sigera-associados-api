@@ -119,6 +119,24 @@ public sealed class RegrasCreditoTests
 		Assert.Contains("maior que zero", RegrasCredito.Validar(inclusao: inclusao, dados: Credito(valor: (decimal)valor)));
 	}
 
+	[Theory]
+	[InlineData(0)]
+	[InlineData(1)]
+	[InlineData(2)]
+	[InlineData(99)]
+	public void ProdutoDe0A99_DeveSerValido(int produto)
+	{
+		Assert.Null(RegrasCredito.Validar(inclusao: false, dados: new CreditoDados { CdFormaPagamento = 1, CdProduto = produto }));
+	}
+
+	[Theory]
+	[InlineData(-1)]
+	[InlineData(100)]
+	public void ProdutoForaDaFaixa_DeveSerRecusado(int produto)
+	{
+		Assert.Contains("cdProduto", RegrasCredito.Validar(inclusao: false, dados: new CreditoDados { CdFormaPagamento = 1, CdProduto = produto }));
+	}
+
 	[Fact]
 	public void ValorDeUmCentavo_DeveSerValido()
 	{

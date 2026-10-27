@@ -72,6 +72,7 @@ public sealed class AssociadoCreditosController : ControllerBase
 	/// Omitidos: `dataCredito` = hoje; `tipoBaixa` = 4 (CRÉDITO).
 	/// `tipoBaixa`: 1 = AUTOMÁTICA, 2 = MANUAL, 4 = CRÉDITO.
 	/// Contrato e averbação exigem a filial; a averbação exige também o convênio.
+	/// `cdProduto`: 0 = TODOS, ou um produto de GET /api/cadastros/produtos.
 	///
 	///     POST /api/associados/{sqPesCli}/creditos
 	///     {
