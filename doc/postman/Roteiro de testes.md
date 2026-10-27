@@ -79,9 +79,12 @@ Antes de começar:
 | [ ] | 15.6 | Formas de pagamento | — | **200**; anote uma com `geraSaldo: true` e outra com `false` |
 | [ ] | 15.2 | Incluir crédito com forma que gera saldo | `cdFormaPagamento` da forma com `geraSaldo: true` | **201**, `saldo` = `valor`, `podeExcluir: true` |
 | [ ] | 15.2 | Incluir crédito com forma que não gera saldo | `cdFormaPagamento` da forma com `geraSaldo: false` | **201**, `saldo` = 0, `podeExcluir: false` |
-| [ ] | 15.2 | Valor negativo | `"valor": -10` | **400** |
+| [ ] | 15.2 | Valor zero ou negativo | `"valor": 0` e depois `"valor": -10` | **400** "maior que zero" |
+| [ ] | 15.2 | Sem valor | Tire o `valor` do Body | **400** "obrigatório" |
 | [ ] | 15.3 | Alterar só a observação | — | **200**, saldo igual ao de antes |
-| [ ] | 15.3 | Alterar o valor | Novo valor | **200**, saldo recalculado |
+| [ ] | 15.3 | Alterar o valor com saldo intacto | Novo valor | **200**, saldo = novo valor |
+| [ ] | 15.3 | Alterar o valor com saldo já utilizado | Crédito com `saldoUtilizado: true` | **409** "saldo deste crédito já foi utilizado" |
+| [ ] | 15.3 | Alterar só a observação com saldo utilizado | Mesmo valor e forma | **200** |
 | [ ] | 15.4 | Excluir crédito com saldo 0 (forma que não gera) | Como administrador | **409** "Valor do pagamento diferente do valor do saldo" |
 | [ ] | 15.4 | Excluir crédito com saldo = valor | Como administrador | **200** |
 | [ ] | 15.4 | Excluir como Corretor, Atendimento ou Financeiro | — | **403** |

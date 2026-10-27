@@ -5010,7 +5010,7 @@
                 "creditos"
               ]
             },
-            "description": "## O que faz\nInclui um crédito. A API gera o `sqCredito` (SQ_PGT, MAX + 1 do associado), salvo na variável `sqCredito`, e o saldo: forma que gera saldo (15.6) → saldo = valor; que não gera → 0.\n\nOmitidos: `dataCredito` = hoje; `tipoBaixa` = 4 (CRÉDITO).\n\n## Respostas\n- **201**: incluído.\n- **400**: dados inválidos (ex.: valor negativo) ou referência inexistente.\n- **404**: associado fora dos seus acessos.",
+            "description": "## O que faz\nInclui um crédito. A API gera o `sqCredito` (SQ_PGT, MAX + 1 do associado), salvo na variável `sqCredito`, e o saldo: forma que gera saldo (15.6) → saldo = valor; que não gera → 0. `valor` é obrigatório e maior que zero.\n\nOmitidos: `dataCredito` = hoje; `tipoBaixa` = 4 (CRÉDITO).\n\n## Respostas\n- **201**: incluído.\n- **400**: dados inválidos (ex.: valor zero ou negativo) ou referência inexistente.\n- **404**: associado fora dos seus acessos.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"dataCredito\": \"2026-10-27\",\n  \"valor\": 150.0,\n  \"cdFormaPagamento\": 1,\n  \"observacao\": \"CREDITO TESTE API\"\n}",
@@ -5065,7 +5065,7 @@
                 "{{sqCredito}}"
               ]
             },
-            "description": "Altera o crédito `sqCredito`. O saldo só é recalculado quando o valor ou a forma mudam. `dataCredito`, `valor` e `tipoBaixa` omitidos mantêm o gravado.",
+            "description": "Altera o crédito `sqCredito`. Valor e forma de pagamento só mudam com o saldo intacto (`saldoUtilizado: false`); com o saldo já utilizado, **409**. Os outros campos mudam sempre. `dataCredito`, `valor` e `tipoBaixa` omitidos mantêm o gravado.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"valor\": 200.0,\n  \"cdFormaPagamento\": 1,\n  \"observacao\": \"CREDITO TESTE API ALTERADO\"\n}",
@@ -5083,7 +5083,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                  "pm.test(\"Resposta esperada (200, 409)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 409]));"
                 ]
               }
             }

@@ -94,31 +94,96 @@ public sealed class RegrasCreditoTests
 	[Fact]
 	public void CreditoCompleto_DeveSerValido()
 	{
-		Assert.Null(RegrasCredito.Validar(Credito(tipoBaixa: 4, cdFil: 1, sqContrato: 10, cdConvenio: 2, cdAverbacao: 5)));
+		Assert.Null(RegrasCredito.Validar(inclusao: true, dados: Credito(tipoBaixa: 4, cdFil: 1, sqContrato: 10, cdConvenio: 2, cdAverbacao: 5)));
 	}
 
 	[Fact]
-	public void ValorOmitido_DeveSerValido()
+	public void ValorOmitidoNaInclusao_DeveSerRecusado()
 	{
-		Assert.Null(RegrasCredito.Validar(Credito(valor: null)));
+		Assert.Contains("obrigatório", RegrasCredito.Validar(inclusao: true, dados: Credito(valor: null)));
 	}
 
 	[Fact]
-	public void ValorNegativo_DeveSerRecusado()
+	public void ValorOmitidoNaAlteracao_DeveSerValido()
 	{
-		Assert.Contains("negativo", RegrasCredito.Validar(Credito(valor: -1m)));
+		Assert.Null(RegrasCredito.Validar(inclusao: false, dados: Credito(valor: null)));
+	}
+
+	[Theory]
+	[InlineData(0, true)]
+	[InlineData(-1, true)]
+	[InlineData(0, false)]
+	[InlineData(-0.01, false)]
+	public void ValorMenorOuIgualAZero_DeveSerRecusado(double valor, bool inclusao)
+	{
+		Assert.Contains("maior que zero", RegrasCredito.Validar(inclusao: inclusao, dados: Credito(valor: (decimal)valor)));
+	}
+
+	[Fact]
+	public void ValorDeUmCentavo_DeveSerValido()
+	{
+		Assert.Null(RegrasCredito.Validar(inclusao: true, dados: Credito(valor: 0.01m)));
+	}
+
+	// ----- Alteração: valor e forma travados depois que o saldo é utilizado -----
+
+	[Fact]
+	public void SaldoIntacto_PodeMudarValor()
+	{
+		Assert.Null(RegrasCredito.ValidarAlteracao(valorAtual: 150m, saldoAtual: 150m, formaAtual: 1, valorNovo: 200m, formaNova: 1));
+	}
+
+	[Fact]
+	public void SaldoIntacto_PodeMudarForma()
+	{
+		Assert.Null(RegrasCredito.ValidarAlteracao(valorAtual: 150m, saldoAtual: 150m, formaAtual: 1, valorNovo: 150m, formaNova: 2));
+	}
+
+	[Fact]
+	public void SaldoUtilizado_NaoPodeMudarValor()
+	{
+		Assert.Contains("já foi utilizado",
+			RegrasCredito.ValidarAlteracao(valorAtual: 150m, saldoAtual: 100m, formaAtual: 1, valorNovo: 200m, formaNova: 1));
+	}
+
+	[Fact]
+	public void SaldoZerado_NaoPodeMudarValor()
+	{
+		Assert.NotNull(RegrasCredito.ValidarAlteracao(valorAtual: 150m, saldoAtual: 0m, formaAtual: 1, valorNovo: 200m, formaNova: 1));
+	}
+
+	[Fact]
+	public void SaldoUtilizado_NaoPodeMudarForma()
+	{
+		Assert.NotNull(RegrasCredito.ValidarAlteracao(valorAtual: 150m, saldoAtual: 100m, formaAtual: 1, valorNovo: 150m, formaNova: 2));
+	}
+
+	[Fact]
+	public void SaldoUtilizado_PodeAlterarOutrosCampos()
+	{
+		// Mesmo valor e mesma forma: observação, data etc. continuam livres.
+		Assert.Null(RegrasCredito.ValidarAlteracao(valorAtual: 150m, saldoAtual: 100m, formaAtual: 1, valorNovo: 150m, formaNova: 1));
+	}
+
+	[Theory]
+	[InlineData(150, 150, true)]
+	[InlineData(150, 100, false)]
+	[InlineData(150, 0, false)]
+	public void SaldoIntacto_SoQuandoSaldoIgualAoValor(double valor, double saldo, bool intacto)
+	{
+		Assert.Equal(intacto, RegrasCredito.SaldoIntacto((decimal)valor, (decimal)saldo));
 	}
 
 	[Fact]
 	public void ValorComTresCasas_DeveSerRecusado()
 	{
-		Assert.Contains("2 casas", RegrasCredito.Validar(Credito(valor: 10.555m)));
+		Assert.Contains("2 casas", RegrasCredito.Validar(inclusao: true, dados: Credito(valor: 10.555m)));
 	}
 
 	[Fact]
 	public void SemFormaDePagamento_DeveSerRecusado()
 	{
-		Assert.Contains("cdFormaPagamento", RegrasCredito.Validar(Credito(forma: null)));
+		Assert.Contains("cdFormaPagamento", RegrasCredito.Validar(inclusao: true, dados: Credito(forma: null)));
 	}
 
 	[Theory]
@@ -127,7 +192,7 @@ public sealed class RegrasCreditoTests
 	[InlineData(4)]
 	public void TipoBaixaDoLegado_DeveSerValido(int tipo)
 	{
-		Assert.Null(RegrasCredito.Validar(Credito(tipoBaixa: tipo)));
+		Assert.Null(RegrasCredito.Validar(inclusao: true, dados: Credito(tipoBaixa: tipo)));
 	}
 
 	[Theory]
@@ -136,31 +201,31 @@ public sealed class RegrasCreditoTests
 	[InlineData(5)]
 	public void TipoBaixaDesconhecido_DeveSerRecusado(int tipo)
 	{
-		Assert.Contains("tipoBaixa", RegrasCredito.Validar(Credito(tipoBaixa: tipo)));
+		Assert.Contains("tipoBaixa", RegrasCredito.Validar(inclusao: true, dados: Credito(tipoBaixa: tipo)));
 	}
 
 	[Fact]
 	public void ContratoSemFilial_DeveSerRecusado()
 	{
-		Assert.Contains("cdFil", RegrasCredito.Validar(Credito(sqContrato: 10)));
+		Assert.Contains("cdFil", RegrasCredito.Validar(inclusao: true, dados: Credito(sqContrato: 10)));
 	}
 
 	[Fact]
 	public void AverbacaoSemConvenio_DeveSerRecusada()
 	{
-		Assert.Contains("cdConvenio", RegrasCredito.Validar(Credito(cdFil: 1, cdAverbacao: 5)));
+		Assert.Contains("cdConvenio", RegrasCredito.Validar(inclusao: true, dados: Credito(cdFil: 1, cdAverbacao: 5)));
 	}
 
 	[Fact]
 	public void DataForaDaFaixa_DeveSerRecusada()
 	{
-		Assert.Contains("dataCredito", RegrasCredito.Validar(Credito(data: new DateTime(1899, 12, 31))));
+		Assert.Contains("dataCredito", RegrasCredito.Validar(inclusao: true, dados: Credito(data: new DateTime(1899, 12, 31))));
 	}
 
 	[Fact]
 	public void SemDados_DeveSerRecusado()
 	{
-		Assert.NotNull(RegrasCredito.Validar(null));
+		Assert.NotNull(RegrasCredito.Validar(null, inclusao: true));
 	}
 
 	[Fact]

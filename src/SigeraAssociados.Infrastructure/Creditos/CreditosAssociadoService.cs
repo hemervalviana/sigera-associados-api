@@ -62,7 +62,7 @@ public sealed class CreditosAssociadoService : ICreditosAssociadoService
 		CreditoDados dados,
 		CancellationToken cancellationToken = default)
 	{
-		if (RegrasCredito.Validar(dados) is string erro)
+		if (RegrasCredito.Validar(dados, inclusao: true) is string erro)
 		{
 			return Invalido<CreditoDto>(erro);
 		}
@@ -93,7 +93,7 @@ public sealed class CreditosAssociadoService : ICreditosAssociadoService
 			return Invalido<CreditoDto>("O associado atingiu o limite de sequência de créditos.");
 		}
 
-		var valor = dados.Valor ?? 0;
+		var valor = dados.Valor!.Value;
 
 		var credito = new T009EXTRA
 		{
@@ -126,7 +126,7 @@ public sealed class CreditosAssociadoService : ICreditosAssociadoService
 		CreditoDados dados,
 		CancellationToken cancellationToken = default)
 	{
-		if (RegrasCredito.Validar(dados) is string erro)
+		if (RegrasCredito.Validar(dados, inclusao: false) is string erro)
 		{
 			return Invalido<CreditoDto>(erro);
 		}
@@ -154,8 +154,14 @@ public sealed class CreditosAssociadoService : ICreditosAssociadoService
 		var valor = dados.Valor ?? credito.VR_PGT ?? 0;
 		var forma = dados.CdFormaPagamento!.Value;
 
-		// Como o itemchanged do legado: o saldo só é recalculado quando o
-		// valor ou a forma de pagamento mudam.
+		// O saldo é consumido por outras rotinas: depois de utilizado, valor e
+		// forma de pagamento ficam travados (mudar reabriria o saldo).
+		if (RegrasCredito.ValidarAlteracao(credito.VR_PGT, credito.VR_SLD, credito.TP_PGT, valor, forma) is string recusa)
+		{
+			return Conflito<CreditoDto>(recusa);
+		}
+
+		// Saldo intacto: valor ou forma mudaram, o saldo acompanha.
 		if (valor != (credito.VR_PGT ?? 0) || forma != credito.TP_PGT)
 		{
 			credito.VR_SLD = RegrasCredito.CalcularSaldo(valor, forma, await GeraSaldoAsync(db, emp, forma, cancellationToken));
@@ -384,6 +390,7 @@ public sealed class CreditosAssociadoService : ICreditosAssociadoService
 		DigitoMatricula = c.DV_MT,
 		CdProduto = c.CD_PRD,
 		Produto = c.CD_PRD is decimal prd ? descricoes.Produtos.GetValueOrDefault(prd) : null,
+		SaldoUtilizado = !RegrasCredito.SaldoIntacto(c.VR_PGT, c.VR_SLD),
 		PodeExcluir = RegrasCredito.PodeExcluir(c.VR_PGT, c.VR_SLD)
 	};
 

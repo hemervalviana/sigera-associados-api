@@ -64,8 +64,10 @@ public sealed class AssociadoCreditosController : ControllerBase
 	/// saldo, como o legado:
 	/// - forma de pagamento que gera saldo (`geraSaldo` em
 	///   GET /api/cadastros/formas-pagamento): saldo = valor;
-	/// - forma que não gera saldo: saldo = 0;
-	/// - valor 0 ou omitido: valor e saldo 0. Valor negativo: 400.
+	/// - forma que não gera saldo: saldo = 0.
+	///
+	/// `valor` é obrigatório e precisa ser maior que zero (senão, 400).
+	/// O saldo é consumido depois por outras rotinas, até chegar a zero.
 	///
 	/// Omitidos: `dataCredito` = hoje; `tipoBaixa` = 4 (CRÉDITO).
 	/// `tipoBaixa`: 1 = AUTOMÁTICA, 2 = MANUAL, 4 = CRÉDITO.
@@ -100,9 +102,13 @@ public sealed class AssociadoCreditosController : ControllerBase
 	/// Altera um crédito do associado (envie todos os campos).
 	/// </summary>
 	/// <remarks>
-	/// Como no legado, o saldo é recalculado só quando o valor ou a forma de
-	/// pagamento mudam; senão fica como está. `dataCredito`, `valor` e
-	/// `tipoBaixa` omitidos mantêm o que está gravado.
+	/// `valor` e `cdFormaPagamento` só podem mudar enquanto o saldo não foi
+	/// utilizado (saldo = valor, `saldoUtilizado: false` na listagem); aí o
+	/// saldo é recalculado. Com o saldo já utilizado, mudar um dos dois dá 409;
+	/// os outros campos podem ser alterados sempre.
+	///
+	/// `valor`, quando enviado, precisa ser maior que zero. `dataCredito`,
+	/// `valor` e `tipoBaixa` omitidos mantêm o que está gravado.
 	/// </remarks>
 	/// <param name="sqPesCli">Código do associado.</param>
 	/// <param name="sqCredito">Sequência do crédito (SQ_PGT).</param>
@@ -111,11 +117,13 @@ public sealed class AssociadoCreditosController : ControllerBase
 	/// <response code="200">Crédito alterado.</response>
 	/// <response code="400">Dados inválidos ou referência inexistente.</response>
 	/// <response code="404">Associado ou crédito não encontrado.</response>
+	/// <response code="409">Saldo já utilizado: valor e forma de pagamento travados.</response>
 	[HttpPut("{sqCredito:decimal}")]
 	[Consumes("application/json")]
 	[ProducesResponseType(typeof(CreditoDto), StatusCodes.Status200OK)]
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
 	public async Task<IActionResult> Alterar(decimal sqPesCli, decimal sqCredito, [FromBody] CreditoDados dados, CancellationToken cancellationToken)
 	{
 		var resultado = await _creditos.AlterarAsync(sqPesCli, sqCredito, dados, cancellationToken);

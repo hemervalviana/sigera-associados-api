@@ -13,8 +13,9 @@ public sealed class CreditoDados
 	public DateTime? DataCredito { get; init; }
 
 	/// <summary>
-	/// Valor do crédito (VR_PGT), com até 2 casas. Não pode ser negativo.
-	/// Omitido: 0 (como o legado faz com o campo vazio).
+	/// Valor do crédito (VR_PGT), com até 2 casas. Obrigatório na inclusão e
+	/// sempre maior que zero. Na alteração, omitido mantém o atual; só pode
+	/// mudar enquanto o saldo não foi utilizado (saldo = valor).
 	/// </summary>
 	/// <example>150.00</example>
 	public decimal? Valor { get; init; }
@@ -115,8 +116,15 @@ public sealed class CreditoDto
 	public string? Produto { get; init; }
 
 	/// <summary>
+	/// True quando outra rotina já consumiu parte do saldo (saldo diferente
+	/// do valor). Com o saldo utilizado, o valor e a forma de pagamento não
+	/// podem mais ser alterados, e o crédito não pode ser excluído.
+	/// </summary>
+	public bool SaldoUtilizado { get; init; }
+
+	/// <summary>
 	/// True quando valor e saldo são iguais: a regra do legado só deixa
-	/// excluir nesse caso.
+	/// excluir nesse caso. É o contrário de SaldoUtilizado.
 	/// </summary>
 	public bool PodeExcluir { get; init; }
 }
@@ -170,23 +178,57 @@ public static class RegrasCredito
 	}
 
 	/// <summary>
-	/// Regra de exclusão do legado: só exclui quando o valor do pagamento é
-	/// igual ao saldo (vazio conta como 0).
+	/// Saldo ainda intacto: igual ao valor do crédito (vazio conta como 0).
+	/// O saldo é consumido por outras rotinas até chegar a zero; enquanto
+	/// estiver intacto, valor e forma de pagamento podem ser alterados.
 	/// </summary>
-	public static bool PodeExcluir(decimal? valor, decimal? saldo) => (valor ?? 0) == (saldo ?? 0);
+	public static bool SaldoIntacto(decimal? valor, decimal? saldo) => (valor ?? 0) == (saldo ?? 0);
 
-	public static string? Validar(CreditoDados? dados)
+	/// <summary>
+	/// Regra de exclusão do legado: só exclui quando o valor do pagamento é
+	/// igual ao saldo, ou seja, com o saldo intacto.
+	/// </summary>
+	public static bool PodeExcluir(decimal? valor, decimal? saldo) => SaldoIntacto(valor, saldo);
+
+	/// <summary>
+	/// Na alteração: valor ou forma de pagamento só mudam com o saldo intacto.
+	/// Devolve a mensagem de recusa, ou null quando a alteração é permitida.
+	/// </summary>
+	public static string? ValidarAlteracao(
+		decimal? valorAtual,
+		decimal saldoAtual,
+		decimal formaAtual,
+		decimal valorNovo,
+		decimal formaNova)
+	{
+		var mudaValorOuForma = valorNovo != (valorAtual ?? 0) || formaNova != formaAtual;
+
+		return mudaValorOuForma && !SaldoIntacto(valorAtual, saldoAtual)
+			? "O saldo deste crédito já foi utilizado: o valor e a forma de pagamento não podem mais ser alterados."
+			: null;
+	}
+
+	/// <summary>
+	/// Formato do crédito. Na inclusão o valor é obrigatório; em qualquer
+	/// caso, quando informado, precisa ser maior que zero.
+	/// </summary>
+	public static string? Validar(CreditoDados? dados, bool inclusao)
 	{
 		if (dados is null)
 		{
 			return "Informe os dados do crédito.";
 		}
 
+		if (inclusao && dados.Valor is null)
+		{
+			return "O valor do crédito é obrigatório.";
+		}
+
 		if (dados.Valor is decimal valor)
 		{
-			if (valor < 0)
+			if (valor <= 0)
 			{
-				return "Valor inválido do pagamento: não pode ser negativo.";
+				return "O valor do crédito deve ser maior que zero.";
 			}
 
 			if (valor > ValorMaximo || decimal.Round(valor, 2) != valor)

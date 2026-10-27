@@ -22,8 +22,9 @@ public interface ICreditosAssociadoService
 	Task<ResultadoTabelaApoio<CreditoDto>> IncluirAsync(decimal sqPesCli, CreditoDados dados, CancellationToken cancellationToken = default);
 
 	/// <summary>
-	/// Altera um crédito. Como no legado, o saldo é recalculado quando o valor
-	/// ou a forma de pagamento mudam; senão fica como está.
+	/// Altera um crédito. Valor e forma de pagamento só mudam com o saldo
+	/// intacto (saldo = valor; senão Conflito), e então o saldo é recalculado.
+	/// Os demais campos podem ser alterados sempre.
 	/// </summary>
 	Task<ResultadoTabelaApoio<CreditoDto>> AlterarAsync(decimal sqPesCli, decimal sqCredito, CreditoDados dados, CancellationToken cancellationToken = default);
 
