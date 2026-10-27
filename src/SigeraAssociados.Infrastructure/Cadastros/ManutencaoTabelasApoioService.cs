@@ -5,6 +5,7 @@ using SigeraAssociados.Application.Associados;
 using SigeraAssociados.Application.Cadastros;
 using SigeraAssociados.Application.Erros;
 using SigeraAssociados.Application.Interfaces.Cadastros;
+using SigeraAssociados.Application.Orgaos;
 using SigeraAssociados.Infrastructure.Persistence.Context;
 using SigeraAssociados.Infrastructure.Persistence.Entities;
 using SigeraAssociados.Infrastructure.Persistence.Factories;
@@ -397,6 +398,340 @@ public sealed class ManutencaoTabelasApoioService : IManutencaoTabelasApoioServi
 			: Sucesso("Tratamento excluído.", dto);
 	}
 
+	// ===================== Bancos (T000BANC) =====================
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<BancoDados>> IncluirBancoAsync(
+		int sistema,
+		BancoDados dados,
+		CancellationToken cancellationToken = default)
+	{
+		if (ValidacaoTabelasApoio.Banco(dados, inclusao: true) is string erro)
+		{
+			return Invalido<BancoDados>(erro);
+		}
+
+		ValidarSistema(sistema);
+
+		await using var db = _factory.Create(sistema);
+
+		if (await ObterEmpresaAsync(db, cancellationToken) is not decimal emp)
+		{
+			return EmpresaIndefinida<BancoDados>();
+		}
+
+		var codigo = dados.CdBanco!.Value;
+
+		if (await db.Bancos.AnyAsync(b => b.CD_EMP == emp && b.CD_BCO == codigo, cancellationToken))
+		{
+			return Conflito<BancoDados>($"O banco {codigo:0} já existe.");
+		}
+
+		var banco = new T000BANC
+		{
+			CD_EMP = emp,
+			CD_BCO = codigo,
+			NM_BCO = dados.Nome!.Trim(),
+			CD_SIT_BCO = dados.CdSituacao ?? SituacaoAtivoInativo.Banco.Ativo
+		};
+
+		db.Bancos.Add(banco);
+
+		return await SalvarAsync(db, cancellationToken) is string erroGravacao
+			? Conflito<BancoDados>(erroGravacao)
+			: Sucesso("Banco cadastrado.", ParaDados(banco));
+	}
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<BancoDados>> AlterarBancoAsync(
+		int sistema,
+		decimal cdBanco,
+		BancoDados dados,
+		CancellationToken cancellationToken = default)
+	{
+		if (ValidacaoTabelasApoio.Banco(dados, inclusao: false) is string erro)
+		{
+			return Invalido<BancoDados>(erro);
+		}
+
+		ValidarSistema(sistema);
+
+		await using var db = _factory.Create(sistema);
+
+		var banco = await db.Bancos.FirstOrDefaultAsync(b => b.CD_BCO == cdBanco, cancellationToken);
+
+		if (banco is null)
+		{
+			return NaoEncontrado<BancoDados>("Banco não encontrado.");
+		}
+
+		banco.NM_BCO = dados.Nome!.Trim();
+		banco.CD_SIT_BCO = dados.CdSituacao;
+		await db.SaveChangesAsync(cancellationToken);
+
+		return Sucesso("Banco alterado.", ParaDados(banco));
+	}
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<BancoDados>> ExcluirBancoAsync(
+		int sistema,
+		decimal cdBanco,
+		CancellationToken cancellationToken = default)
+	{
+		ValidarSistema(sistema);
+
+		await using var db = _factory.Create(sistema);
+
+		var banco = await db.Bancos.FirstOrDefaultAsync(b => b.CD_BCO == cdBanco, cancellationToken);
+
+		if (banco is null)
+		{
+			return NaoEncontrado<BancoDados>("Banco não encontrado.");
+		}
+
+		if (await db.ContasBancarias.AnyAsync(c => c.CD_EMP == banco.CD_EMP && c.CD_BCO == cdBanco, cancellationToken))
+		{
+			return Conflito<BancoDados>($"O banco {cdBanco:0} não pode ser excluído: há contas nele.");
+		}
+
+		var dto = ParaDados(banco);
+		db.Bancos.Remove(banco);
+
+		return await SalvarAsync(db, cancellationToken) is string erroGravacao
+			? Conflito<BancoDados>(erroGravacao)
+			: Sucesso("Banco excluído.", dto);
+	}
+
+	private static BancoDados ParaDados(T000BANC b) => new()
+	{
+		CdBanco = b.CD_BCO,
+		Nome = b.NM_BCO,
+		CdSituacao = b.CD_SIT_BCO,
+		Situacao = SituacaoAtivoInativo.Banco.Descricao(b.CD_SIT_BCO)
+	};
+
+	// ===================== Tipos de endereço (T000TEND) =====================
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<ItemTabelaDto>> IncluirTipoEnderecoAsync(
+		int sistema,
+		ItemTabelaDados dados,
+		CancellationToken cancellationToken = default)
+	{
+		if (ValidacaoTabelasApoio.Item(dados, ValidacaoTabelasApoio.TamanhoTipoEndereco, inclusao: true) is string erro)
+		{
+			return Invalido<ItemTabelaDto>(erro);
+		}
+
+		ValidarSistema(sistema);
+
+		await using var db = _factory.Create(sistema);
+
+		if (await ObterEmpresaAsync(db, cancellationToken) is not decimal emp)
+		{
+			return EmpresaIndefinida<ItemTabelaDto>();
+		}
+
+		await using var transacao = await db.Database.BeginTransactionAsync(cancellationToken);
+
+		var codigo = dados.Codigo ?? (await db.Database
+				.SqlQuery<decimal>($"SELECT ISNULL(MAX(CD_TP_EN), 0) + 1 AS [Value] FROM dbo.T000TEND WITH (UPDLOCK, HOLDLOCK) WHERE CD_EMP = {emp}")
+				.ToListAsync(cancellationToken))
+			.Single();
+
+		if (codigo > 99)
+		{
+			return Invalido<ItemTabelaDto>("Não há código de tipo de endereço livre (o máximo é 99).");
+		}
+
+		if (await db.TiposEndereco.AnyAsync(t => t.CD_EMP == emp && t.CD_TP_EN == codigo, cancellationToken))
+		{
+			return Conflito<ItemTabelaDto>($"O tipo de endereço {codigo:0} já existe.");
+		}
+
+		var tipo = new T000TEND { CD_EMP = emp, CD_TP_EN = codigo, DE_TP_EN = dados.Descricao!.Trim() };
+		db.TiposEndereco.Add(tipo);
+
+		if (await SalvarAsync(db, cancellationToken) is string erroGravacao)
+		{
+			return Conflito<ItemTabelaDto>(erroGravacao);
+		}
+
+		await transacao.CommitAsync(cancellationToken);
+
+		return Sucesso("Tipo de endereço cadastrado.", Item(tipo.CD_TP_EN, tipo.DE_TP_EN));
+	}
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<ItemTabelaDto>> AlterarTipoEnderecoAsync(
+		int sistema,
+		decimal codigo,
+		ItemTabelaDados dados,
+		CancellationToken cancellationToken = default)
+	{
+		if (ValidacaoTabelasApoio.Item(dados, ValidacaoTabelasApoio.TamanhoTipoEndereco, inclusao: false) is string erro)
+		{
+			return Invalido<ItemTabelaDto>(erro);
+		}
+
+		ValidarSistema(sistema);
+
+		await using var db = _factory.Create(sistema);
+
+		var tipo = await db.TiposEndereco.FirstOrDefaultAsync(t => t.CD_TP_EN == codigo, cancellationToken);
+
+		if (tipo is null)
+		{
+			return NaoEncontrado<ItemTabelaDto>("Tipo de endereço não encontrado.");
+		}
+
+		tipo.DE_TP_EN = dados.Descricao!.Trim();
+		await db.SaveChangesAsync(cancellationToken);
+
+		return Sucesso("Tipo de endereço alterado.", Item(tipo.CD_TP_EN, tipo.DE_TP_EN));
+	}
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<ItemTabelaDto>> ExcluirTipoEnderecoAsync(
+		int sistema,
+		decimal codigo,
+		CancellationToken cancellationToken = default)
+	{
+		ValidarSistema(sistema);
+
+		await using var db = _factory.Create(sistema);
+
+		var tipo = await db.TiposEndereco.FirstOrDefaultAsync(t => t.CD_TP_EN == codigo, cancellationToken);
+
+		if (tipo is null)
+		{
+			return NaoEncontrado<ItemTabelaDto>("Tipo de endereço não encontrado.");
+		}
+
+		if (await db.Enderecos.AnyAsync(e => e.CD_EMP == tipo.CD_EMP && e.CD_TP_EN == codigo, cancellationToken))
+		{
+			return Conflito<ItemTabelaDto>($"O tipo de endereço {codigo:0} não pode ser excluído: há endereços com ele.");
+		}
+
+		var dto = Item(tipo.CD_TP_EN, tipo.DE_TP_EN);
+		db.TiposEndereco.Remove(tipo);
+
+		return await SalvarAsync(db, cancellationToken) is string erroGravacao
+			? Conflito<ItemTabelaDto>(erroGravacao)
+			: Sucesso("Tipo de endereço excluído.", dto);
+	}
+
+	// ===================== Tipos de telefone (T000TTEL) =====================
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<ItemTabelaDto>> IncluirTipoTelefoneAsync(
+		int sistema,
+		ItemTabelaDados dados,
+		CancellationToken cancellationToken = default)
+	{
+		if (ValidacaoTabelasApoio.Item(dados, ValidacaoTabelasApoio.TamanhoTipoTelefone, inclusao: true) is string erro)
+		{
+			return Invalido<ItemTabelaDto>(erro);
+		}
+
+		ValidarSistema(sistema);
+
+		await using var db = _factory.Create(sistema);
+
+		if (await ObterEmpresaAsync(db, cancellationToken) is not decimal emp)
+		{
+			return EmpresaIndefinida<ItemTabelaDto>();
+		}
+
+		await using var transacao = await db.Database.BeginTransactionAsync(cancellationToken);
+
+		var codigo = dados.Codigo ?? (await db.Database
+				.SqlQuery<decimal>($"SELECT ISNULL(MAX(CD_TP_FN), 0) + 1 AS [Value] FROM dbo.T000TTEL WITH (UPDLOCK, HOLDLOCK) WHERE CD_EMP = {emp}")
+				.ToListAsync(cancellationToken))
+			.Single();
+
+		if (codigo > 99)
+		{
+			return Invalido<ItemTabelaDto>("Não há código de tipo de telefone livre (o máximo é 99).");
+		}
+
+		if (await db.TiposTelefone.AnyAsync(t => t.CD_EMP == emp && t.CD_TP_FN == codigo, cancellationToken))
+		{
+			return Conflito<ItemTabelaDto>($"O tipo de telefone {codigo:0} já existe.");
+		}
+
+		var tipo = new T000TTEL { CD_EMP = emp, CD_TP_FN = codigo, DE_TP_FN = dados.Descricao!.Trim() };
+		db.TiposTelefone.Add(tipo);
+
+		if (await SalvarAsync(db, cancellationToken) is string erroGravacao)
+		{
+			return Conflito<ItemTabelaDto>(erroGravacao);
+		}
+
+		await transacao.CommitAsync(cancellationToken);
+
+		return Sucesso("Tipo de telefone cadastrado.", Item(tipo.CD_TP_FN, tipo.DE_TP_FN));
+	}
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<ItemTabelaDto>> AlterarTipoTelefoneAsync(
+		int sistema,
+		decimal codigo,
+		ItemTabelaDados dados,
+		CancellationToken cancellationToken = default)
+	{
+		if (ValidacaoTabelasApoio.Item(dados, ValidacaoTabelasApoio.TamanhoTipoTelefone, inclusao: false) is string erro)
+		{
+			return Invalido<ItemTabelaDto>(erro);
+		}
+
+		ValidarSistema(sistema);
+
+		await using var db = _factory.Create(sistema);
+
+		var tipo = await db.TiposTelefone.FirstOrDefaultAsync(t => t.CD_TP_FN == codigo, cancellationToken);
+
+		if (tipo is null)
+		{
+			return NaoEncontrado<ItemTabelaDto>("Tipo de telefone não encontrado.");
+		}
+
+		tipo.DE_TP_FN = dados.Descricao!.Trim();
+		await db.SaveChangesAsync(cancellationToken);
+
+		return Sucesso("Tipo de telefone alterado.", Item(tipo.CD_TP_FN, tipo.DE_TP_FN));
+	}
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<ItemTabelaDto>> ExcluirTipoTelefoneAsync(
+		int sistema,
+		decimal codigo,
+		CancellationToken cancellationToken = default)
+	{
+		ValidarSistema(sistema);
+
+		await using var db = _factory.Create(sistema);
+
+		var tipo = await db.TiposTelefone.FirstOrDefaultAsync(t => t.CD_TP_FN == codigo, cancellationToken);
+
+		if (tipo is null)
+		{
+			return NaoEncontrado<ItemTabelaDto>("Tipo de telefone não encontrado.");
+		}
+
+		if (await db.Telefones.AnyAsync(e => e.CD_EMP == tipo.CD_EMP && e.CD_TP_FN == codigo, cancellationToken))
+		{
+			return Conflito<ItemTabelaDto>($"O tipo de telefone {codigo:0} não pode ser excluído: há telefones com ele.");
+		}
+
+		var dto = Item(tipo.CD_TP_FN, tipo.DE_TP_FN);
+		db.TiposTelefone.Remove(tipo);
+
+		return await SalvarAsync(db, cancellationToken) is string erroGravacao
+			? Conflito<ItemTabelaDto>(erroGravacao)
+			: Sucesso("Tipo de telefone excluído.", dto);
+	}
+
 	// ===================== Municípios (T000MUNI) =====================
 
 	/// <inheritdoc />
@@ -490,6 +825,7 @@ public sealed class ManutencaoTabelasApoioService : IManutencaoTabelasApoioServi
 
 		var emUso =
 			await db.PessoasFisicas.AnyAsync(f => f.CD_EMP == municipio.CD_EMP && f.CD_MUN == cdMun, cancellationToken) ? "pessoas"
+			: await db.Enderecos.AnyAsync(e => e.CD_EMP == municipio.CD_EMP && e.CD_MUN == cdMun, cancellationToken) ? "endereços"
 			: await db.Corretores.AnyAsync(c => c.CD_EMP == municipio.CD_EMP && c.CD_MUN == cdMun, cancellationToken) ? "corretores"
 			: null;
 

@@ -53,7 +53,7 @@ public static class ValidacaoOrgaos
 		return (inclusao ? Inteiro(dados.CdLot, 999_999, "cdLot") : null)
 			?? Obrigatorio(dados.Descricao, "descricao")
 			?? Tamanho(dados.Descricao, 50, "descricao")
-			?? Situacao(dados.CdSituacao, "cdSituacao");
+			?? SituacaoAtivoInativo.Lotacao.Validar(dados.CdSituacao, "cdSituacao");
 	}
 
 	public static string? Grupo(GrupoDados? dados, bool inclusao)
@@ -100,7 +100,7 @@ public static class ValidacaoOrgaos
 		return (inclusao ? Inteiro(dados.CdCargo, 9_999, "cdCargo") : null)
 			?? Obrigatorio(dados.Descricao, "descricao")
 			?? Tamanho(dados.Descricao, 30, "descricao")
-			?? Situacao(dados.CdSituacao, "cdSituacao");
+			?? SituacaoAtivoInativo.Cargo.Validar(dados.CdSituacao, "cdSituacao");
 	}
 
 	public static string? Vinculo(VinculoOrgaoDados? dados)
@@ -169,10 +169,6 @@ public static class ValidacaoOrgaos
 	private static string? SituacaoDoOrgao(decimal? valor) =>
 		SituacaoOrgao.Valida(valor) ? null : "O campo cdSituacao do órgão deve ser 1 (ATIVO) ou 0 (INATIVO).";
 
-	private static string? Situacao(decimal? valor, string campo) =>
-		valor is not null && (valor < 0 || valor > 9 || valor % 1 != 0)
-			? $"O campo {campo} deve ser um número de 0 a 9."
-			: null;
 
 	private static string? Valor(decimal? valor, string campo) =>
 		valor is not null && (valor < 0 || valor > 9_999_999.99m || decimal.Round(valor.Value, 2) != valor)

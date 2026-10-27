@@ -188,9 +188,15 @@ public sealed class LotacaoDados
 	public string? Descricao { get; init; }
 
 	/// <summary>
-	/// Situação da lotação (CD_SIT_LOT, 0 a 9).
+	/// Situação da lotação (CD_SIT_LOT): 1 = ATIVO, 2 = INATIVO.
+	/// Omitida na inclusão: 1 (ATIVO).
 	/// </summary>
 	public decimal? CdSituacao { get; init; }
+
+	/// <summary>
+	/// ATIVO ou INATIVO. Só na resposta.
+	/// </summary>
+	public string? Situacao { get; init; }
 }
 
 /// <summary>
@@ -264,9 +270,15 @@ public sealed class CargoDados
 	public string? Descricao { get; init; }
 
 	/// <summary>
-	/// Situação do cargo (CD_SIT_CAG, 0 a 9).
+	/// Situação do cargo (CD_SIT_CAG): 1 = ATIVO, 0 = INATIVO.
+	/// Omitida na inclusão: 1 (ATIVO).
 	/// </summary>
 	public decimal? CdSituacao { get; init; }
+
+	/// <summary>
+	/// ATIVO ou INATIVO. Só na resposta.
+	/// </summary>
+	public string? Situacao { get; init; }
 }
 
 /// <summary>

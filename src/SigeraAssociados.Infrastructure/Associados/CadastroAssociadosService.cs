@@ -486,6 +486,18 @@ public sealed class CadastroAssociadosService : ICadastroAssociadosService
 		cliente.CD_SIT_CLI = associado.CdSitCli;
 		cliente.OB_SIT = Texto(associado.ObsSituacao);
 		cliente.DT_CARTEIRA = associado.DataCarteira;
+
+		// Senhas do portal (NR_PWS) e de averbação (NR_PWS_02) em texto puro, como o legado lê. Omitida (null) mantém a
+		// atual; vazia apaga.
+		if (associado.SenhaPortal is not null)
+		{
+			cliente.NR_PWS = associado.SenhaPortal.Length == 0 ? null : associado.SenhaPortal;
+		}
+
+		if (associado.SenhaAverbacao is not null)
+		{
+			cliente.NR_PWS_02 = associado.SenhaAverbacao.Length == 0 ? null : associado.SenhaAverbacao;
+		}
 	}
 
 	private static AssociadoCadastroDto ParaDto(
@@ -527,7 +539,9 @@ public sealed class CadastroAssociadosService : ICadastroAssociadosService
 				CdFil = cliente.CD_FIL,
 				CdSitCli = cliente.CD_SIT_CLI,
 				ObsSituacao = cliente.OB_SIT,
-				DataCarteira = cliente.DT_CARTEIRA
+				DataCarteira = cliente.DT_CARTEIRA,
+				SenhaPortal = cliente.NR_PWS,
+				SenhaAverbacao = cliente.NR_PWS_02
 			}
 		};
 	}

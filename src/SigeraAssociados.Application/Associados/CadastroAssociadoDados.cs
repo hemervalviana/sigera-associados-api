@@ -145,4 +145,18 @@ public sealed class AssociadoDados
 	/// Data da carteira (DT_CARTEIRA).
 	/// </summary>
 	public DateTime? DataCarteira { get; init; }
+
+	/// <summary>
+	/// Senha do portal (NR_PWS, até 50). Gravada em texto puro, como no
+	/// legado, que lê o valor como está. Não é aparada.
+	/// Na alteração: omitida (null) mantém a atual; "" apaga.
+	/// Volta só no detalhe do associado (GET /api/associados/{sqPesCli}) e nas
+	/// respostas de inclusão e alteração; nunca na pesquisa nem nos logs.
+	/// </summary>
+	public string? SenhaPortal { get; init; }
+
+	/// <summary>
+	/// Senha de averbação (NR_PWS_02, até 50). Mesmas regras da senha do portal.
+	/// </summary>
+	public string? SenhaAverbacao { get; init; }
 }

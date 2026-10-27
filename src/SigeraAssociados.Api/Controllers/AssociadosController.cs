@@ -59,8 +59,10 @@ public sealed class AssociadosController : ControllerBase
 	/// Cadastro completo de um associado pessoa física (para a tela de edição).
 	/// </summary>
 	/// <remarks>
-	/// O CPF vem completo. Associado excluído, pessoa jurídica ou fora dos
-	/// seus acessos: 404.
+	/// O CPF vem completo. As senhas (`associado.senhaPortal` e `associado.senhaAverbacao`)
+	/// vêm em texto puro, só aqui e nas respostas de inclusão e alteração;
+	/// a pesquisa não traz senhas. Associado excluído, pessoa jurídica ou fora
+	/// dos seus acessos: 404.
 	/// </remarks>
 	/// <param name="sqPesCli">Código da pessoa do associado.</param>
 	/// <param name="cancellationToken">Cancelamento da requisição.</param>
@@ -106,8 +108,11 @@ public sealed class AssociadosController : ControllerBase
 	///         "cdMunicipio": 2307304,
 	///         "nomeMae": "ANA DA SILVA"
 	///       },
-	///       "associado": { "cdFil": 1, "cdSitCli": 1 }
+	///       "associado": { "cdFil": 1, "cdSitCli": 1, "senhaPortal": "1234", "senhaAverbacao": "abcd" }
 	///     }
+	///
+	/// Senhas (`associado.senhaPortal` = NR_PWS, portal; `associado.senhaAverbacao` = NR_PWS_02, averbação):
+	/// até 50 caracteres, gravadas em texto puro como no legado, sem aparar.
 	/// </remarks>
 	/// <response code="201">Cadastrado; devolve o cadastro com o sqPesCli gerado.</response>
 	/// <response code="400">Dados inválidos, ou filial, situação, município, tratamento ou corretor inexistente.</response>
@@ -144,6 +149,9 @@ public sealed class AssociadosController : ControllerBase
 	/// <remarks>
 	/// Envie o cadastro inteiro, no mesmo formato da inclusão. Só as colunas
 	/// que mudaram são gravadas.
+	///
+	/// Senhas: `associado.senhaPortal` / `associado.senhaAverbacao` omitidas (null) mantêm
+	/// as atuais; `""` apaga.
 	///
 	/// Atenção: mudar a situação para 10 (falecido) aciona a trigger
 	/// TR_CLIE_UPD, que encerra os contratos ativos (situação 2 ou 5 vira 7).

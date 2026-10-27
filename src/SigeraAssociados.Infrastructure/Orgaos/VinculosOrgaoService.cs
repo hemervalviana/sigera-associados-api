@@ -283,11 +283,22 @@ public sealed class VinculosOrgaoService : IVinculosOrgaoService
 		v.VR_SAL_LIQ = d.SalarioLiquido;
 	}
 
-	private static IQueryable<VinculoOrgaoDto> Projetar(SigeraDbContext db, decimal emp, decimal sqPesCli)
+	private static IQueryable<VinculoOrgaoDto> Projetar(
+		SigeraDbContext db,
+		decimal emp,
+		decimal sqPesCli,
+		decimal? sqOrg = null)
 	{
-		return db.VinculosOrgao
+		var vinculos = db.VinculosOrgao
 			.AsNoTracking()
-			.Where(v => v.CD_EMP == emp && v.SQ_PES == sqPesCli)
+			.Where(v => v.CD_EMP == emp && v.SQ_PES == sqPesCli);
+
+		if (sqOrg is decimal sequencia)
+		{
+			vinculos = vinculos.Where(v => v.SQ_ORG == sequencia);
+		}
+
+		return vinculos
 			.OrderBy(v => v.SQ_ORG)
 			.Select(v => new VinculoOrgaoDto
 			{
@@ -316,6 +327,6 @@ public sealed class VinculosOrgaoService : IVinculosOrgaoService
 		decimal sqOrg,
 		CancellationToken cancellationToken)
 	{
-		return await Projetar(db, emp, sqPesCli).FirstOrDefaultAsync(v => v.SqOrg == sqOrg, cancellationToken);
+		return await Projetar(db, emp, sqPesCli, sqOrg).FirstOrDefaultAsync(cancellationToken);
 	}
 }

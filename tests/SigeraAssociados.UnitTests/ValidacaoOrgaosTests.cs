@@ -103,7 +103,37 @@ public sealed class ValidacaoOrgaosTests
 	[Fact]
 	public void Lotacao_Valida()
 	{
-		Assert.Null(ValidacaoOrgaos.Lotacao(new LotacaoDados { Descricao = "ESCOLA", CdSituacao = 0 }, inclusao: true));
+		Assert.Null(ValidacaoOrgaos.Lotacao(new LotacaoDados { Descricao = "ESCOLA", CdSituacao = 1 }, inclusao: true));
+		Assert.Null(ValidacaoOrgaos.Lotacao(new LotacaoDados { Descricao = "ESCOLA", CdSituacao = 2 }, inclusao: true));
+		Assert.Null(ValidacaoOrgaos.Lotacao(new LotacaoDados { Descricao = "ESCOLA" }, inclusao: true));
+	}
+
+	[Theory]
+	[InlineData(0)]
+	[InlineData(3)]
+	public void Lotacao_SituacaoDiferenteDe1e2_DeveSerRecusada(int situacao)
+	{
+		Assert.Contains("2 (INATIVO)",
+			ValidacaoOrgaos.Lotacao(new LotacaoDados { Descricao = "ESCOLA", CdSituacao = situacao }, inclusao: true));
+	}
+
+	[Theory]
+	[InlineData(2)]
+	[InlineData(9)]
+	public void Cargo_SituacaoDiferenteDe0e1_DeveSerRecusada(int situacao)
+	{
+		Assert.Contains("0 (INATIVO)",
+			ValidacaoOrgaos.Cargo(new CargoDados { Descricao = "PROFESSOR", CdSituacao = situacao }, inclusao: true));
+	}
+
+	[Fact]
+	public void Situacoes_DescricoesPorTabela()
+	{
+		Assert.Equal("INATIVO", SituacaoAtivoInativo.Lotacao.Descricao(2));
+		Assert.Null(SituacaoAtivoInativo.Lotacao.Descricao(0));
+		Assert.Equal("INATIVO", SituacaoAtivoInativo.Cargo.Descricao(0));
+		Assert.Equal("ATIVO", SituacaoAtivoInativo.Cargo.Descricao(1));
+		Assert.Equal("INATIVO", SituacaoAtivoInativo.Orgao.Descricao(0));
 	}
 
 	[Fact]

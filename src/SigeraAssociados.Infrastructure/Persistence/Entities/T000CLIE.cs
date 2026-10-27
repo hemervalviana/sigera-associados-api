@@ -64,9 +64,9 @@ public sealed class T000CLIE
 	public decimal? CD_FIL { get; set; }
 
 	/// <summary>
-	/// Campo legado de credencial.
+	/// Senha do portal do associado, em texto puro (o legado lê o valor como está).
 	/// SQL Server: varchar(50), NULL.
-	/// Não deve ser exposto em respostas da API.
+	/// Exposta só no detalhe do associado (AssociadoDados.SenhaPortal); nunca em pesquisa ou log.
 	/// </summary>
 	[MaxLength(50)]
 	[Column("NR_PWS", TypeName = "varchar(50)")]
@@ -96,9 +96,9 @@ public sealed class T000CLIE
 	public decimal? TP_MOV_ULT { get; set; }
 
 	/// <summary>
-	/// Segundo campo legado de credencial.
+	/// Senha de averbação do associado, em texto puro (o legado lê o valor como está).
 	/// SQL Server: varchar(50), NULL.
-	/// Não deve ser exposto em respostas da API.
+	/// Exposta só no detalhe do associado (AssociadoDados.SenhaAverbacao); nunca em pesquisa ou log.
 	/// </summary>
 	[MaxLength(50)]
 	[Column("NR_PWS_02", TypeName = "varchar(50)")]

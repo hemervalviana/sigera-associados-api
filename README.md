@@ -274,6 +274,26 @@ Implementação: `Api/Erros/RespostasErro.cs` (formato e títulos), `Api/Erros/T
 | DELETE | `/api/associados/{sqPesCli}` | Admin e Gestores (exclusão lógica) |
 | GET | `/api/orgaos?busca=&cdFil=&uf=`, `/api/orgaos/{cdOrg}`, `/api/orgaos/grupos`, `/api/orgaos/suborgaos`, `/api/orgaos/lotacoes`, `/api/orgaos/cargos`, `/api/orgaos/situacoes` | Quem tem acesso ao sistema |
 | POST / PUT / DELETE | `/api/orgaos`, `/api/orgaos/grupos`, `/api/orgaos/suborgaos`, `/api/orgaos/lotacoes`, `/api/orgaos/cargos`, `/api/orgaos/situacoes` (PUT e DELETE com `/{codigo}`) | Admin |
+| GET / POST | `/api/associados/{sqPesCli}/contas` | Conforme acessos (contas bancárias do associado) |
+| PUT / DELETE | `/api/associados/{sqPesCli}/contas/{sqConta}` | Conforme acessos; DELETE só Admin e Gestores |
+| GET | `/api/cadastros/bancos?busca=` | Quem tem acesso ao sistema |
+| POST / PUT / DELETE | `/api/cadastros/bancos` (PUT e DELETE com `/{cdBanco}`) | Admin |
+| GET / POST | `/api/associados/{sqPesCli}/enderecos` | Conforme acessos (endereços do associado; um principal) |
+| PUT / DELETE | `/api/associados/{sqPesCli}/enderecos/{sqEndereco}` | Conforme acessos; DELETE só Admin e Gestores |
+| GET | `/api/cadastros/tipos-endereco` | Quem tem acesso ao sistema |
+| POST / PUT / DELETE | `/api/cadastros/tipos-endereco` (PUT e DELETE com `/{codigo}`) | Admin |
+| GET / POST | `/api/associados/{sqPesCli}/telefones` | Conforme acessos (telefones do associado) |
+| PUT / DELETE | `/api/associados/{sqPesCli}/telefones/{sqTelefone}` | Conforme acessos; DELETE só Admin e Gestores |
+| GET | `/api/cadastros/tipos-telefone` | Quem tem acesso ao sistema |
+| POST / PUT / DELETE | `/api/cadastros/tipos-telefone` (PUT e DELETE com `/{codigo}`) | Admin |
+| GET / POST | `/api/associados/{sqPesCli}/pix` | Conforme acessos (chaves Pix do associado) |
+| PUT / DELETE | `/api/associados/{sqPesCli}/pix/{sqPix}` | Conforme acessos; DELETE só Admin e Gestores |
+| GET / POST | `/api/associados/{sqPesCli}/referencias` | Conforme acessos (referências pessoais do associado) |
+| PUT / DELETE | `/api/associados/{sqPesCli}/referencias/{sqReferencia}` | Conforme acessos; DELETE só Admin e Gestores |
+| GET / POST | `/api/associados/{sqPesCli}/creditos` | Conforme acessos (créditos do associado; saldo calculado pela forma de pagamento) |
+| PUT / DELETE | `/api/associados/{sqPesCli}/creditos/{sqCredito}` | Conforme acessos; DELETE só Admin e Gestores, e só com valor = saldo |
+| GET | `/api/cadastros/formas-pagamento`, `/api/cadastros/produtos`, `/api/convenios`, `/api/convenios/{cdCvn}` | Quem tem acesso ao sistema |
+| POST / PUT / DELETE | `/api/cadastros/formas-pagamento`, `/api/cadastros/produtos`, `/api/convenios` (PUT e DELETE com `/{codigo}` ou `/{cdCvn}`) | Admin |
 | GET / POST | `/api/associados/{sqPesCli}/orgaos` | Conforme acessos (vínculos do associado com órgãos) |
 | PUT / DELETE | `/api/associados/{sqPesCli}/orgaos/{sqOrg}` | Conforme acessos; DELETE só Admin e Gestores |
 | GET | `/api/cadastros/filiais`, `/filiais/{cdFil}`, `/situacoes`, `/tratamentos`, `/municipios?uf=&busca=` | Quem tem acesso ao sistema (`X-Sigera-Sistema`) |

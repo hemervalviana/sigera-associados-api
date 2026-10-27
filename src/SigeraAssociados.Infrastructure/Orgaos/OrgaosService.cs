@@ -284,12 +284,14 @@ public sealed class OrgaosService : IOrgaosService
 				: query.Where(l => l.DE_LOT.StartsWith(texto));
 		}
 
-		return await query
+		var lotacoes = await query
 			.OrderBy(l => l.DE_LOT)
 			.ThenBy(l => l.CD_LOT)
 			.Take(TamanhoPaginaMaximo)
-			.Select(l => new LotacaoDados { CdLot = l.CD_LOT, Descricao = l.DE_LOT, CdSituacao = l.CD_SIT_LOT })
 			.ToListAsync(cancellationToken);
+
+		// Descrição da situação é fixa (sem tabela): preenchida depois da consulta.
+		return lotacoes.Select(l => ParaDados(l)).ToList();
 	}
 
 	/// <inheritdoc />
@@ -333,7 +335,7 @@ public sealed class OrgaosService : IOrgaosService
 			CD_EMP = emp,
 			CD_LOT = codigo,
 			DE_LOT = dados.Descricao!.Trim(),
-			CD_SIT_LOT = dados.CdSituacao
+			CD_SIT_LOT = dados.CdSituacao ?? SituacaoAtivoInativo.Lotacao.Ativo
 		};
 
 		db.Lotacoes.Add(lotacao);
@@ -667,12 +669,14 @@ public sealed class OrgaosService : IOrgaosService
 				: query.Where(c => c.DE_CG.StartsWith(texto));
 		}
 
-		return await query
+		var cargos = await query
 			.OrderBy(c => c.DE_CG)
 			.ThenBy(c => c.CD_CG)
 			.Take(TamanhoPaginaMaximo)
-			.Select(c => new CargoDados { CdCargo = c.CD_CG, Descricao = c.DE_CG, CdSituacao = c.CD_SIT_CAG })
 			.ToListAsync(cancellationToken);
+
+		// Descrição da situação é fixa (sem tabela): preenchida depois da consulta.
+		return cargos.Select(c => ParaDados(c)).ToList();
 	}
 
 	/// <inheritdoc />
@@ -716,7 +720,7 @@ public sealed class OrgaosService : IOrgaosService
 			CD_EMP = emp,
 			CD_CG = codigo,
 			DE_CG = dados.Descricao!.Trim(),
-			CD_SIT_CAG = dados.CdSituacao
+			CD_SIT_CAG = dados.CdSituacao ?? SituacaoAtivoInativo.Cargo.Ativo
 		};
 
 		db.Cargos.Add(cargo);
@@ -1063,9 +1067,21 @@ public sealed class OrgaosService : IOrgaosService
 		NumeroDias = dias
 	};
 
-	private static CargoDados ParaDados(T000CARG c) => new() { CdCargo = c.CD_CG, Descricao = c.DE_CG, CdSituacao = c.CD_SIT_CAG };
+	private static CargoDados ParaDados(T000CARG c) => new()
+	{
+		CdCargo = c.CD_CG,
+		Descricao = c.DE_CG,
+		CdSituacao = c.CD_SIT_CAG,
+		Situacao = SituacaoAtivoInativo.Cargo.Descricao(c.CD_SIT_CAG)
+	};
 
-	private static LotacaoDados ParaDados(T000LOTA l) => new() { CdLot = l.CD_LOT, Descricao = l.DE_LOT, CdSituacao = l.CD_SIT_LOT };
+	private static LotacaoDados ParaDados(T000LOTA l) => new()
+	{
+		CdLot = l.CD_LOT,
+		Descricao = l.DE_LOT,
+		CdSituacao = l.CD_SIT_LOT,
+		Situacao = SituacaoAtivoInativo.Lotacao.Descricao(l.CD_SIT_LOT)
+	};
 
 	private static void ValidarSistema(int sistema)
 	{

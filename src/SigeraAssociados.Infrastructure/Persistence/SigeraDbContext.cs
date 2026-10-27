@@ -36,6 +36,18 @@ public sealed class SigeraDbContext : DbContext
 	public DbSet<T009SBOR> SubOrgaos => Set<T009SBOR>();
 	public DbSet<T000SPOG> SituacoesVinculo => Set<T000SPOG>();
 	public DbSet<T000RPOR> VinculosOrgao => Set<T000RPOR>();
+	public DbSet<T000TEND> TiposEndereco => Set<T000TEND>();
+	public DbSet<T000ENDE> Enderecos => Set<T000ENDE>();
+	public DbSet<T000BANC> Bancos => Set<T000BANC>();
+	public DbSet<T000CCOR> ContasBancarias => Set<T000CCOR>();
+	public DbSet<T000TTEL> TiposTelefone => Set<T000TTEL>();
+	public DbSet<T000TELE> Telefones => Set<T000TELE>();
+	public DbSet<T009PIX> ChavesPix => Set<T009PIX>();
+	public DbSet<T000REFE> Referencias => Set<T000REFE>();
+	public DbSet<T009FRPG> FormasPagamento => Set<T009FRPG>();
+	public DbSet<T009PRDT> Produtos => Set<T009PRDT>();
+	public DbSet<T009CONV> Convenios => Set<T009CONV>();
+	public DbSet<T009EXTRA> Creditos => Set<T009EXTRA>();
 
 	/// <summary>
 	/// Aplica automaticamente as configurações de entidades

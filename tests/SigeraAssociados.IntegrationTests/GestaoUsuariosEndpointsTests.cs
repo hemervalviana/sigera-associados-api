@@ -454,6 +454,153 @@ public sealed class GestaoUsuariosEndpointsTests
 		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
 	}
 
+	// ----- Endereços do associado e tipos de endereço: permissões -----
+
+	[Theory]
+	[InlineData("Corretores")]
+	[InlineData("Atendimento")]
+	public async Task ExcluirEnderecoDoAssociado_SemSerAdministradorOuGestor_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.DeleteAsync("/api/associados/123/enderecos/1");
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	[Theory]
+	[InlineData("Gestores")]
+	[InlineData("Atendimento")]
+	public async Task IncluirTipoEndereco_SemSerAdministrador_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.PostAsJsonAsync("/api/cadastros/tipos-endereco", new { descricao = "TESTE" });
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	// ----- Telefones do associado e tipos de telefone: permissões -----
+
+	[Theory]
+	[InlineData("Corretores")]
+	[InlineData("Atendimento")]
+	public async Task ExcluirTelefoneDoAssociado_SemSerAdministradorOuGestor_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.DeleteAsync("/api/associados/123/telefones/1");
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	[Theory]
+	[InlineData("Gestores")]
+	[InlineData("Atendimento")]
+	public async Task IncluirTipoTelefone_SemSerAdministrador_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.PostAsJsonAsync("/api/cadastros/tipos-telefone", new { descricao = "TESTE" });
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	// ----- Chaves Pix do associado: permissões -----
+
+	[Theory]
+	[InlineData("Corretores")]
+	[InlineData("Atendimento")]
+	public async Task ExcluirChavePixDoAssociado_SemSerAdministradorOuGestor_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.DeleteAsync("/api/associados/123/pix/1");
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	// ----- Referências do associado: permissões -----
+
+	[Theory]
+	[InlineData("Corretores")]
+	[InlineData("Atendimento")]
+	public async Task ExcluirReferenciaDoAssociado_SemSerAdministradorOuGestor_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.DeleteAsync("/api/associados/123/referencias/1");
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	// ----- Créditos do associado e cadastros financeiros: permissões -----
+
+	[Theory]
+	[InlineData("Corretores")]
+	[InlineData("Atendimento")]
+	[InlineData("Financeiro")]
+	public async Task ExcluirCreditoDoAssociado_SemSerAdministradorOuGestor_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.DeleteAsync("/api/associados/123/creditos/1");
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	[Theory]
+	[InlineData("Gestores", "/api/cadastros/formas-pagamento")]
+	[InlineData("Financeiro", "/api/cadastros/formas-pagamento")]
+	[InlineData("Gestores", "/api/cadastros/produtos")]
+	[InlineData("Atendimento", "/api/cadastros/produtos")]
+	[InlineData("Gestores", "/api/convenios")]
+	[InlineData("Financeiro", "/api/convenios")]
+	public async Task IncluirCadastroFinanceiro_SemSerAdministrador_DeveRetornar403(string grupo, string rota)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.PostAsJsonAsync(rota, new { descricao = "TESTE", nome = "TESTE" });
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	// ----- Contas bancárias e bancos: permissões -----
+
+	[Theory]
+	[InlineData("Corretores")]
+	[InlineData("Financeiro")]
+	public async Task ExcluirContaDoAssociado_SemSerAdministradorOuGestor_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.DeleteAsync("/api/associados/123/contas/1");
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	[Theory]
+	[InlineData("Gestores")]
+	[InlineData("Financeiro")]
+	public async Task IncluirBanco_SemSerAdministrador_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.PostAsJsonAsync("/api/cadastros/bancos", new { cdBanco = 999, nome = "TESTE" });
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
 	// ----- Minha conta -----
 
 	[Fact]

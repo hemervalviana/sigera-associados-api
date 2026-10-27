@@ -385,6 +385,8 @@ public sealed class OrgaosController : ControllerBase
 	///
 	///     POST /api/orgaos/lotacoes
 	///     { "descricao": "ESCOLA MUNICIPAL CENTRO", "cdSituacao": 1 }
+	///
+	/// `cdSituacao`: 1 = ATIVO, 2 = INATIVO (omitida: 1).
 	/// </remarks>
 	/// <response code="201">Incluído.</response>
 	/// <response code="400">Dados inválidos.</response>
@@ -470,6 +472,8 @@ public sealed class OrgaosController : ControllerBase
 	///
 	///     POST /api/orgaos/cargos
 	///     { "descricao": "PROFESSOR", "cdSituacao": 1 }
+	///
+	/// `cdSituacao`: 1 = ATIVO, 0 = INATIVO (omitida: 1).
 	/// </remarks>
 	/// <response code="201">Incluído.</response>
 	/// <response code="400">Dados inválidos.</response>

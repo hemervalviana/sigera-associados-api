@@ -1,4 +1,39 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/doc/">
+    <File Path="doc/Criar o projeto.txt" />
+    <File Path="doc/Fluxograma do projeto.md" />
+    <File Path="doc/Implantação em produção.md" />
+    <File Path="doc/SigeraAssociados API — Pendências gerais.md" />
+    <File Path="doc/fluxograma-1-etapas.png" />
+    <File Path="doc/fluxograma-2-requisicao.png" />
+    <File Path="doc/fluxograma-3-confirmacao.png" />
+  </Folder>
+  <Folder Name="/doc/postman/">
+    <File Path="doc/postman/Postman - passo a passo.md" />
+    <File Path="doc/postman/Roteiro de testes.md" />
+    <File Path="doc/postman/SigeraAssociados API.postman_collection.json" />
+  </Folder>
+  <Folder Name="/scripts/">
+    <File Path="scripts/associados-colunas-api-e-permissoes.sql" />
+    <File Path="scripts/contas-bancarias-permissoes.sql" />
+    <File Path="scripts/creditos-permissoes.sql" />
+    <File Path="scripts/criar-indice-nome-t000pess.sql" />
+    <File Path="scripts/criar-login-usr_sisgera_api.sql" />
+    <File Path="scripts/enderecos-permissoes.sql" />
+    <File Path="scripts/iniciar-tunel-cloudflared.ps1" />
+    <File Path="scripts/instalar-servico-windows.ps1" />
+    <File Path="scripts/orgaos-permissoes.sql" />
+    <File Path="scripts/pix-permissoes.sql" />
+    <File Path="scripts/referencias-permissoes.sql" />
+    <File Path="scripts/remover-servico-windows.ps1" />
+    <File Path="scripts/tabelas-apoio-permissoes.sql" />
+    <File Path="scripts/telefones-permissoes.sql" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/SigeraAssociados.Api/SigeraAssociados.Api.csproj" />
     <Project Path="src/SigeraAssociados.Application/SigeraAssociados.Application.csproj" />

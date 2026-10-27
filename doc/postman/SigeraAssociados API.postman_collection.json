@@ -689,7 +689,7 @@
             "description": "## O que faz\nCadastra o associado em T000PESS, T000PFIS e T000CLIE numa transação. A API gera o `sqPesCli` (MAX + 1) e preenche empresa, tipo F, data e usuário.\n\n## Passo a passo\n1. **Troque o CPF** por um CPF válido que não exista na base.\n2. Use `cdFil` do 04.20 e `cdSitCli` do 04.21 (opcionais: `cdMunicipio` do 04.23, `cdTratamento` do 04.22).\n3. Clique em **Send**. O código gerado vai para a variável `sqPesCli`.\n\nObrigatórios: nome, CPF, data de nascimento, sexo (M/F), filial e situação. Situação 10 (falecido) só Administradores e Gestores.\n\n## Respostas\n- **201**: cadastrado.\n- **400**: dados inválidos ou referência inexistente.\n- **403**: filial fora dos seus acessos, ou falecido sem permissão.\n- **409**: CPF já cadastrado.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"TESTE API DA SILVA\",\n  \"nomeCurto\": \"TESTE API\",\n  \"email\": \"teste.api@exemplo.com\",\n  \"observacao\": \"Cadastro de teste pela API\",\n  \"pessoaFisica\": {\n    \"cpf\": \"529.982.247-25\",\n    \"rg\": \"1234567\",\n    \"orgaoExpedidor\": \"SSP\",\n    \"ufOrgao\": \"CE\",\n    \"dataNascimento\": \"1980-05-10\",\n    \"sexo\": \"F\",\n    \"estadoCivil\": \"S\",\n    \"cdMunicipio\": null,\n    \"cdTratamento\": null,\n    \"nomePai\": null,\n    \"nomeMae\": \"MAE DE TESTE\",\n    \"nomeConjuge\": null,\n    \"dataNascimentoConjuge\": null,\n    \"dataCasamento\": null\n  },\n  \"associado\": {\n    \"cdFil\": 1,\n    \"cdSitCli\": 1,\n    \"obsSituacao\": null,\n    \"dataCarteira\": null\n  }\n}",
+              "raw": "{\n  \"nome\": \"TESTE API DA SILVA\",\n  \"nomeCurto\": \"TESTE API\",\n  \"email\": \"teste.api@exemplo.com\",\n  \"observacao\": \"Cadastro de teste pela API\",\n  \"pessoaFisica\": {\n    \"cpf\": \"529.982.247-25\",\n    \"rg\": \"1234567\",\n    \"orgaoExpedidor\": \"SSP\",\n    \"ufOrgao\": \"CE\",\n    \"dataNascimento\": \"1980-05-10\",\n    \"sexo\": \"F\",\n    \"estadoCivil\": \"S\",\n    \"cdMunicipio\": null,\n    \"cdTratamento\": null,\n    \"nomePai\": null,\n    \"nomeMae\": \"MAE DE TESTE\",\n    \"nomeConjuge\": null,\n    \"dataNascimentoConjuge\": null,\n    \"dataCasamento\": null\n  },\n  \"associado\": {\n    \"cdFil\": 1,\n    \"cdSitCli\": 1,\n    \"obsSituacao\": null,\n    \"dataCarteira\": null,\n    \"senhaPortal\": \"1234\",\n    \"senhaAverbacao\": \"abcd\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -742,7 +742,7 @@
             "description": "## O que faz\nSubstitui o cadastro do associado `sqPesCli` (envie tudo, como na inclusão). Só as colunas que mudaram são gravadas.\n\n**Atenção:** `cdSitCli` = 10 (falecido) aciona a trigger TR_CLIE_UPD, que encerra os contratos ativos (2/5 → 7). Só Administradores e Gestores; a resposta traz `contratosEncerrados`. Não teste isso com associado real.\n\n## Respostas\n- **200**: alterado.\n- **400**: dados inválidos.\n- **403**: nova filial fora dos seus acessos, ou falecido sem permissão.\n- **404**: não encontrado.\n- **409**: CPF de outra pessoa.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"TESTE API ALTERADO\",\n  \"nomeCurto\": \"TESTE API\",\n  \"email\": \"teste.api@exemplo.com\",\n  \"observacao\": \"Cadastro de teste pela API\",\n  \"pessoaFisica\": {\n    \"cpf\": \"529.982.247-25\",\n    \"rg\": \"1234567\",\n    \"orgaoExpedidor\": \"SSP\",\n    \"ufOrgao\": \"CE\",\n    \"dataNascimento\": \"1980-05-10\",\n    \"sexo\": \"F\",\n    \"estadoCivil\": \"S\",\n    \"cdMunicipio\": null,\n    \"cdTratamento\": null,\n    \"nomePai\": null,\n    \"nomeMae\": \"MAE DE TESTE\",\n    \"nomeConjuge\": null,\n    \"dataNascimentoConjuge\": null,\n    \"dataCasamento\": null\n  },\n  \"associado\": {\n    \"cdFil\": 1,\n    \"cdSitCli\": 1,\n    \"obsSituacao\": null,\n    \"dataCarteira\": null\n  }\n}",
+              "raw": "{\n  \"nome\": \"TESTE API ALTERADO\",\n  \"nomeCurto\": \"TESTE API\",\n  \"email\": \"teste.api@exemplo.com\",\n  \"observacao\": \"Cadastro de teste pela API\",\n  \"pessoaFisica\": {\n    \"cpf\": \"529.982.247-25\",\n    \"rg\": \"1234567\",\n    \"orgaoExpedidor\": \"SSP\",\n    \"ufOrgao\": \"CE\",\n    \"dataNascimento\": \"1980-05-10\",\n    \"sexo\": \"F\",\n    \"estadoCivil\": \"S\",\n    \"cdMunicipio\": null,\n    \"cdTratamento\": null,\n    \"nomePai\": null,\n    \"nomeMae\": \"MAE DE TESTE\",\n    \"nomeConjuge\": null,\n    \"dataNascimentoConjuge\": null,\n    \"dataCasamento\": null\n  },\n  \"associado\": {\n    \"cdFil\": 1,\n    \"cdSitCli\": 1,\n    \"obsSituacao\": null,\n    \"dataCarteira\": null,\n    \"senhaPortal\": \"1234\",\n    \"senhaAverbacao\": \"abcd\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3784,6 +3784,1560 @@
           ]
         }
       ]
+    },
+    {
+      "name": "10 - Endereços do associado",
+      "description": "Endereços do associado (T000ENDE): um ou mais, sempre um principal. Incluir e alterar: quem altera o associado. Excluir: Administradores e Gestores.\n\nTipos de endereço (T000TEND) em `/api/cadastros/tipos-endereco` (gravar só administradores).\n\nUse o associado de teste do 04.4 (`sqPesCli`). Ordem sugerida: 10.6 → 10.2 → 10.1 → 10.3 → 10.4.",
+      "item": [
+        {
+          "name": "10.1 - Listar os endereços do associado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/enderecos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "enderecos"
+              ]
+            },
+            "description": "Endereços do associado `sqPesCli`, o principal primeiro, com tipo, município e UF."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 404)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.2 - Incluir um endereço",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/enderecos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "enderecos"
+              ]
+            },
+            "description": "## O que faz\nInclui um endereço. A API gera o `sqEndereco` (MAX + 1 da pessoa), salvo na variável `sqEndereco`.\n\nAjuste `cdTipo` (10.6) e `cdMunicipio` (04.23) com valores reais. O primeiro endereço é sempre principal; `principal: true` desmarca os outros.\n\n## Respostas\n- **201**: incluído.\n- **400**: dados inválidos ou tipo/município inexistente.\n- **404**: associado fora dos seus acessos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdTipo\": 1,\n  \"logradouro\": \"RUA TESTE API\",\n  \"numero\": 100,\n  \"complemento\": null,\n  \"bairro\": \"CENTRO\",\n  \"cep\": \"63010-000\",\n  \"cdMunicipio\": 2307304,\n  \"principal\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"sqEndereco\", pm.response.json().item.sqEndereco);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.3 - Alterar um endereço",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/enderecos/{{sqEndereco}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "enderecos",
+                "{{sqEndereco}}"
+              ]
+            },
+            "description": "Altera o endereço `sqEndereco` (envie todos os campos). `principal` omitido mantém como estava.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdTipo\": 1,\n  \"logradouro\": \"RUA TESTE API\",\n  \"numero\": 200,\n  \"complemento\": null,\n  \"bairro\": \"CENTRO\",\n  \"cep\": \"63010-000\",\n  \"cdMunicipio\": 2307304,\n  \"principal\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.4 - Excluir um endereço (Administradores e Gestores)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/enderecos/{{sqEndereco}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "enderecos",
+                "{{sqEndereco}}"
+              ]
+            },
+            "description": "Exclui o endereço `sqEndereco`. Se era o principal, o de menor sequência que sobrar assume."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.5 - Incluir tipo de endereço (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/tipos-endereco",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "tipos-endereco"
+              ]
+            },
+            "description": "Inclui um tipo em T000TEND. Sem `codigo`, MAX + 1. `descricao` até 20.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"TESTE API\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10.6 - Tipos de endereço",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/tipos-endereco",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "tipos-endereco"
+              ]
+            },
+            "description": "Tipos de endereço (T000TEND), para o campo `cdTipo`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "11 - Contas bancárias do associado",
+      "description": "Contas bancárias do associado (T000CCOR): uma ou várias. Incluir e alterar: quem altera o associado. Excluir: Administradores e Gestores.\n\nBancos (T000BANC) em `/api/cadastros/bancos` (gravar só administradores).\n\nUse o associado de teste do 04.4 (`sqPesCli`). Ordem sugerida: 11.5 → 11.2 → 11.1 → 11.3 → 11.4.",
+      "item": [
+        {
+          "name": "11.1 - Listar as contas do associado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/contas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "contas"
+              ]
+            },
+            "description": "Contas bancárias do associado `sqPesCli`, com o nome do banco."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 404)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.2 - Incluir uma conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/contas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "contas"
+              ]
+            },
+            "description": "## O que faz\nInclui uma conta. A API gera o `sqConta` (MAX + 1 da pessoa), salvo na variável `sqConta`.\n\nAjuste `cdBanco` com um banco do 11.5.\n\n## Respostas\n- **201**: incluída.\n- **400**: dados inválidos ou banco inexistente.\n- **404**: associado fora dos seus acessos.\n- **409**: mesma conta (banco, agência e número) já cadastrada.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdBanco\": 104,\n  \"digitoBanco\": null,\n  \"agencia\": 1234,\n  \"digitoAgencia\": \"5\",\n  \"numeroConta\": 123456,\n  \"digitoConta\": \"7\",\n  \"operacao\": \"013\",\n  \"cdTipoConta\": 1,\n  \"titular\": \"TESTE API\",\n  \"chavePix\": null,\n  \"identificador\": null,\n  \"identificadorCef\": null,\n  \"cdSituacao\": 1,\n  \"enviarOptanteCef\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"sqConta\", pm.response.json().item.sqConta);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.3 - Alterar uma conta",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/contas/{{sqConta}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "contas",
+                "{{sqConta}}"
+              ]
+            },
+            "description": "Altera a conta `sqConta` (envie todos os campos).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdBanco\": 104,\n  \"digitoBanco\": null,\n  \"agencia\": 1234,\n  \"digitoAgencia\": \"5\",\n  \"numeroConta\": 123456,\n  \"digitoConta\": \"7\",\n  \"operacao\": \"013\",\n  \"cdTipoConta\": 1,\n  \"titular\": \"TESTE API\",\n  \"chavePix\": \"teste@exemplo.com\",\n  \"identificador\": null,\n  \"identificadorCef\": null,\n  \"cdSituacao\": 1,\n  \"enviarOptanteCef\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.4 - Excluir uma conta (Administradores e Gestores)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/contas/{{sqConta}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "contas",
+                "{{sqConta}}"
+              ]
+            },
+            "description": "Exclui a conta `sqConta` (exclusão física)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11.5 - Bancos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/bancos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "bancos"
+              ]
+            },
+            "description": "Bancos (T000BANC), para o campo `cdBanco`. `busca` opcional: começo do nome ou código."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "12 - Telefones do associado",
+      "description": "Telefones do associado (T000TELE): vários por associado. Incluir e alterar: quem altera o associado. Excluir: Administradores e Gestores.\n\nTipos de telefone (T000TTEL) em `/api/cadastros/tipos-telefone` (gravar só administradores).\n\nUse o associado de teste do 04.4 (`sqPesCli`). Ordem sugerida: 12.6 → 12.2 → 12.1 → 12.3 → 12.4.",
+      "item": [
+        {
+          "name": "12.1 - Listar os telefones do associado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/telefones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "telefones"
+              ]
+            },
+            "description": "Telefones do associado `sqPesCli`, com tipo e número formatado."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 404)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12.2 - Incluir um telefone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/telefones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "telefones"
+              ]
+            },
+            "description": "## O que faz\nInclui um telefone. A API gera o `sqTelefone` (MAX + 1 da empresa), salvo na variável `sqTelefone`.\n\n`ddd` 11 a 99; `numero` com 8 ou 9 números (com ou sem traço, gravado só com números); `cdTipo` opcional (12.6).\n\n## Respostas\n- **201**: incluído.\n- **400**: dados inválidos ou tipo inexistente.\n- **404**: associado fora dos seus acessos.\n- **409**: o associado já tem este DDD e número.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ddd\": 88,\n  \"numero\": \"99999-1234\",\n  \"cdTipo\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"sqTelefone\", pm.response.json().item.sqTelefone);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12.3 - Alterar um telefone",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/telefones/{{sqTelefone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "telefones",
+                "{{sqTelefone}}"
+              ]
+            },
+            "description": "Altera o telefone `sqTelefone` (envie todos os campos). `cdTipo` omitido deixa sem tipo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ddd\": 88,\n  \"numero\": \"3521-1234\",\n  \"cdTipo\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12.4 - Excluir um telefone (Administradores e Gestores)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/telefones/{{sqTelefone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "telefones",
+                "{{sqTelefone}}"
+              ]
+            },
+            "description": "Exclui o telefone `sqTelefone` (exclusão física)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12.5 - Incluir tipo de telefone (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/tipos-telefone",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "tipos-telefone"
+              ]
+            },
+            "description": "Inclui um tipo em T000TTEL. Sem `codigo`, MAX + 1. `descricao` até 20.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"TESTE API\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12.6 - Tipos de telefone",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/tipos-telefone",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "tipos-telefone"
+              ]
+            },
+            "description": "Tipos de telefone (T000TTEL), para o campo `cdTipo`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "13 - Chaves Pix do associado",
+      "description": "Chaves Pix do associado (T009PIX). `cdTipo`: 1 = CPF/CNPJ, 2 = CELULAR, 3 = E-MAIL, 4 = ALEATÓRIA. Incluir e alterar: quem altera o associado. Excluir: Administradores e Gestores.\n\nUse o associado de teste do 04.4 (`sqPesCli`). Ordem sugerida: 13.2 → 13.1 → 13.3 → 13.4.",
+      "item": [
+        {
+          "name": "13.1 - Listar as chaves Pix do associado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/pix",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "pix"
+              ]
+            },
+            "description": "Chaves Pix do associado `sqPesCli`, com tipo e chave formatada."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 404)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13.2 - Incluir uma chave Pix",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/pix",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "pix"
+              ]
+            },
+            "description": "## O que faz\nInclui uma chave Pix. A API gera o `sqPix` (MAX + 1 da pessoa), salvo na variável `sqPix`.\n\n`cdTipo` e formato da `chave`:\n- 1 = CPF/CNPJ: 11 ou 14 números válidos.\n- 2 = CELULAR: DDD + 9 números, com ou sem +55.\n- 3 = E-MAIL: até 77 caracteres.\n- 4 = ALEATÓRIA: UUID de 36 caracteres.\n\n## Respostas\n- **201**: incluída.\n- **400**: chave inválida para o tipo.\n- **404**: associado fora dos seus acessos.\n- **409**: o associado já tem esta chave.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdTipo\": 2,\n  \"chave\": \"+55 (88) 99999-1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"sqPix\", pm.response.json().item.sqPix);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13.3 - Alterar uma chave Pix",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/pix/{{sqPix}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "pix",
+                "{{sqPix}}"
+              ]
+            },
+            "description": "Altera a chave `sqPix` (envie todos os campos). Pode trocar o tipo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdTipo\": 3,\n  \"chave\": \"Associado.Teste@Exemplo.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13.4 - Excluir uma chave Pix (Administradores e Gestores)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/pix/{{sqPix}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "pix",
+                "{{sqPix}}"
+              ]
+            },
+            "description": "Exclui a chave `sqPix` (exclusão física)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "14 - Referências do associado",
+      "description": "Referências pessoais do associado (T000REFE). Incluir e alterar: quem altera o associado. Excluir: Administradores e Gestores.\n\nUse o associado de teste do 04.4 (`sqPesCli`). Ordem sugerida: 14.2 → 14.1 → 14.3 → 14.4.",
+      "item": [
+        {
+          "name": "14.1 - Listar as referências do associado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/referencias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "referencias"
+              ]
+            },
+            "description": "Referências pessoais do associado `sqPesCli`, com telefones formatados."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 404)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.2 - Incluir uma referência",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/referencias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "referencias"
+              ]
+            },
+            "description": "## O que faz\nInclui uma referência. A API gera o `sqReferencia` (MAX + 1 da pessoa), salvo na variável `sqReferencia`.\n\nObrigatórios: `nome` (até 50) e `telefone1`. Telefones com DDD + número (10 ou 11 números). `dataNascimento` e `telefone2` opcionais.\n\n## Respostas\n- **201**: incluída.\n- **400**: dados inválidos.\n- **404**: associado fora dos seus acessos.\n- **409**: mesmo nome e telefone 1 já cadastrados no associado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"REFERENCIA TESTE API\",\n  \"dataNascimento\": \"1970-05-20\",\n  \"telefone1\": \"(88) 99999-1234\",\n  \"telefone2\": \"(88) 3521-1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"sqReferencia\", pm.response.json().item.sqReferencia);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.3 - Alterar uma referência",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/referencias/{{sqReferencia}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "referencias",
+                "{{sqReferencia}}"
+              ]
+            },
+            "description": "Altera a referência `sqReferencia` (envie todos os campos). `dataNascimento` e `telefone2` omitidos ficam vazios.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"REFERENCIA TESTE API 2\",\n  \"telefone1\": \"88999994321\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14.4 - Excluir uma referência (Administradores e Gestores)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/referencias/{{sqReferencia}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "referencias",
+                "{{sqReferencia}}"
+              ]
+            },
+            "description": "Exclui a referência `sqReferencia` (exclusão física)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "15 - Créditos do associado e cadastros financeiros",
+      "description": "Créditos do associado (T009EXTRA), formas de pagamento (T009FRPG), produtos (T009PRDT) e convênios (T009CONV).\n\nUse o associado de teste do 04.4 (`sqPesCli`). Ordem sugerida: 15.6 → 15.2 → 15.1 → 15.3 → 15.4.",
+      "item": [
+        {
+          "name": "15.1 - Listar os créditos do associado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/creditos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "creditos"
+              ]
+            },
+            "description": "Créditos do associado `sqPesCli`, o mais recente primeiro, com `totalValor`, `totalSaldo` e `podeExcluir` em cada crédito."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 404)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15.2 - Incluir um crédito",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/creditos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "creditos"
+              ]
+            },
+            "description": "## O que faz\nInclui um crédito. A API gera o `sqCredito` (SQ_PGT, MAX + 1 do associado), salvo na variável `sqCredito`, e o saldo: forma que gera saldo (15.6) → saldo = valor; que não gera → 0.\n\nOmitidos: `dataCredito` = hoje; `tipoBaixa` = 4 (CRÉDITO).\n\n## Respostas\n- **201**: incluído.\n- **400**: dados inválidos (ex.: valor negativo) ou referência inexistente.\n- **404**: associado fora dos seus acessos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataCredito\": \"2026-10-27\",\n  \"valor\": 150.0,\n  \"cdFormaPagamento\": 1,\n  \"observacao\": \"CREDITO TESTE API\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set(\"sqCredito\", pm.response.json().item.sqCredito);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15.3 - Alterar um crédito",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/creditos/{{sqCredito}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "creditos",
+                "{{sqCredito}}"
+              ]
+            },
+            "description": "Altera o crédito `sqCredito`. O saldo só é recalculado quando o valor ou a forma mudam. `dataCredito`, `valor` e `tipoBaixa` omitidos mantêm o gravado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"valor\": 200.0,\n  \"cdFormaPagamento\": 1,\n  \"observacao\": \"CREDITO TESTE API ALTERADO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15.4 - Excluir um crédito (Administradores e Gestores)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/associados/{{sqPesCli}}/creditos/{{sqCredito}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "associados",
+                "{{sqPesCli}}",
+                "creditos",
+                "{{sqCredito}}"
+              ]
+            },
+            "description": "Exclui o crédito `sqCredito`. Regra do legado: só com valor = saldo; senão **409**."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200, 409)\", () => pm.expect(pm.response.code).to.be.oneOf([200, 409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15.5 - Incluir forma de pagamento (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/formas-pagamento",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "formas-pagamento"
+              ]
+            },
+            "description": "Inclui uma forma em T009FRPG. Sem `codigo`, MAX + 1 (até 99).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"TESTE API\",\n  \"geraSaldo\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15.6 - Formas de pagamento",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/formas-pagamento",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "formas-pagamento"
+              ]
+            },
+            "description": "Formas de pagamento (T009FRPG), com `geraSaldo`, para o campo `cdFormaPagamento`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15.7 - Produtos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadastros/produtos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadastros",
+                "produtos"
+              ]
+            },
+            "description": "Produtos (T009PRDT), para o campo `cdProduto`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15.8 - Convênios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/convenios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "convenios"
+              ]
+            },
+            "description": "Convênios (T009CONV), para o campo `cdConvenio`. `busca` opcional: começo do nome ou código."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15.9 - Incluir convênio (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/convenios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "convenios"
+              ]
+            },
+            "description": "Inclui um convênio. Sem `cdCvn`, MAX + 1 (até 999). Filial, banco e conta corrente são conferidos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"CONVENIO TESTE API\",\n  \"cdSituacao\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
@@ -3935,6 +5489,36 @@
       "key": "sqOrg",
       "value": "",
       "description": "Preenchido pelo 09.6 (vínculo do associado de teste)."
+    },
+    {
+      "key": "sqEndereco",
+      "value": "",
+      "description": "Preenchido pelo 10.2 (endereço do associado de teste)."
+    },
+    {
+      "key": "sqConta",
+      "value": "",
+      "description": "Preenchido pelo 11.2 (conta do associado de teste)."
+    },
+    {
+      "key": "sqTelefone",
+      "value": "",
+      "description": "Preenchido pelo 10.2 (endereço do associado de teste)."
+    },
+    {
+      "key": "sqPix",
+      "value": "",
+      "description": "Preenchido pelo 10.2 (endereço do associado de teste)."
+    },
+    {
+      "key": "sqReferencia",
+      "value": "",
+      "description": "Preenchido pelo 10.2 (endereço do associado de teste)."
+    },
+    {
+      "key": "sqCredito",
+      "value": "",
+      "description": "Preenchido pelo 10.2 (endereço do associado de teste)."
     }
   ]
 }

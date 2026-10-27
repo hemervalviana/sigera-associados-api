@@ -88,6 +88,53 @@ public sealed class TabelasApoioController : ControllerBase
 	}
 
 	/// <summary>
+	/// Bancos (T000BANC), para o campo cdBanco da conta do associado.
+	/// </summary>
+	/// <param name="busca">Começo do nome ou código (opcional).</param>
+	/// <param name="cancellationToken">Cancelamento da requisição.</param>
+	/// <response code="200">Bancos ordenados pelo código.</response>
+	/// <response code="403">Sem acesso ao sistema informado.</response>
+	[HttpGet("bancos")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status403Forbidden)]
+	public async Task<IActionResult> Bancos([FromQuery] string? busca, CancellationToken cancellationToken)
+	{
+		var bancos = await _cadastros.ListarBancosAsync(Sistema, busca, cancellationToken);
+
+		return Ok(new { quantidade = bancos.Count, bancos });
+	}
+
+	/// <summary>
+	/// Tipos de endereço (T000TEND), para o campo cdTipo do endereço do associado.
+	/// </summary>
+	/// <response code="200">Tipos ordenados pelo código.</response>
+	/// <response code="403">Sem acesso ao sistema informado.</response>
+	[HttpGet("tipos-endereco")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status403Forbidden)]
+	public async Task<IActionResult> TiposEndereco(CancellationToken cancellationToken)
+	{
+		var tipos = await _cadastros.ListarTiposEnderecoAsync(Sistema, cancellationToken);
+
+		return Ok(new { quantidade = tipos.Count, tiposEndereco = tipos });
+	}
+
+	/// <summary>
+	/// Tipos de telefone (T000TTEL), para o campo cdTipo do telefone do associado.
+	/// </summary>
+	/// <response code="200">Tipos ordenados pelo código.</response>
+	/// <response code="403">Sem acesso ao sistema informado.</response>
+	[HttpGet("tipos-telefone")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(StatusCodes.Status403Forbidden)]
+	public async Task<IActionResult> TiposTelefone(CancellationToken cancellationToken)
+	{
+		var tipos = await _cadastros.ListarTiposTelefoneAsync(Sistema, cancellationToken);
+
+		return Ok(new { quantidade = tipos.Count, tiposTelefone = tipos });
+	}
+
+	/// <summary>
 	/// Pesquisa municípios (T000MUNI), para o campo cdMunicipio da pessoa física.
 	/// </summary>
 	/// <remarks>
@@ -381,6 +428,221 @@ public sealed class TabelasApoioController : ControllerBase
 		var resultado = await _manutencao.ExcluirTratamentoAsync(Sistema, codigo, cancellationToken);
 
 		return Responder(resultado, "Tratamento excluído", codigo);
+	}
+
+	// ===================== Bancos =====================
+
+	/// <summary>
+	/// Inclui um banco (T000BANC). Somente administradores.
+	/// </summary>
+	/// <remarks>
+	/// `cdBanco` é obrigatório (código do banco, não é gerado). `nome` até 35.
+	///
+	///     POST /api/cadastros/bancos
+	///     { "cdBanco": 104, "nome": "CAIXA ECONOMICA FEDERAL", "cdSituacao": 1 }
+	///
+	/// `cdSituacao`: 1 = ATIVO, 0 = INATIVO (omitida: 1).
+	/// </remarks>
+	/// <response code="201">Banco cadastrado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="409">Código já existe.</response>
+	[HttpPost("bancos")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(BancoDados), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> IncluirBanco([FromBody] BancoDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _manutencao.IncluirBancoAsync(Sistema, dados, cancellationToken);
+
+		return Responder(resultado, "Banco incluído", resultado.Item?.CdBanco, criado: true);
+	}
+
+	/// <summary>
+	/// Altera nome e situação de um banco. Somente administradores.
+	/// </summary>
+	/// <response code="200">Banco alterado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Banco não encontrado.</response>
+	[HttpPut("bancos/{cdBanco:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(BancoDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	public async Task<IActionResult> AlterarBanco(decimal cdBanco, [FromBody] BancoDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _manutencao.AlterarBancoAsync(Sistema, cdBanco, dados, cancellationToken);
+
+		return Responder(resultado, "Banco alterado", cdBanco);
+	}
+
+	/// <summary>
+	/// Exclui um banco. Somente administradores.
+	/// </summary>
+	/// <remarks>Recusada (409) se houver contas no banco.</remarks>
+	/// <response code="200">Banco excluído.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Banco não encontrado.</response>
+	/// <response code="409">Banco em uso.</response>
+	[HttpDelete("bancos/{cdBanco:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> ExcluirBanco(decimal cdBanco, CancellationToken cancellationToken)
+	{
+		var resultado = await _manutencao.ExcluirBancoAsync(Sistema, cdBanco, cancellationToken);
+
+		return Responder(resultado, "Banco excluído", cdBanco);
+	}
+
+	// ===================== Tipos de endereço =====================
+
+	/// <summary>
+	/// Inclui um tipo de endereço (T000TEND). Somente administradores.
+	/// </summary>
+	/// <remarks>
+	/// `codigo` omitido: MAX + 1. `descricao` até 20 caracteres.
+	///
+	///     POST /api/cadastros/tipos-endereco
+	///     { "descricao": "RESIDENCIAL" }
+	/// </remarks>
+	/// <response code="201">Tipo cadastrado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="409">Código já existe.</response>
+	[HttpPost("tipos-endereco")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(ItemTabelaDto), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> IncluirTipoEndereco([FromBody] ItemTabelaDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _manutencao.IncluirTipoEnderecoAsync(Sistema, dados, cancellationToken);
+
+		return Responder(resultado, "Tipo de endereço incluído", resultado.Item?.Codigo, criado: true);
+	}
+
+	/// <summary>
+	/// Altera a descrição de um tipo de endereço. Somente administradores.
+	/// </summary>
+	/// <response code="200">Tipo alterado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Tipo não encontrado.</response>
+	[HttpPut("tipos-endereco/{codigo:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(ItemTabelaDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	public async Task<IActionResult> AlterarTipoEndereco(decimal codigo, [FromBody] ItemTabelaDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _manutencao.AlterarTipoEnderecoAsync(Sistema, codigo, dados, cancellationToken);
+
+		return Responder(resultado, "Tipo de endereço alterado", codigo);
+	}
+
+	/// <summary>
+	/// Exclui um tipo de endereço. Somente administradores.
+	/// </summary>
+	/// <remarks>Recusada (409) se houver endereços com o tipo.</remarks>
+	/// <response code="200">Tipo excluído.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Tipo não encontrado.</response>
+	/// <response code="409">Tipo em uso.</response>
+	[HttpDelete("tipos-endereco/{codigo:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> ExcluirTipoEndereco(decimal codigo, CancellationToken cancellationToken)
+	{
+		var resultado = await _manutencao.ExcluirTipoEnderecoAsync(Sistema, codigo, cancellationToken);
+
+		return Responder(resultado, "Tipo de endereço excluído", codigo);
+	}
+
+	// ===================== Tipos de telefone =====================
+
+	/// <summary>
+	/// Inclui um tipo de telefone (T000TTEL). Somente administradores.
+	/// </summary>
+	/// <remarks>
+	/// `codigo` omitido: MAX + 1. `descricao` até 20 caracteres.
+	///
+	///     POST /api/cadastros/tipos-telefone
+	///     { "descricao": "CELULAR" }
+	/// </remarks>
+	/// <response code="201">Tipo cadastrado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="409">Código já existe.</response>
+	[HttpPost("tipos-telefone")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(ItemTabelaDto), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> IncluirTipoTelefone([FromBody] ItemTabelaDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _manutencao.IncluirTipoTelefoneAsync(Sistema, dados, cancellationToken);
+
+		return Responder(resultado, "Tipo de telefone incluído", resultado.Item?.Codigo, criado: true);
+	}
+
+	/// <summary>
+	/// Altera a descrição de um tipo de telefone. Somente administradores.
+	/// </summary>
+	/// <response code="200">Tipo alterado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Tipo não encontrado.</response>
+	[HttpPut("tipos-telefone/{codigo:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(ItemTabelaDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	public async Task<IActionResult> AlterarTipoTelefone(decimal codigo, [FromBody] ItemTabelaDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _manutencao.AlterarTipoTelefoneAsync(Sistema, codigo, dados, cancellationToken);
+
+		return Responder(resultado, "Tipo de telefone alterado", codigo);
+	}
+
+	/// <summary>
+	/// Exclui um tipo de telefone. Somente administradores.
+	/// </summary>
+	/// <remarks>Recusada (409) se houver telefones com o tipo.</remarks>
+	/// <response code="200">Tipo excluído.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Tipo não encontrado.</response>
+	/// <response code="409">Tipo em uso.</response>
+	[HttpDelete("tipos-telefone/{codigo:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> ExcluirTipoTelefone(decimal codigo, CancellationToken cancellationToken)
+	{
+		var resultado = await _manutencao.ExcluirTipoTelefoneAsync(Sistema, codigo, cancellationToken);
+
+		return Responder(resultado, "Tipo de telefone excluído", codigo);
 	}
 
 	// ===================== Municípios =====================

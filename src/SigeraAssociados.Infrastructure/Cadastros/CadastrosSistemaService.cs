@@ -2,6 +2,7 @@
 using SigeraAssociados.Application.Cadastros;
 using SigeraAssociados.Application.Erros;
 using SigeraAssociados.Application.Interfaces.Cadastros;
+using SigeraAssociados.Application.Orgaos;
 using SigeraAssociados.Infrastructure.Persistence.Factories;
 using SigeraAssociados.Infrastructure.Systems;
 
@@ -144,6 +145,76 @@ public sealed class CadastrosSistemaService : ICadastrosSistemaService
 			.AsNoTracking()
 			.OrderBy(t => t.CD_TRT)
 			.Select(t => new ItemTabelaDto { Codigo = t.CD_TRT, Descricao = t.DE_TRT })
+			.ToListAsync(cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<BancoDados>> ListarBancosAsync(
+		int sistema,
+		string? busca,
+		CancellationToken cancellationToken = default)
+	{
+		ValidarSistema(sistema);
+
+		await using var db = _factory.Create(sistema);
+
+		var query = db.Bancos.AsNoTracking();
+
+		if (!string.IsNullOrWhiteSpace(busca))
+		{
+			var texto = busca.Trim();
+
+			query = decimal.TryParse(texto, out var codigo) && codigo % 1 == 0
+				? query.Where(b => b.CD_BCO == codigo || b.NM_BCO.StartsWith(texto))
+				: query.Where(b => b.NM_BCO.StartsWith(texto));
+		}
+
+		var bancos = await query
+			.OrderBy(b => b.CD_BCO)
+			.Select(b => new { b.CD_BCO, b.NM_BCO, b.CD_SIT_BCO })
+			.ToListAsync(cancellationToken);
+
+		// Descrição da situação é fixa (sem tabela): preenchida depois da consulta.
+		return bancos
+			.Select(b => new BancoDados
+			{
+				CdBanco = b.CD_BCO,
+				Nome = b.NM_BCO,
+				CdSituacao = b.CD_SIT_BCO,
+				Situacao = SituacaoAtivoInativo.Banco.Descricao(b.CD_SIT_BCO)
+			})
+			.ToList();
+	}
+
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<ItemTabelaDto>> ListarTiposEnderecoAsync(
+		int sistema,
+		CancellationToken cancellationToken = default)
+	{
+		ValidarSistema(sistema);
+
+		await using var db = _factory.Create(sistema);
+
+		return await db.TiposEndereco
+			.AsNoTracking()
+			.OrderBy(t => t.CD_TP_EN)
+			.Select(t => new ItemTabelaDto { Codigo = t.CD_TP_EN, Descricao = t.DE_TP_EN })
+			.ToListAsync(cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<ItemTabelaDto>> ListarTiposTelefoneAsync(
+		int sistema,
+		CancellationToken cancellationToken = default)
+	{
+		ValidarSistema(sistema);
+
+		await using var db = _factory.Create(sistema);
+
+		return await db.TiposTelefone
+			.AsNoTracking()
+			.OrderBy(t => t.CD_TP_FN)
+			.Select(t => new ItemTabelaDto { Codigo = t.CD_TP_FN, Descricao = t.DE_TP_FN })
 			.ToListAsync(cancellationToken);
 	}
 

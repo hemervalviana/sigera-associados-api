@@ -41,6 +41,29 @@ public interface ICadastrosSistemaService
 		CancellationToken cancellationToken = default);
 
 	/// <summary>
+	/// Bancos (T000BANC), ordenados pelo código, com busca opcional
+	/// pelo começo do nome ou pelo código.
+	/// </summary>
+	Task<IReadOnlyList<BancoDados>> ListarBancosAsync(
+		int sistema,
+		string? busca,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Tipos de endereço (T000TEND), ordenados pelo código.
+	/// </summary>
+	Task<IReadOnlyList<ItemTabelaDto>> ListarTiposEnderecoAsync(
+		int sistema,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Tipos de telefone (T000TTEL), ordenados pelo código.
+	/// </summary>
+	Task<IReadOnlyList<ItemTabelaDto>> ListarTiposTelefoneAsync(
+		int sistema,
+		CancellationToken cancellationToken = default);
+
+	/// <summary>
 	/// Municípios (T000MUNI), ordenados pelo nome,
 	/// com filtro opcional por UF e por nome ou código.
 	/// </summary>

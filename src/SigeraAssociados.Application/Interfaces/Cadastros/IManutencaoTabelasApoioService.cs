@@ -34,6 +34,24 @@ public interface IManutencaoTabelasApoioService
 
 	Task<ResultadoTabelaApoio<ItemTabelaDto>> ExcluirTratamentoAsync(int sistema, decimal codigo, CancellationToken cancellationToken = default);
 
+	Task<ResultadoTabelaApoio<BancoDados>> IncluirBancoAsync(int sistema, BancoDados dados, CancellationToken cancellationToken = default);
+
+	Task<ResultadoTabelaApoio<BancoDados>> AlterarBancoAsync(int sistema, decimal cdBanco, BancoDados dados, CancellationToken cancellationToken = default);
+
+	Task<ResultadoTabelaApoio<BancoDados>> ExcluirBancoAsync(int sistema, decimal cdBanco, CancellationToken cancellationToken = default);
+
+	Task<ResultadoTabelaApoio<ItemTabelaDto>> IncluirTipoEnderecoAsync(int sistema, ItemTabelaDados dados, CancellationToken cancellationToken = default);
+
+	Task<ResultadoTabelaApoio<ItemTabelaDto>> AlterarTipoEnderecoAsync(int sistema, decimal codigo, ItemTabelaDados dados, CancellationToken cancellationToken = default);
+
+	Task<ResultadoTabelaApoio<ItemTabelaDto>> ExcluirTipoEnderecoAsync(int sistema, decimal codigo, CancellationToken cancellationToken = default);
+
+	Task<ResultadoTabelaApoio<ItemTabelaDto>> IncluirTipoTelefoneAsync(int sistema, ItemTabelaDados dados, CancellationToken cancellationToken = default);
+
+	Task<ResultadoTabelaApoio<ItemTabelaDto>> AlterarTipoTelefoneAsync(int sistema, decimal codigo, ItemTabelaDados dados, CancellationToken cancellationToken = default);
+
+	Task<ResultadoTabelaApoio<ItemTabelaDto>> ExcluirTipoTelefoneAsync(int sistema, decimal codigo, CancellationToken cancellationToken = default);
+
 	Task<ResultadoTabelaApoio<MunicipioDto>> IncluirMunicipioAsync(int sistema, MunicipioDados dados, CancellationToken cancellationToken = default);
 
 	Task<ResultadoTabelaApoio<MunicipioDto>> AlterarMunicipioAsync(int sistema, decimal cdMun, MunicipioDados dados, CancellationToken cancellationToken = default);

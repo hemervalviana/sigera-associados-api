@@ -45,6 +45,48 @@ Antes de começar:
 | [ ] | 04.26 | Excluir o tratamento | — | **200** |
 | [ ] | 04.26 | Excluir tratamento em uso | `codigoApoio` de um tratamento usado por alguém | **409** |
 | [ ] | 04.27 | Excluir a situação 10 | — | **409** (falecido é protegido) |
+| [ ] | — | Script de contas bancárias | `scripts\contas-bancarias-permissoes.sql` nas 4 bases | Permissões concedidas |
+| [ ] | 11.2 | Incluir conta no associado de teste | `cdBanco` do 11.5 | **201**, `sqConta` salvo |
+| [ ] | 11.2 | Repetir a mesma conta | Envie de novo | **409** |
+| [ ] | 11.3 | Alterar a conta | — | **200** |
+| [ ] | 11.4 | Excluir a conta | Como administrador | **200** |
+| [ ] | — | Script de endereços | `scripts\enderecos-permissoes.sql` nas 4 bases; conferir que `ID_EN_PCP` usa S/N | Permissões concedidas |
+| [ ] | 10.2 | Incluir endereço no associado de teste | `cdTipo` do 10.6, `cdMunicipio` do 04.23 | **201**, `principal: true` (primeiro endereço) |
+| [ ] | 10.2 | Incluir segundo endereço com `principal: true` | — | **201**; no 10.1, o primeiro deixa de ser principal |
+| [ ] | 10.3 | Alterar endereço | — | **200** |
+| [ ] | 10.4 | Excluir o principal | Como administrador | **200**; o outro vira principal |
+| [ ] | — | Script de telefones | `scripts\telefones-permissoes.sql` nas 4 bases; conferir as consultas do fim | Permissões concedidas |
+| [ ] | 12.2 | Incluir telefone no associado de teste | `cdTipo` do 12.6 | **201**, `sqTelefone` salvo |
+| [ ] | 12.2 | Repetir o mesmo telefone | Envie de novo | **409** |
+| [ ] | 12.3 | Alterar o telefone | — | **200**, `formatado` = (88) 3521-1234 |
+| [ ] | 12.4 | Excluir como Corretor ou Atendimento | — | **403** |
+| [ ] | 12.4 | Excluir o telefone | Como administrador | **200** |
+| [ ] | — | Script de chaves Pix | `scripts\pix-permissoes.sql` nas 4 bases; conferir as consultas do fim | Permissões concedidas |
+| [ ] | 13.2 | Incluir chave Pix (celular) no associado de teste | — | **201**, `sqPix` salvo, `chave` = 88999991234 |
+| [ ] | 13.2 | Repetir a mesma chave | Envie de novo | **409** |
+| [ ] | 13.2 | Chave inválida | `cdTipo` 1 com CPF errado | **400** |
+| [ ] | 13.3 | Alterar para e-mail | — | **200**, em minúsculas |
+| [ ] | 13.4 | Excluir como Corretor ou Atendimento | — | **403** |
+| [ ] | 13.4 | Excluir a chave | Como administrador | **200** |
+| [ ] | — | Script de referências | `scripts\referencias-permissoes.sql` nas 4 bases; conferir as consultas do fim | Permissões concedidas |
+| [ ] | 14.2 | Incluir referência no associado de teste | — | **201**, `sqReferencia` salvo, `telefone1` = 88999991234 |
+| [ ] | 14.2 | Repetir a mesma referência | Envie de novo | **409** |
+| [ ] | 14.2 | Sem telefone 1 | Tire o `telefone1` do Body | **400** |
+| [ ] | 14.3 | Alterar a referência | — | **200**, `telefone2` vazio |
+| [ ] | 14.4 | Excluir como Corretor ou Atendimento | — | **403** |
+| [ ] | 14.4 | Excluir a referência | Como administrador | **200** |
+| [ ] | — | Script de créditos | `scripts\creditos-permissoes.sql` nas 4 bases; conferir as consultas do fim | Permissões concedidas |
+| [ ] | 15.6 | Formas de pagamento | — | **200**; anote uma com `geraSaldo: true` e outra com `false` |
+| [ ] | 15.2 | Incluir crédito com forma que gera saldo | `cdFormaPagamento` da forma com `geraSaldo: true` | **201**, `saldo` = `valor`, `podeExcluir: true` |
+| [ ] | 15.2 | Incluir crédito com forma que não gera saldo | `cdFormaPagamento` da forma com `geraSaldo: false` | **201**, `saldo` = 0, `podeExcluir: false` |
+| [ ] | 15.2 | Valor negativo | `"valor": -10` | **400** |
+| [ ] | 15.3 | Alterar só a observação | — | **200**, saldo igual ao de antes |
+| [ ] | 15.3 | Alterar o valor | Novo valor | **200**, saldo recalculado |
+| [ ] | 15.4 | Excluir crédito com saldo 0 (forma que não gera) | Como administrador | **409** "Valor do pagamento diferente do valor do saldo" |
+| [ ] | 15.4 | Excluir crédito com saldo = valor | Como administrador | **200** |
+| [ ] | 15.4 | Excluir como Corretor, Atendimento ou Financeiro | — | **403** |
+| [ ] | 15.7 / 15.8 | Produtos e convênios | — | **200** |
+| [ ] | 15.9 | Incluir convênio como não administrador | Gestor | **403** |
 | [ ] | — | Script de órgãos | `scripts\orgaos-permissoes.sql` nas 4 bases | Permissões concedidas |
 | [ ] | 09.1 | Pesquisar órgãos | — | **200**, lista paginada |
 | [ ] | 09.2 | Incluir órgão de teste | — | **201**, `cdOrg` salvo |
@@ -58,6 +100,10 @@ Antes de começar:
 | [ ] | 04.4 | Incluir de novo o mesmo CPF | Envie de novo | **409** |
 | [ ] | 04.3 | Conferir a inclusão | — | **200**, dados iguais aos enviados |
 | [ ] | 04.5 | Alterar o associado de teste | Mude o nome no Body | **200**, nome novo |
+| [ ] | 04.5 | Alterar sem mandar as senhas | Tire `senhaPortal` e `senhaAverbacao` do Body | **200**; no 04.3, as senhas continuam as mesmas |
+| [ ] | 04.5 | Apagar a senha de averbação | `"senhaAverbacao": ""` | **200**; no 04.3, `senhaAverbacao` = null |
+| [ ] | 04.3 | Senhas no detalhe | — | **200**, `associado.senhaPortal` e `senhaAverbacao` em texto puro |
+| [ ] | 04.x | Pesquisa não traz senha | `GET /api/associados/consulta` | **200**, sem `senha` em nenhum item |
 | [ ] | 04.5 | Corretor marcando falecido | Com um usuário Corretor, `cdSitCli` = 10 | **403** |
 | [ ] | 04.6 | Excluir como Corretor ou Atendimento | — | **403** |
 | [ ] | 04.6 | Excluir como administrador | — | **200** |

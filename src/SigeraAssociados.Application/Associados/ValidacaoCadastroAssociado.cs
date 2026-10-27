@@ -111,7 +111,36 @@ public static class ValidacaoCadastroAssociado
 
 		return Codigo(associado.CdFil, 99, "cdFil")
 			?? Codigo(associado.CdSitCli, 99, "cdSitCli")
-			?? Tamanho(associado.ObsSituacao, 100, "obsSituacao");
+			?? Tamanho(associado.ObsSituacao, 100, "obsSituacao")
+			?? Senha(associado.SenhaPortal, "senhaPortal")
+			?? Senha(associado.SenhaAverbacao, "senhaAverbacao");
+	}
+
+	/// <summary>
+	/// Tamanho máximo das senhas do portal (NR_PWS) e de averbação (NR_PWS_02), varchar(50).
+	/// </summary>
+	public const int TamanhoSenha = 50;
+
+	/// <summary>
+	/// Senha opcional: até 50 caracteres, sem caracteres de controle e só
+	/// com caracteres que o varchar do legado guarda sem trocar (Latin-1).
+	/// O valor não é aparado: espaços contam.
+	/// </summary>
+	private static string? Senha(string? valor, string campo)
+	{
+		if (valor is null || valor.Length == 0)
+		{
+			return null;
+		}
+
+		if (valor.Length > TamanhoSenha)
+		{
+			return $"O campo {campo} aceita no máximo {TamanhoSenha} caracteres.";
+		}
+
+		return valor.All(ch => ch is >= ' ' and <= '~' or >= '\u00A0' and <= '\u00FF')
+			? null
+			: $"O campo {campo} tem caracteres não aceitos (use letras, números e símbolos comuns).";
 	}
 
 	private static string? Obrigatorio(string? valor, string campo) =>

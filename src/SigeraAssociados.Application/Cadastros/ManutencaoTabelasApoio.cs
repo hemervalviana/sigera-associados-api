@@ -1,4 +1,6 @@
-﻿namespace SigeraAssociados.Application.Cadastros;
+﻿using SigeraAssociados.Application.Orgaos;
+
+namespace SigeraAssociados.Application.Cadastros;
 
 /// <summary>
 /// Dados de inclusão e alteração de uma filial (T000PARA).
@@ -97,6 +99,30 @@ public sealed class MunicipioDados
 }
 
 /// <summary>
+/// Banco (T000BANC). Na alteração, o código vem da rota.
+/// </summary>
+public sealed class BancoDados
+{
+	/// <summary>
+	/// Código do banco (CD_BCO, 1 a 999, ex.: 1 Banco do Brasil, 104 Caixa).
+	/// Obrigatório na inclusão (não é gerado).
+	/// </summary>
+	public decimal? CdBanco { get; init; }
+
+	/// <summary>Nome (NM_BCO, até 35). Obrigatório.</summary>
+	public string? Nome { get; init; }
+
+	/// <summary>
+	/// Situação do banco (CD_SIT_BCO): 1 = ATIVO, 0 = INATIVO.
+	/// Omitida na inclusão: 1 (ATIVO).
+	/// </summary>
+	public decimal? CdSituacao { get; init; }
+
+	/// <summary>ATIVO ou INATIVO. Só na resposta.</summary>
+	public string? Situacao { get; init; }
+}
+
+/// <summary>
 /// Situação final de uma inclusão, alteração ou exclusão em tabela de apoio.
 /// </summary>
 public enum StatusTabelaApoio
@@ -125,6 +151,8 @@ public static class ValidacaoTabelasApoio
 {
 	public const int TamanhoSituacao = 30;
 	public const int TamanhoTratamento = 20;
+	public const int TamanhoTipoEndereco = 20;
+	public const int TamanhoTipoTelefone = 20;
 
 	public static string? Filial(FilialDados? dados, bool inclusao)
 	{
@@ -161,6 +189,24 @@ public static class ValidacaoTabelasApoio
 		return (inclusao ? Codigo(dados.Codigo, 99, "codigo") : null)
 			?? Obrigatorio(dados.Descricao, "descricao")
 			?? Tamanho(dados.Descricao, tamanhoDescricao, "descricao");
+	}
+
+	public static string? Banco(BancoDados? dados, bool inclusao)
+	{
+		if (dados is null)
+		{
+			return "Informe os dados do banco.";
+		}
+
+		if (inclusao && dados.CdBanco is null)
+		{
+			return "O código do banco (cdBanco) é obrigatório.";
+		}
+
+		return (inclusao ? Codigo(dados.CdBanco, 999, "cdBanco") : null)
+			?? Obrigatorio(dados.Nome, "nome")
+			?? Tamanho(dados.Nome, 35, "nome")
+			?? SituacaoAtivoInativo.Banco.Validar(dados.CdSituacao, "cdSituacao");
 	}
 
 	public static string? Municipio(MunicipioDados? dados, bool inclusao)
