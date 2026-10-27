@@ -6,7 +6,10 @@ using SigeraAssociados.Api.Erros;
 using SigeraAssociados.Application.Cadastros;
 using SigeraAssociados.Application.Corretores;
 using SigeraAssociados.Application.Interfaces.Corretores;
+using SigeraAssociados.Application.Interfaces.Orgaos;
+using SigeraAssociados.Application.Orgaos;
 using SigeraAssociados.Application.Usuarios;
+using SigeraAssociados.Infrastructure.Systems;
 
 namespace SigeraAssociados.Api.Controllers;
 
@@ -16,6 +19,7 @@ namespace SigeraAssociados.Api.Controllers;
 /// Consultar: qualquer usuário com acesso ao sistema.
 /// Incluir, alterar e excluir: Administradores e Gestores.
 /// Exclusão lógica, como a do associado.
+/// Tabelas de apoio do corretor: cargos (T000CARG), em /api/corretores/cargos.
 /// </summary>
 [ApiController]
 [Route("api/corretores")]
@@ -23,13 +27,25 @@ namespace SigeraAssociados.Api.Controllers;
 public sealed class CorretoresController : ControllerBase
 {
 	private readonly ICadastroCorretoresService _corretores;
+	private readonly IOrgaosService _orgaos;
+	private readonly SigeraSystemContext _sistema;
 	private readonly ILogger<CorretoresController> _logger;
 
-	public CorretoresController(ICadastroCorretoresService corretores, ILogger<CorretoresController> logger)
+	public CorretoresController(
+		ICadastroCorretoresService corretores,
+		IOrgaosService orgaos,
+		SigeraSystemContext sistema,
+		ILogger<CorretoresController> logger)
 	{
 		_corretores = corretores;
+		_orgaos = orgaos;
+		_sistema = sistema;
 		_logger = logger;
 	}
+
+	// O middleware de sistema já validou o cabeçalho e o acesso.
+	private int Sistema => _sistema.SystemCode
+		?? throw new InvalidOperationException("O sistema SIGERA não foi selecionado para esta requisição.");
 
 	/// <summary>
 	/// Pesquisa corretores (não excluídos).
@@ -137,7 +153,7 @@ public sealed class CorretoresController : ControllerBase
 	///       "tipoPessoa": "J",
 	///       "nome": "CORRETORA EXEMPLO LTDA",
 	///       "nomeCurto": "EXEMPLO",
-	///       "pessoaJuridica": { "cnpj": "11.222.333/0001-81", "contato": "MARIA" },
+	///       "pessoaJuridica": { "cnpj": "11.222.333/0001-81", "contato": "MARIA", "cdCargo": 1 },
 	///       "corretor": { "cdFil": 1 }
 	///     }
 	/// </remarks>
@@ -211,6 +227,96 @@ public sealed class CorretoresController : ControllerBase
 		return this.Converter(resultado);
 	}
 
+	// ===================== Tabela de apoio: cargos =====================
+	// T000CARG é a mesma tabela de /api/orgaos/cargos (cargo do vínculo do
+	// associado); aqui ela serve ao cargo do contato do corretor pessoa
+	// jurídica (T000PJUR.CD_CG). Mesmo serviço, mesmas regras.
+
+	/// <summary>
+	/// Cargos (T000CARG), para o campo pessoaJuridica.cdCargo do corretor.
+	/// </summary>
+	/// <param name="busca">Começo da descrição ou código (opcional). Até 200 itens.</param>
+	/// <param name="cancellationToken">Cancelamento da requisição.</param>
+	/// <response code="200">Cargos, com situação.</response>
+	[HttpGet("cargos")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	public async Task<IActionResult> Cargos([FromQuery] string? busca, CancellationToken cancellationToken)
+	{
+		var cargos = await _orgaos.ListarCargosAsync(Sistema, busca, cancellationToken);
+
+		return Ok(new { quantidade = cargos.Count, cargos });
+	}
+
+	/// <summary>
+	/// Inclui um cargo (T000CARG). Somente administradores.
+	/// </summary>
+	/// <remarks>
+	/// `cdCargo` omitido: MAX + 1. `descricao` até 30. `cdSituacao`: 1 = ATIVO,
+	/// 0 = INATIVO (omitida: 1). É a mesma tabela de /api/orgaos/cargos.
+	///
+	///     POST /api/corretores/cargos
+	///     { "descricao": "DIRETOR COMERCIAL", "cdSituacao": 1 }
+	/// </remarks>
+	/// <response code="201">Incluído.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="409">Código já existe.</response>
+	[HttpPost("cargos")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(CargoDados), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> IncluirCargo([FromBody] CargoDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _orgaos.IncluirCargoAsync(Sistema, dados, cancellationToken);
+		Registrar(resultado.Status, "Cargo incluído", resultado.Item?.CdCargo);
+		return this.Converter(resultado, criado: true);
+	}
+
+	/// <summary>
+	/// Altera um cargo. Somente administradores.
+	/// </summary>
+	/// <response code="200">Alterado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	[HttpPut("cargos/{cdCargo:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(CargoDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	public async Task<IActionResult> AlterarCargo(decimal cdCargo, [FromBody] CargoDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _orgaos.AlterarCargoAsync(Sistema, cdCargo, dados, cancellationToken);
+		Registrar(resultado.Status, "Cargo alterado", cdCargo);
+		return this.Converter(resultado);
+	}
+
+	/// <summary>
+	/// Exclui um cargo. Somente administradores.
+	/// </summary>
+	/// <remarks>Recusada (409) se houver vínculos com órgão ou corretores pessoa jurídica com o cargo.</remarks>
+	/// <response code="200">Excluído.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	/// <response code="409">Em uso.</response>
+	[HttpDelete("cargos/{cdCargo:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> ExcluirCargo(decimal cdCargo, CancellationToken cancellationToken)
+	{
+		var resultado = await _orgaos.ExcluirCargoAsync(Sistema, cdCargo, cancellationToken);
+		Registrar(resultado.Status, "Cargo excluído", cdCargo);
+		return this.Converter(resultado);
+	}
+
 	private string Login() =>
 		User.FindFirstValue(ClaimTypes.Email)
 		?? User.FindFirstValue(JwtRegisteredClaimNames.Email)
@@ -218,14 +324,14 @@ public sealed class CorretoresController : ControllerBase
 		?? "api";
 
 	// A senha do representante nunca vai para o log.
-	private void Registrar(StatusTabelaApoio status, string operacao, decimal? sqPesCorretor)
+	private void Registrar(StatusTabelaApoio status, string operacao, decimal? codigo)
 	{
 		if (status == StatusTabelaApoio.Sucesso)
 		{
 			_logger.LogInformation(
-				"{Operacao}: corretor {SqPesCorretor} por {Usuario}.",
+				"{Operacao}: código {Codigo} por {Usuario}.",
 				operacao,
-				sqPesCorretor,
+				codigo,
 				Login());
 		}
 	}

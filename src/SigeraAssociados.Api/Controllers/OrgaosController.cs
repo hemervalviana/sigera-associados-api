@@ -517,7 +517,7 @@ public sealed class OrgaosController : ControllerBase
 	/// <summary>
 	/// Exclui um cargo. Somente administradores.
 	/// </summary>
-	/// <remarks>Recusada (409) se houver vínculos com o cargo.</remarks>
+	/// <remarks>Recusada (409) se houver vínculos ou corretores pessoa jurídica com o cargo.</remarks>
 	/// <response code="200">Excluído.</response>
 	/// <response code="403">Não é administrador.</response>
 	/// <response code="404">Não encontrado.</response>

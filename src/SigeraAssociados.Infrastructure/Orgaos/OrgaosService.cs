@@ -787,6 +787,12 @@ public sealed class OrgaosService : IOrgaosService
 			return Conflito<CargoDados>($"O cargo {cdCargo:0} não pode ser excluído: há vínculos com ele.");
 		}
 
+		// O cargo também é usado no contato do corretor pessoa jurídica (T000PJUR.CD_CG).
+		if (await db.PessoasJuridicas.AnyAsync(j => j.CD_EMP == cargo.CD_EMP && j.CD_CG == cdCargo, cancellationToken))
+		{
+			return Conflito<CargoDados>($"O cargo {cdCargo:0} não pode ser excluído: há corretores pessoa jurídica com ele.");
+		}
+
 		var dto = ParaDados(cargo);
 		db.Cargos.Remove(cargo);
 

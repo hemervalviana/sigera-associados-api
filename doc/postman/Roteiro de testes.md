@@ -99,6 +99,10 @@ Antes de começar:
 | [ ] | 04.4 | Corretor que vira associado | CPF do corretor pessoa física (16.3) que ainda não é associado | **201**, mensagem "aproveitando a pessoa já existente"; nome do corretor mantido |
 | [ ] | 16.3 | Física com bloco de jurídica | Acrescente `pessoaJuridica` | **400** |
 | [ ] | 16.4 | Incluir corretor pessoa jurídica | Troque o CNPJ por um válido que não exista | **201** |
+| [ ] | 16.7 | Cargos do corretor | — | **200**, mesma lista de `/api/orgaos/cargos` |
+| [ ] | 16.4 | Jurídica com cargo | `pessoaJuridica.cdCargo` de um cargo do 16.7 | **201**, `pessoaJuridica.cargo` com a descrição |
+| [ ] | 16.4 | Jurídica com cargo inexistente | `"cdCargo": 9999` | **400** "não está cadastrado (T000CARG)" |
+| [ ] | 16.8 | Excluir cargo usado por corretor | Cargo usado no teste acima | **409** "há corretores pessoa jurídica" |
 | [ ] | 16.2 | Detalhe como administrador | — | **200**, com `senhaRepresentante` |
 | [ ] | 16.2 | Detalhe como Atendimento | Outro usuário | **200**, `senhaRepresentante` nula |
 | [ ] | 16.5 | Alterar trocando o tipo para J | `"tipoPessoa": "J"` | **400** |

@@ -62,8 +62,13 @@ public sealed class PessoaJuridicaDados
 	/// <summary>Nome do contato (NM_CON, até 50).</summary>
 	public string? Contato { get; init; }
 
-	/// <summary>CD_CG (código do legado, até 4 dígitos).</summary>
-	public decimal? CdCg { get; init; }
+	/// <summary>
+	/// Cargo do contato (CD_CG), de GET /api/corretores/cargos (T000CARG).
+	/// </summary>
+	public decimal? CdCargo { get; init; }
+
+	/// <summary>Descrição do cargo. Só na resposta.</summary>
+	public string? Cargo { get; init; }
 }
 
 /// <summary>

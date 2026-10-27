@@ -120,6 +120,34 @@ public sealed class ValidacaoCadastroCorretorTests
 		Assert.Contains("nome", ValidacaoCadastroCorretor.Validar(dados));
 	}
 
+	[Fact]
+	public void JuridicaComCargo_DeveSerValida()
+	{
+		var dados = new CadastroCorretorDados
+		{
+			TipoPessoa = "J",
+			Nome = "CORRETORA EXEMPLO LTDA",
+			PessoaJuridica = new PessoaJuridicaDados { Cnpj = "11.222.333/0001-81", Contato = "MARIA", CdCargo = 1 }
+		};
+
+		Assert.Null(ValidacaoCadastroCorretor.Validar(dados));
+	}
+
+	[Theory]
+	[InlineData(0)]
+	[InlineData(10_000)]
+	public void CargoForaDaFaixa_DeveSerRecusado(int cargo)
+	{
+		var dados = new CadastroCorretorDados
+		{
+			TipoPessoa = "J",
+			Nome = "CORRETORA EXEMPLO LTDA",
+			PessoaJuridica = new PessoaJuridicaDados { Cnpj = "11.222.333/0001-81", CdCargo = cargo }
+		};
+
+		Assert.Contains("cdCargo", ValidacaoCadastroCorretor.Validar(dados));
+	}
+
 	// ----- Dados do corretor -----
 
 	[Fact]

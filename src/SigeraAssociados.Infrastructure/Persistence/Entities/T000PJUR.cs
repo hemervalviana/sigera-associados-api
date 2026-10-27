@@ -38,7 +38,7 @@ public sealed class T000PJUR
 	[Column("NM_CON", TypeName = "varchar(50)")]
 	public string? NM_CON { get; set; }
 
-	/// <summary>CD_CG (código do legado, até 4 dígitos).</summary>
+	/// <summary>Cargo do contato (T000CARG.CD_CG).</summary>
 	[Column("CD_CG", TypeName = "numeric(4, 0)")]
 	[Precision(4, 0)]
 	public decimal? CD_CG { get; set; }

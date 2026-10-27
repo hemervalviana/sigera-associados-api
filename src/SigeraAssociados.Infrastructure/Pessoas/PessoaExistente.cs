@@ -79,6 +79,6 @@ internal static class PessoaExistente
 	{
 		j.NR_CGF ??= pj.InscricaoEstadual;
 		j.NM_CON ??= Texto(pj.Contato);
-		j.CD_CG ??= pj.CdCg;
+		j.CD_CG ??= pj.CdCargo;
 	}
 }

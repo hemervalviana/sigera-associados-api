@@ -136,7 +136,7 @@ public static class ValidacaoCadastroCorretor
 
 		return RegrasCampos.Inteiro(pj.InscricaoEstadual, 0, 999_999_999, "inscricaoEstadual")
 			?? RegrasCampos.Tamanho(pj.Contato, 50, "contato")
-			?? RegrasCampos.Inteiro(pj.CdCg, 0, 9_999, "cdCg");
+			?? RegrasCampos.Inteiro(pj.CdCargo, 1, 9_999, "cdCargo");
 	}
 
 	private static string? Corretor(DadosCorretor? c)

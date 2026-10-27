@@ -5617,6 +5617,93 @@
               }
             }
           ]
+        },
+        {
+          "name": "16.7 - Cargos do corretor",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/cargos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "cargos"
+              ]
+            },
+            "description": "Cargos (T000CARG) para `pessoaJuridica.cdCargo`. Mesma tabela de `/api/orgaos/cargos`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16.8 - Incluir cargo (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/corretores/cargos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "corretores",
+                "cargos"
+              ]
+            },
+            "description": "Inclui um cargo em T000CARG (mesmo CRUD de `/api/orgaos/cargos`). Sem `cdCargo`, MAX + 1. `descricao` até 30.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"CARGO TESTE API\",\n  \"cdSituacao\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

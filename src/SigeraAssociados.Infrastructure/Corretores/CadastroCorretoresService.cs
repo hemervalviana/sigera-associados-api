@@ -213,7 +213,8 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 
 		return cadastro is null
 			? null
-			: ParaDto(cadastro, await NomeRepresentanteAsync(db, emp, cadastro.Corretor.SQ_PES_RPR, cancellationToken), incluirSenha);
+			: ParaDto(cadastro, await NomeRepresentanteAsync(db, emp, cadastro.Corretor.SQ_PES_RPR, cancellationToken), incluirSenha,
+				await DescricaoCargoAsync(db, emp, cadastro.Juridica, cancellationToken));
 	}
 
 	// ===================== Inclusão =====================
@@ -300,7 +301,8 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 				var cadastro = new Cadastro(pessoa, fisica, juridica, corretor);
 
 				return Sucesso("Corretor cadastrado.",
-					ParaDto(cadastro, await NomeRepresentanteAsync(db, emp, corretor.SQ_PES_RPR, cancellationToken), incluirSenha: true));
+					ParaDto(cadastro, await NomeRepresentanteAsync(db, emp, corretor.SQ_PES_RPR, cancellationToken), incluirSenha: true,
+						await DescricaoCargoAsync(db, emp, juridica, cancellationToken)));
 			}
 			catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2627 or 2601 } && tentativa < TentativasNumeracao)
 			{
@@ -384,7 +386,8 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 		}
 
 		return Sucesso("Corretor alterado.",
-			ParaDto(cadastro, await NomeRepresentanteAsync(db, emp, cadastro.Corretor.SQ_PES_RPR, cancellationToken), incluirSenha: true));
+			ParaDto(cadastro, await NomeRepresentanteAsync(db, emp, cadastro.Corretor.SQ_PES_RPR, cancellationToken), incluirSenha: true,
+				await DescricaoCargoAsync(db, emp, cadastro.Juridica, cancellationToken)));
 	}
 
 	// ===================== Exclusão =====================
@@ -493,6 +496,12 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 			{
 				return $"O tratamento {tratamento:0} não está cadastrado (T000TRTA).";
 			}
+		}
+
+		if (dados.PessoaJuridica?.CdCargo is decimal cargo
+			&& !await db.Cargos.AnyAsync(g => g.CD_EMP == emp && g.CD_CG == cargo, cancellationToken))
+		{
+			return $"O cargo {cargo:0} não está cadastrado (T000CARG).";
 		}
 
 		if (dados.Corretor is not { } c)
@@ -635,7 +644,25 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 			"os dados pessoais já gravados foram mantidos e só os campos vazios foram completados.",
 			ParaDto(new Cadastro(pessoa, fisica, juridica, corretor),
 				await NomeRepresentanteAsync(db, emp, corretor.SQ_PES_RPR, cancellationToken),
-				incluirSenha: true));
+				incluirSenha: true,
+				await DescricaoCargoAsync(db, emp, juridica, cancellationToken)));
+	}
+
+	private static async Task<string?> DescricaoCargoAsync(
+		SigeraDbContext db,
+		decimal emp,
+		T000PJUR? juridica,
+		CancellationToken cancellationToken)
+	{
+		if (juridica?.CD_CG is not decimal cargo)
+		{
+			return null;
+		}
+
+		return await db.Cargos.AsNoTracking()
+			.Where(g => g.CD_EMP == emp && g.CD_CG == cargo)
+			.Select(g => g.DE_CG)
+			.FirstOrDefaultAsync(cancellationToken);
 	}
 
 	private static async Task<string?> NomeRepresentanteAsync(
@@ -687,7 +714,7 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 		j.NR_CPJ = Numero(DocumentoCnpj.SomenteDigitos(pj.Cnpj));
 		j.NR_CGF = pj.InscricaoEstadual;
 		j.NM_CON = Texto(pj.Contato);
-		j.CD_CG = pj.CdCg;
+		j.CD_CG = pj.CdCargo;
 	}
 
 	private static void AplicarCorretor(DadosCorretor c, T009CRRT r)
@@ -713,7 +740,7 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 		}
 	}
 
-	private static CorretorCadastroDto ParaDto(Cadastro c, string? nomeRepresentante, bool incluirSenha) => new()
+	private static CorretorCadastroDto ParaDto(Cadastro c, string? nomeRepresentante, bool incluirSenha, string? cargo = null) => new()
 	{
 		SqPesCorretor = c.Corretor.SQ_PES_CRO,
 		TipoPessoa = c.Pessoa.TP_PES,
@@ -746,7 +773,8 @@ public sealed class CadastroCorretoresService : ICadastroCorretoresService
 			Cnpj = DocumentoCnpj.Formatar(j.NR_CPJ),
 			InscricaoEstadual = j.NR_CGF,
 			Contato = j.NM_CON,
-			CdCg = j.CD_CG
+			CdCargo = j.CD_CG,
+			Cargo = cargo
 		},
 		Corretor = new DadosCorretor
 		{
