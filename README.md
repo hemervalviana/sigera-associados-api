@@ -292,7 +292,7 @@ Implementação: `Api/Erros/RespostasErro.cs` (formato e títulos), `Api/Erros/T
 | PUT / DELETE | `/api/associados/{sqPesCli}/referencias/{sqReferencia}` | Conforme acessos; DELETE só Admin e Gestores |
 | GET / POST | `/api/associados/{sqPesCli}/creditos` | Conforme acessos (créditos do associado; saldo calculado pela forma de pagamento) |
 | PUT / DELETE | `/api/associados/{sqPesCli}/creditos/{sqCredito}` | Conforme acessos; DELETE só Admin e Gestores, e só com valor = saldo |
-| GET | `/api/cadastros/formas-pagamento`, `/api/cadastros/produtos`, `/api/convenios`, `/api/convenios/{cdCvn}` | Quem tem acesso ao sistema |
+| GET | `/api/cadastros/formas-pagamento`, `/api/cadastros/produtos`, `/api/convenios`, `/api/convenios/{cdCvn}`, `/api/convenios/tipos-governo` | Quem tem acesso ao sistema |
 | POST / PUT / DELETE | `/api/cadastros/formas-pagamento`, `/api/cadastros/produtos`, `/api/convenios` (PUT e DELETE com `/{codigo}` ou `/{cdCvn}`) | Admin |
 | GET / POST | `/api/associados/{sqPesCli}/orgaos` | Conforme acessos (vínculos do associado com órgãos) |
 | PUT / DELETE | `/api/associados/{sqPesCli}/orgaos/{sqOrg}` | Conforme acessos; DELETE só Admin e Gestores |

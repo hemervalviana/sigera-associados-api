@@ -90,6 +90,8 @@ Antes de começar:
 | [ ] | 15.4 | Excluir como Corretor, Atendimento ou Financeiro | — | **403** |
 | [ ] | 15.7 / 15.8 | Produtos e convênios | — | **200** |
 | [ ] | 15.9 | Incluir convênio como não administrador | Gestor | **403** |
+| [ ] | 15.9 | Convênio com banco e governo | `"cdBanco": 1` junto com `"tipoGoverno": 3` | **400** "não os dois" |
+| [ ] | 15.9 | Convênio sem banco nem governo | Tire o `tipoGoverno` | **201** (os dois vazios são aceitos) |
 | [ ] | — | Script de órgãos | `scripts\orgaos-permissoes.sql` nas 4 bases | Permissões concedidas |
 | [ ] | 09.1 | Pesquisar órgãos | — | **200**, lista paginada |
 | [ ] | 09.2 | Incluir órgão de teste | — | **201**, `cdOrg` salvo |

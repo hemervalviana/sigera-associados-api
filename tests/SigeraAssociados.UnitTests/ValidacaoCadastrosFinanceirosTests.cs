@@ -39,9 +39,30 @@ public sealed class ValidacaoCadastrosFinanceirosTests
 	}
 
 	[Fact]
-	public void ConvenioSoComNome_DeveSerValido()
+	public void ConvenioDeBanco_DeveSerValido()
 	{
-		Assert.Null(ValidacaoConvenio.Validar(new ConvenioDados { Nome = "CONSIGNADO SEDUC" }, inclusao: true));
+		Assert.Null(ValidacaoConvenio.Validar(new ConvenioDados { Nome = "DEBITO EM CONTA", CdBanco = 1 }, inclusao: true));
+	}
+
+	[Fact]
+	public void ConvenioDeGoverno_DeveSerValido()
+	{
+		Assert.Null(ValidacaoConvenio.Validar(new ConvenioDados { Nome = "CONSIGNADO PARA", TipoGoverno = 3 }, inclusao: true));
+	}
+
+	[Fact]
+	public void ConvenioComBancoEGoverno_DeveSerRecusado()
+	{
+		Assert.Contains("não os dois",
+			ValidacaoConvenio.Validar(new ConvenioDados { Nome = "X", CdBanco = 1, TipoGoverno = 3 }, inclusao: true));
+	}
+
+	[Theory]
+	[InlineData(true)]
+	[InlineData(false)]
+	public void ConvenioSemBancoNemGoverno_DeveSerValido(bool inclusao)
+	{
+		Assert.Null(ValidacaoConvenio.Validar(new ConvenioDados { Nome = "CONSIGNADO SEDUC" }, inclusao));
 	}
 
 	[Fact]
@@ -52,18 +73,43 @@ public sealed class ValidacaoCadastrosFinanceirosTests
 			Nome = "CONSIGNADO SEDUC",
 			Numero = "123456",
 			CdFil = 1,
-			CdBanco = 104,
 			SqContaCorrente = 1,
 			CodigoEmpresa = 12_345_678_901_234_567_890m,
 			Carteira = 17,
 			CodigoCompensacao = 1234,
 			CodigoCnab = 240,
 			ParametroTransmissao = 1,
-			TipoGoverno = 1,
+			TipoGoverno = 3,
 			DiretorioRemessa = "C:\\CONVENIOS\\REMESSA",
 			ExtensaoArquivo = "TXT",
 			CdSituacao = 1
 		}, inclusao: true));
+	}
+
+	[Theory]
+	[InlineData(1, "GOVERNO DO ACRE")]
+	[InlineData(9, "SERGIPE PREVIDÊNCIA")]
+	[InlineData(20, "IGEPREV PARÁ")]
+	public void TipoGoverno_DeveTrazerADescricaoDoLegado(int codigo, string descricao)
+	{
+		Assert.Equal(descricao, TipoGovernoConvenio.Descricao(codigo));
+	}
+
+	[Fact]
+	public void TiposGoverno_DevemSer20EmOrdem()
+	{
+		var tipos = TipoGovernoConvenio.Listar();
+
+		Assert.Equal(20, tipos.Count);
+		Assert.Equal(Enumerable.Range(1, 20).Select(i => (decimal)i), tipos.Select(t => t.Codigo));
+	}
+
+	[Theory]
+	[InlineData(0)]
+	[InlineData(21)]
+	public void TipoGovernoForaDaLista_DeveSerRecusado(int codigo)
+	{
+		Assert.Contains("tipoGoverno", ValidacaoConvenio.Validar(new ConvenioDados { Nome = "X", TipoGoverno = codigo }, inclusao: true));
 	}
 
 	[Fact]

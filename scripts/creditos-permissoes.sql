@@ -83,6 +83,17 @@ GO
   SELECT ID_PGT_AUT, COUNT(*) AS quantidade FROM dbo.T009EXTRA GROUP BY ID_PGT_AUT;
   SELECT CD_SIT_CON, COUNT(*) AS quantidade FROM dbo.T009CONV GROUP BY CD_SIT_CON;
 
+     Tipo de governo fora da lista fixa da API (1 a 20); deve voltar vazio:
+
+  SELECT CD_CVN, NM_CVN, CT_TP_GOV FROM dbo.T009CONV
+   WHERE CT_TP_GOV IS NOT NULL AND CT_TP_GOV NOT BETWEEN 1 AND 20;
+
+     Convênio com banco e governo juntos (a API recusa; o convênio é de
+     banco ou de governo); deve voltar vazio:
+
+  SELECT CD_CVN, NM_CVN, CD_BCO, CT_TP_GOV FROM dbo.T009CONV
+   WHERE CD_BCO IS NOT NULL AND CT_TP_GOV IS NOT NULL;
+
   4) Triggers nessas tabelas:
 
   SELECT t.name AS tabela, tr.name AS trigger_nome, te.type_desc AS evento

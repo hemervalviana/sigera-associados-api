@@ -5313,10 +5313,10 @@
                 "convenios"
               ]
             },
-            "description": "Inclui um convênio. Sem `cdCvn`, MAX + 1 (até 999). Filial, banco e conta corrente são conferidos.",
+            "description": "Inclui um convênio. Sem `cdCvn`, MAX + 1 (até 999). É de banco ou de governo: `cdBanco` ou `tipoGoverno`, nunca os dois (400); os dois vazios são aceitos.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"CONVENIO TESTE API\",\n  \"cdSituacao\": 1\n}",
+              "raw": "{\n  \"nome\": \"CONVENIO TESTE API\",\n  \"tipoGoverno\": 3,\n  \"cdSituacao\": 1\n}",
               "options": {
                 "raw": {
                   "language": "json"

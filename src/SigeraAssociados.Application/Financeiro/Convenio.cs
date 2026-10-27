@@ -25,7 +25,10 @@ public sealed class ConvenioDados
 	/// <summary>Filial (CD_FIL), de GET /api/cadastros/filiais.</summary>
 	public decimal? CdFil { get; init; }
 
-	/// <summary>Banco (CD_BCO), de GET /api/cadastros/bancos.</summary>
+	/// <summary>
+	/// Banco (CD_BCO), de GET /api/cadastros/bancos. Opcional; não pode ser
+	/// informado junto com tipoGoverno (o convênio é de banco ou de governo).
+	/// </summary>
 	public decimal? CdBanco { get; init; }
 
 	/// <summary>Conta corrente da empresa (SQ_CTA_COR), conferida em T009CONT.</summary>
@@ -46,8 +49,15 @@ public sealed class ConvenioDados
 	/// <summary>Parâmetro de transmissão (PAR_TRSM, até 2 dígitos).</summary>
 	public decimal? ParametroTransmissao { get; init; }
 
-	/// <summary>CT_TP_GOV (até 10 dígitos).</summary>
+	/// <summary>
+	/// Tipo de governo (CT_TP_GOV), de GET /api/convenios/tipos-governo
+	/// (valores fixos do legado, 1 a 20). Opcional; não pode ser informado
+	/// junto com cdBanco.
+	/// </summary>
 	public decimal? TipoGoverno { get; init; }
+
+	/// <summary>Descrição do tipo de governo. Só na resposta.</summary>
+	public string? DescricaoTipoGoverno { get; init; }
 
 	/// <summary>Diretório dos arquivos de remessa (NM_DRT_REM, até 40).</summary>
 	public string? DiretorioRemessa { get; init; }
@@ -80,6 +90,10 @@ public sealed class ConvenioResumoDto
 
 	public decimal? CdBanco { get; init; }
 
+	public decimal? TipoGoverno { get; init; }
+
+	public string? DescricaoTipoGoverno { get; init; }
+
 	public decimal? CdSituacao { get; init; }
 }
 
@@ -87,6 +101,11 @@ public static class ValidacaoConvenio
 {
 	public const decimal CodigoMaximo = 999;
 
+	/// <summary>
+	/// Formato dos campos e a regra do vínculo: o convênio é de banco ou de
+	/// governo, nunca dos dois (cdBanco e tipoGoverno juntos). Os dois
+	/// vazios são aceitos.
+	/// </summary>
 	public static string? Validar(ConvenioDados? dados, bool inclusao)
 	{
 		if (dados is null)
@@ -94,6 +113,17 @@ public static class ValidacaoConvenio
 			return "Informe os dados do convênio.";
 		}
 
+		return Campos(dados, inclusao) ?? Vinculo(dados);
+	}
+
+	/// <summary>Banco e governo juntos são recusados; um só ou nenhum, aceitos.</summary>
+	public static string? Vinculo(ConvenioDados dados) =>
+		dados.CdBanco is not null && dados.TipoGoverno is not null
+			? "O convênio é de banco ou de governo: informe cdBanco ou tipoGoverno, não os dois."
+			: null;
+
+	private static string? Campos(ConvenioDados dados, bool inclusao)
+	{
 		return (inclusao ? RegrasCampos.Inteiro(dados.CdCvn, 1, CodigoMaximo, "cdCvn") : null)
 			?? RegrasCampos.Obrigatorio(dados.Nome, "nome")
 			?? RegrasCampos.Tamanho(dados.Nome, 35, "nome")
@@ -108,7 +138,9 @@ public static class ValidacaoConvenio
 			?? RegrasCampos.Inteiro(dados.CodigoCompensacao, 0, 9_999, "codigoCompensacao")
 			?? RegrasCampos.Inteiro(dados.CodigoCnab, 0, 999_999_999_999_999_999m, "codigoCnab")
 			?? RegrasCampos.Inteiro(dados.ParametroTransmissao, 0, 99, "parametroTransmissao")
-			?? RegrasCampos.Inteiro(dados.TipoGoverno, 0, 9_999_999_999m, "tipoGoverno")
+			?? (TipoGovernoConvenio.Valido(dados.TipoGoverno)
+				? null
+				: "O campo tipoGoverno deve ser um dos códigos de GET /api/convenios/tipos-governo (1 a 20).")
 			?? RegrasCampos.Tamanho(dados.DiretorioRemessa, 40, "diretorioRemessa")
 			?? RegrasCampos.Tamanho(dados.DiretorioRetorno, 40, "diretorioRetorno")
 			?? RegrasCampos.Tamanho(dados.ExtensaoArquivo, 5, "extensaoArquivo")

@@ -53,6 +53,20 @@ public sealed class ConveniosController : ControllerBase
 	}
 
 	/// <summary>
+	/// Tipos de governo (CT_TP_GOV), para o campo tipoGoverno do convênio.
+	/// </summary>
+	/// <remarks>Valores fixos do legado, sem tabela no banco.</remarks>
+	/// <response code="200">Tipos ordenados pelo código.</response>
+	[HttpGet("tipos-governo")]
+	[ProducesResponseType(typeof(IReadOnlyList<TipoGovernoDto>), StatusCodes.Status200OK)]
+	public IActionResult TiposGoverno()
+	{
+		var tipos = TipoGovernoConvenio.Listar();
+
+		return Ok(new { quantidade = tipos.Count, tiposGoverno = tipos });
+	}
+
+	/// <summary>
 	/// Dados completos de um convênio.
 	/// </summary>
 	/// <response code="200">Convênio.</response>
@@ -75,16 +89,19 @@ public sealed class ConveniosController : ControllerBase
 	/// <remarks>
 	/// `cdCvn` omitido: MAX + 1 (até 999). Obrigatório: `nome` (até 35).
 	/// Filial, banco e conta corrente (T009CONT) são conferidos nas tabelas.
+	/// O convênio é de banco ou de governo: `cdBanco` (GET /api/cadastros/bancos)
+	/// ou `tipoGoverno` (GET /api/convenios/tipos-governo), nunca os dois
+	/// (400). Os dois vazios são aceitos.
 	///
 	///     POST /api/convenios
 	///     {
 	///       "nome": "CONSIGNADO SEDUC",
 	///       "numero": "123456",
 	///       "cdFil": 1,
-	///       "cdBanco": 1,
 	///       "diretorioRemessa": "C:\\CONVENIOS\\REMESSA",
 	///       "diretorioRetorno": "C:\\CONVENIOS\\RETORNO",
 	///       "extensaoArquivo": "TXT",
+	///       "tipoGoverno": 3,
 	///       "cdSituacao": 1
 	///     }
 	/// </remarks>

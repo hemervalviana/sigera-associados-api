@@ -295,9 +295,14 @@ public sealed class CadastrosFinanceirosService : ICadastrosFinanceirosService
 				: query.Where(c => c.NM_CVN.StartsWith(texto));
 		}
 
-		return await query
+		var convenios = await query
 			.OrderBy(c => c.NM_CVN)
 			.ThenBy(c => c.CD_CVN)
+			.Select(c => new { c.CD_CVN, c.NM_CVN, c.NR_CVN, c.CD_FIL, c.CD_BCO, c.CT_TP_GOV, c.CD_SIT_CON })
+			.ToListAsync(cancellationToken);
+
+		// Descrição do tipo de governo é fixa (sem tabela): preenchida depois da consulta.
+		return convenios
 			.Select(c => new ConvenioResumoDto
 			{
 				CdCvn = c.CD_CVN,
@@ -305,9 +310,11 @@ public sealed class CadastrosFinanceirosService : ICadastrosFinanceirosService
 				Numero = c.NR_CVN,
 				CdFil = c.CD_FIL,
 				CdBanco = c.CD_BCO,
+				TipoGoverno = c.CT_TP_GOV,
+				DescricaoTipoGoverno = TipoGovernoConvenio.Descricao(c.CT_TP_GOV),
 				CdSituacao = c.CD_SIT_CON
 			})
-			.ToListAsync(cancellationToken);
+			.ToList();
 	}
 
 	/// <inheritdoc />
@@ -523,6 +530,7 @@ public sealed class CadastrosFinanceirosService : ICadastrosFinanceirosService
 		CodigoCnab = c.CD_CNAB,
 		ParametroTransmissao = c.PAR_TRSM,
 		TipoGoverno = c.CT_TP_GOV,
+		DescricaoTipoGoverno = TipoGovernoConvenio.Descricao(c.CT_TP_GOV),
 		DiretorioRemessa = c.NM_DRT_REM,
 		DiretorioRetorno = c.NM_DRT_ROR,
 		ExtensaoArquivo = c.DE_EXT_ARQ,
