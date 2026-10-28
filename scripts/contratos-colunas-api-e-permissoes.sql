@@ -135,7 +135,40 @@ GO
      AND NOT EXISTS (SELECT 1 FROM dbo.T009CAT t WHERE t.CD_EMP = c.CD_EMP AND t.CD_CAT = c.CD_CAT)
    GROUP BY c.CD_CAT;
 
-  7) Triggers nessas tabelas:
+  7) Contratos antigos que a alteração pela API passa a recusar (400) até
+     serem corrigidos (listas fixas, compra de dívida e depósito). Valores
+     a conferir antes de liberar a tela:
+
+  -- tipo do contrato fora de 1 a 5, tipo da compra fora de 1 e 2, entrega física fora de 1 a 3
+  SELECT CD_FIL, SQ_CTR, CD_TP_CTRT, VR_CMP_DIV_TP, CD_ENT_FISI
+    FROM dbo.T009CTRT
+   WHERE (CD_TP_CTRT IS NOT NULL AND CD_TP_CTRT NOT IN (1, 2, 3, 4, 5))
+      OR (VR_CMP_DIV_TP IS NOT NULL AND VR_CMP_DIV_TP NOT IN (1, 2))
+      OR (CD_ENT_FISI IS NOT NULL AND CD_ENT_FISI NOT IN (1, 2, 3));
+
+  -- compra de dívida incoerente: valor sem tipo, ou tipo sem valor
+  SELECT CD_FIL, SQ_CTR, VR_CMP_DIV, VR_CMP_DIV_TP
+    FROM dbo.T009CTRT
+   WHERE (VR_CMP_DIV > 0 AND VR_CMP_DIV_TP IS NULL)
+      OR (ISNULL(VR_CMP_DIV, 0) <= 0 AND VR_CMP_DIV_TP IS NOT NULL);
+
+  -- depósito incompleto ou com valor zero fora do PLANO ASSOCIATIVO (produto 1)
+  SELECT CD_FIL, SQ_CTR, CD_PRD, CD_ORI_REC, DT_PGT_AUX, VR_DEP, CD_BCO
+    FROM dbo.T009CTRT
+   WHERE ISNULL(CD_PRD, 0) <> 1
+     AND (CASE WHEN CD_ORI_REC IS NULL THEN 0 ELSE 1 END
+        + CASE WHEN DT_PGT_AUX IS NULL THEN 0 ELSE 1 END
+        + CASE WHEN VR_DEP     IS NULL THEN 0 ELSE 1 END
+        + CASE WHEN CD_BCO     IS NULL THEN 0 ELSE 1 END) BETWEEN 1 AND 3
+      OR (ISNULL(CD_PRD, 0) <> 1 AND VR_DEP <= 0);
+
+  -- PLANO ASSOCIATIVO com depósito gravado (a API mantém como está e não deixa mudar)
+  SELECT CD_FIL, SQ_CTR, CD_ORI_REC, DT_PGT_AUX, VR_DEP, CD_BCO
+    FROM dbo.T009CTRT
+   WHERE CD_PRD = 1
+     AND (CD_ORI_REC IS NOT NULL OR DT_PGT_AUX IS NOT NULL OR VR_DEP IS NOT NULL OR CD_BCO IS NOT NULL);
+
+  8) Triggers nessas tabelas:
 
   SELECT t.name AS tabela, tr.name AS trigger_nome, te.type_desc AS evento
     FROM sys.triggers tr

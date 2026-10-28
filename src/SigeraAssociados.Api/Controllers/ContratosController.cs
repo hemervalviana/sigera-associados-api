@@ -42,12 +42,14 @@ public sealed class ContratosController : ControllerBase
 	/// Pesquisa contratos (não excluídos, de associados não excluídos).
 	/// </summary>
 	/// <remarks>
-	/// `busca`: número do contrato, CPF do associado (11 dígitos, com ou sem
-	/// pontuação) ou começo do nome do associado. Ordem: data do contrato
+	/// `busca`: contrato na máscara ##-###### (filial + número, ex.: 01-000123),
+	/// número do contrato, CPF do associado (11 dígitos, com ou sem pontuação)
+	/// ou começo do nome do associado. Ordem: data do contrato
 	/// (mais recente primeiro), depois nome do associado e número do contrato.
 	///
 	///     GET /api/contratos?sqPesCli=12345
 	///     GET /api/contratos?busca=MARIA&amp;cdSituacao=2&amp;cdFil=1
+	///     GET /api/contratos?busca=01-000123
 	/// </remarks>
 	/// <response code="200">Página de contratos.</response>
 	/// <response code="400">Paginação inválida.</response>
@@ -133,6 +135,17 @@ public sealed class ContratosController : ControllerBase
 	/// `dataCancelamento` (e essas datas só valem com essas situações). Com 4
 	/// ou 9, `dataEncerramento` = hoje.
 	///
+	/// Listas fixas: `cdTipoContrato` 1 NOVO, 2 RENOVAÇÃO, 3 COMPRA DE DÍVIDA,
+	/// 4 COMPLEMENTO DE MARGEM, 5 REFIN E COMPRA DE DÍVIDA; `tipoCompraDivida`
+	/// 1 INTERNA, 2 EXTERNA; `cdEntFisi` 1 ENTREGUE, 2 NÃO ENTREGUE, 3 PENDENTE.
+	/// Compra de dívida: `valorCompraDivida` maior que zero exige
+	/// `tipoCompraDivida`, e o tipo exige o valor (valor zero grava tipo nulo).
+	///
+	/// Depósito ao associado: `cdOrigemRecurso`, `dataPagamentoAuxilio`,
+	/// `valorDeposito` (maior que zero) e `cdBanco` juntos ou nenhum. No
+	/// PLANO ASSOCIATIVO (produto 1) esses quatro são ignorados.
+	/// Comissão (`valorComissao`, `dataPagamentoComissao`) não é gravada aqui.
+	///
 	///     POST /api/contratos
 	///     {
 	///       "cdFil": 1, "sqPesCli": 12345, "cdProduto": 2, "cdConvenio": 1,
@@ -163,10 +176,13 @@ public sealed class ContratosController : ControllerBase
 	/// Altera o contrato (envie o contrato inteiro). Não mexe nas parcelas.
 	/// </summary>
 	/// <remarks>
-	/// `sqPesCli`, `cdProduto` e `dataContrato` não mudam (400 se vierem
-	/// diferentes). `quantidadeParcelas` é ignorada: acompanha as parcelas
-	/// (/api/contratos/{cdFil}/{sqCtr}/parcelas). Mudar a mensalidade não
-	/// regera parcelas. Mesmas regras de situação e datas da inclusão.
+	/// `sqPesCli` e `cdProduto` não mudam (400 se vierem diferentes).
+	/// `dataContrato` pode mudar (só a data; omitida mantém a gravada), e a 1ª
+	/// parcela tem de vencer depois dela. `quantidadeParcelas` é ignorada:
+	/// acompanha as parcelas (/api/contratos/{cdFil}/{sqCtr}/parcelas). Mudar
+	/// a mensalidade não regera parcelas. Mesmas regras da inclusão (situação,
+	/// datas, listas, compra de dívida, depósito). No PLANO ASSOCIATIVO o
+	/// depósito gravado é mantido. A comissão gravada é mantida.
 	/// </remarks>
 	/// <response code="200">Contrato alterado.</response>
 	/// <response code="400">Dados inválidos ou referência inexistente.</response>

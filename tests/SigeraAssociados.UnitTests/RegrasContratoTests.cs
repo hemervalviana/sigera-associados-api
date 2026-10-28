@@ -281,4 +281,123 @@ public sealed class RegrasContratoTests
 		Assert.False(RegrasContrato.ParcelasTravadas(13));
 		Assert.False(RegrasContrato.ParcelasTravadas(null));
 	}
+
+	// ----- Listas fixas -----
+
+	[Theory]
+	[InlineData(1, "NOVO")]
+	[InlineData(5, "REFIN E COMPRA DE DÍVIDA")]
+	public void TipoDoContrato_Descricao(int tipo, string descricao)
+	{
+		Assert.Equal(descricao, RegrasContrato.DescricaoTipoContrato(tipo));
+	}
+
+	[Theory]
+	[InlineData(0)]
+	[InlineData(6)]
+	public void TipoDoContratoForaDaLista_DeveSerRecusado(int tipo)
+	{
+		var d = new ContratoDados
+		{
+			CdFil = 1, SqPesCli = 1, CdProduto = 2, CdConvenio = 1, CdFormaPagamento = 1, CdSituacao = 2,
+			SqOrgao = 1, SqContaAssociado = 1, DataContrato = new DateTime(2026, 10, 1),
+			DataPrimeiraParcela = new DateTime(2026, 11, 1), ValorContrato = 100, QuantidadeParcelas = 1,
+			CdCategoria = 1, CdTipoContrato = tipo
+		};
+
+		Assert.Contains("cdTipoContrato", RegrasContrato.Validar(d, inclusao: true));
+	}
+
+	[Theory]
+	[InlineData(3, true)]
+	[InlineData(4, false)]
+	[InlineData(0, false)]
+	public void EntregaFisica_SoDe1A3(int codigo, bool valida)
+	{
+		Assert.Equal(valida, RegrasContrato.DescricaoEntregaFisica(codigo) is not null);
+	}
+
+	// ----- Compra de dívida -----
+
+	[Fact]
+	public void CompraDeDivida_ValorExigeTipo_ETipoExigeValor()
+	{
+		Assert.Contains("tipoCompraDivida", RegrasContrato.CompraDivida(1000m, null));
+		Assert.Contains("valorCompraDivida", RegrasContrato.CompraDivida(null, 1));
+		Assert.Contains("valorCompraDivida", RegrasContrato.CompraDivida(0m, 2));
+		Assert.Null(RegrasContrato.CompraDivida(1000m, 1));
+		Assert.Null(RegrasContrato.CompraDivida(0m, null));
+		Assert.Null(RegrasContrato.CompraDivida(null, null));
+	}
+
+	[Fact]
+	public void CompraDeDivida_SemValorGravaTipoNulo()
+	{
+		Assert.Null(RegrasContrato.TipoCompraDividaGravado(0m, 1));
+		Assert.Null(RegrasContrato.TipoCompraDividaGravado(null, 2));
+		Assert.Equal(2m, RegrasContrato.TipoCompraDividaGravado(10m, 2));
+	}
+
+	[Fact]
+	public void TipoDaCompraForaDaLista_DeveSerRecusado()
+	{
+		var d = Valido();
+		var comTipo3 = new ContratoDados
+		{
+			CdFil = d.CdFil, SqPesCli = d.SqPesCli, CdProduto = d.CdProduto, CdConvenio = d.CdConvenio,
+			CdFormaPagamento = d.CdFormaPagamento, CdSituacao = d.CdSituacao, SqOrgao = d.SqOrgao,
+			SqContaAssociado = d.SqContaAssociado, DataContrato = d.DataContrato,
+			DataPrimeiraParcela = d.DataPrimeiraParcela, ValorContrato = d.ValorContrato,
+			QuantidadeParcelas = d.QuantidadeParcelas, CdCategoria = d.CdCategoria,
+			ValorCompraDivida = 500m, TipoCompraDivida = 3
+		};
+
+		Assert.Contains("tipoCompraDivida", RegrasContrato.Validar(comTipo3, inclusao: true));
+	}
+
+	// ----- Depósito ao associado -----
+
+	private static ContratoDados ComDeposito(decimal produto, decimal? origem, DateTime? pagamento, decimal? valor, decimal? banco)
+	{
+		var d = Valido();
+		return new ContratoDados
+		{
+			CdFil = d.CdFil, SqPesCli = d.SqPesCli, CdProduto = produto, CdConvenio = d.CdConvenio,
+			CdFormaPagamento = d.CdFormaPagamento, CdSituacao = d.CdSituacao, SqOrgao = d.SqOrgao,
+			SqContaAssociado = d.SqContaAssociado, DataContrato = d.DataContrato,
+			DataPrimeiraParcela = d.DataPrimeiraParcela, ValorContrato = d.ValorContrato,
+			QuantidadeParcelas = d.QuantidadeParcelas, CdCategoria = d.CdCategoria,
+			CdOrigemRecurso = origem, DataPagamentoAuxilio = pagamento, ValorDeposito = valor, CdBanco = banco
+		};
+	}
+
+	[Fact]
+	public void Deposito_QuatroJuntosOuNenhum()
+	{
+		Assert.Null(RegrasContrato.Validar(ComDeposito(2, null, null, null, null), inclusao: true));
+		Assert.Null(RegrasContrato.Validar(ComDeposito(2, 1, DateTime.Today, 900m, 104), inclusao: true));
+		Assert.Contains("Depósito", RegrasContrato.Validar(ComDeposito(2, 1, null, null, null), inclusao: true));
+		Assert.Contains("Depósito", RegrasContrato.Validar(ComDeposito(2, 1, DateTime.Today, 900m, null), inclusao: true));
+	}
+
+	[Fact]
+	public void Deposito_ValorMaiorQueZero()
+	{
+		Assert.Contains("valorDeposito", RegrasContrato.Validar(ComDeposito(2, 1, DateTime.Today, 0m, 104), inclusao: true));
+	}
+
+	[Fact]
+	public void Deposito_NoPlanoAssociativoNaoEhConferido()
+	{
+		Assert.Null(RegrasContrato.Validar(ComDeposito(RegrasContrato.ProdutoPlanoAssociativo, 1, null, null, null), inclusao: true));
+	}
+
+	// ----- Data do contrato na alteração -----
+
+	[Fact]
+	public void Alteracao_NaoComparaAPrimeiraParcelaComHoje()
+	{
+		// Contrato antigo: a regra da alteração usa a data gravada (no serviço).
+		Assert.Null(RegrasContrato.Validar(Valido(dataContrato: new DateTime(2020, 1, 1), primeira: new DateTime(2020, 2, 1)), inclusao: false));
+	}
 }

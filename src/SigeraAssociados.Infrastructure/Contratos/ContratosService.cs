@@ -105,7 +105,11 @@ public sealed class ContratosService : IContratosService
 			var busca = request.Busca.Trim();
 			var digitos = new string(busca.Where(char.IsAsciiDigit).ToArray());
 
-			if (digitos.Length == 11 && busca.All(ch => char.IsAsciiDigit(ch) || ch is '.' or '-'))
+			if (LerMascaraContrato(busca) is (decimal filialBusca, decimal numeroBusca))
+			{
+				query = query.Where(c => c.CD_FIL == filialBusca && c.SQ_CTR == numeroBusca);
+			}
+			else if (digitos.Length == 11 && busca.All(ch => char.IsAsciiDigit(ch) || ch is '.' or '-'))
 			{
 				var cpf = decimal.Parse(digitos);
 				query = query.Where(c => db.PessoasFisicas.Any(f => f.CD_EMP == c.CD_EMP && f.SQ_PES_FIS == c.SQ_PES_CLI && f.NR_CPF == cpf));
@@ -139,6 +143,21 @@ public sealed class ContratosService : IContratosService
 			TotalPaginas = (int)Math.Ceiling(total / (double)request.TamanhoPagina),
 			Contratos = linhas.Select(ParaResumo).ToList()
 		};
+	}
+
+	/// <summary>
+	/// Contrato na máscara do legado ##-###### (filial + número, ex.:
+	/// 01-000123). Aceita menos dígitos em cada parte (1-123).
+	/// </summary>
+	internal static (decimal Filial, decimal Numero)? LerMascaraContrato(string texto)
+	{
+		var partes = texto.Trim().Split('-');
+
+		return partes.Length == 2
+			&& partes[0].Length is >= 1 and <= 2 && partes[0].All(char.IsAsciiDigit)
+			&& partes[1].Length is >= 1 and <= 6 && partes[1].All(char.IsAsciiDigit)
+				? (decimal.Parse(partes[0]), decimal.Parse(partes[1]))
+				: null;
 	}
 
 	private static IQueryable<LinhaContrato> Projetar(SigeraDbContext db, IQueryable<T009CTRT> query) =>
@@ -371,7 +390,7 @@ public sealed class ContratosService : IContratosService
 			return Invalido<ContratoDto>(erroImutavel);
 		}
 
-		if (RegrasContrato.PrimeiraParcela(dados.DataPrimeiraParcela, contrato.DT_CTR) is string erroData)
+		if (RegrasContrato.PrimeiraParcela(dados.DataPrimeiraParcela, dados.DataContrato ?? contrato.DT_CTR) is string erroData)
 		{
 			return Invalido<ContratoDto>(erroData);
 		}
@@ -404,6 +423,11 @@ public sealed class ContratosService : IContratosService
 		}
 
 		contrato.DT_ENC_CTR = RegrasContrato.DataEncerramento(contrato.CD_ST_CTR, dados.CdSituacao, contrato.DT_ENC_CTR, DateTime.Now);
+
+		if (dados.DataContrato is DateTime novaData)
+		{
+			contrato.DT_CTR = novaData.Date;
+		}
 		Aplicar(dados, contrato, corretor, referencias.CdOrgao, indice, mensalidade);
 
 		if (await SalvarAsync(db, cancellationToken) is string erroGravacao)
@@ -414,13 +438,12 @@ public sealed class ContratosService : IContratosService
 		return Sucesso("Contrato alterado.", await ParaDtoAsync(db, contrato, cancellationToken));
 	}
 
-	/// <summary>Associado, produto, filial e data do contrato não mudam (o legado protege).</summary>
+	/// <summary>Associado, produto e filial não mudam (o legado protege).</summary>
 	private static string? Imutaveis(ContratoDados d, T009CTRT c)
 	{
 		if (d.SqPesCli != c.SQ_PES_CLI) return "O associado do contrato não pode ser alterado.";
 		if (d.CdProduto != c.CD_PRD) return "O produto do contrato não pode ser alterado.";
 		if (d.CdFil is decimal fil && fil != c.CD_FIL) return "A filial do contrato não pode ser alterada.";
-		if (d.DataContrato is DateTime data && data.Date != c.DT_CTR.Date) return "A data do contrato não pode ser alterada.";
 		return null;
 	}
 
@@ -607,14 +630,16 @@ public sealed class ContratosService : IContratosService
 		if (!await db.Categorias.AnyAsync(c => c.CD_EMP == emp && c.CD_CAT == categoria, ct))
 			return new($"A categoria {categoria:0} não está cadastrada (T009CAT).");
 
-		if (d.CdOrigemRecurso is decimal ori && !await db.OrigensRecurso.AnyAsync(o => o.CD_EMP == emp && o.CD_ORI_REC == ori, ct))
+		var temDeposito = d.CdProduto != RegrasContrato.ProdutoPlanoAssociativo;
+
+		if (temDeposito && d.CdOrigemRecurso is decimal ori && !await db.OrigensRecurso.AnyAsync(o => o.CD_EMP == emp && o.CD_ORI_REC == ori, ct))
 			return new($"A origem do recurso {ori:0} não está cadastrada (T009OREC).");
 
 		if (d.SqProdutor is decimal prd
 			&& !await db.Produtores.AnyAsync(p => p.CD_EMP == emp && p.SQ_PRD == prd && p.SQ_PES_CRO == corretor, ct))
 			return new($"O produtor {prd:0} não está cadastrado para o corretor {corretor:0} (T009PROD).");
 
-		if (d.CdBanco is decimal bco && !await db.Bancos.AnyAsync(b => b.CD_EMP == emp && b.CD_BCO == bco, ct))
+		if (temDeposito && d.CdBanco is decimal bco && !await db.Bancos.AnyAsync(b => b.CD_EMP == emp && b.CD_BCO == bco, ct))
 			return new($"O banco {bco:0} não está cadastrado (T000BANC).");
 
 		// wf_buscar_indice: só quando nem índice nem mensalidade vieram.
@@ -659,7 +684,7 @@ public sealed class ContratosService : IContratosService
 		c.DT_FIN_CTR = d.DataFinalizacao?.Date;
 		c.DT_CAN_CTRT = d.DataCancelamento?.Date;
 		c.VR_CMP_DIV = d.ValorCompraDivida;
-		c.VR_CMP_DIV_TP = d.TipoCompraDivida;
+		c.VR_CMP_DIV_TP = RegrasContrato.TipoCompraDividaGravado(d.ValorCompraDivida, d.TipoCompraDivida);
 		c.CD_TP_CTRT = d.CdTipoContrato;
 		c.VR_TAR_BCO = d.ValorTarifaBancaria;
 		c.VR_DSP_ADM = d.ValorDespesaAdministrativa;
@@ -669,14 +694,20 @@ public sealed class ContratosService : IContratosService
 		c.SQ_PES_CRO = corretor;
 		c.SQ_CTA_COR_CRRT = d.SqContaCorretor;
 		c.CD_CAT = d.CdCategoria;
-		c.CD_ORI_REC = d.CdOrigemRecurso;
 		c.SQ_PRD = d.SqProdutor;
-		c.VR_CMS = d.ValorComissao;
-		c.DT_PGT_CMS = d.DataPagamentoComissao?.Date;
-		c.DT_PGT_AUX = d.DataPagamentoAuxilio?.Date;
-		c.VR_DEP = d.ValorDeposito;
-		c.CD_BCO = d.CdBanco;
 		c.CD_ENT_FISI = d.CdEntFisi;
+
+		// Comissão (VR_CMS, DT_PGT_CMS): só leitura nesta rota; nada é gravado.
+
+		// Depósito ao associado: o PLANO ASSOCIATIVO não tem; nele os campos
+		// enviados são ignorados (inclusão: nulos; alteração: mantém o gravado).
+		if (c.CD_PRD != RegrasContrato.ProdutoPlanoAssociativo)
+		{
+			c.CD_ORI_REC = d.CdOrigemRecurso;
+			c.DT_PGT_AUX = d.DataPagamentoAuxilio?.Date;
+			c.VR_DEP = d.ValorDeposito;
+			c.CD_BCO = d.CdBanco;
+		}
 	}
 
 	private static async Task<ContratoDto> ParaDtoAsync(SigeraDbContext db, T009CTRT c, CancellationToken ct)
@@ -733,7 +764,9 @@ public sealed class ContratosService : IContratosService
 			DataUltimoDesconto = c.DT_ULT_DCT,
 			ValorCompraDivida = c.VR_CMP_DIV,
 			TipoCompraDivida = c.VR_CMP_DIV_TP,
+			DescricaoTipoCompraDivida = RegrasContrato.DescricaoTipoCompraDivida(c.VR_CMP_DIV_TP),
 			CdTipoContrato = c.CD_TP_CTRT,
+			DescricaoTipoContrato = RegrasContrato.DescricaoTipoContrato(c.CD_TP_CTRT),
 			ValorTarifaBancaria = c.VR_TAR_BCO,
 			ValorDespesaAdministrativa = c.VR_DSP_ADM,
 			ValorIna = c.VR_INA,
@@ -755,6 +788,7 @@ public sealed class ContratosService : IContratosService
 			CdBanco = c.CD_BCO,
 			Banco = await db.Bancos.AsNoTracking().Where(b => b.CD_EMP == emp && b.CD_BCO == c.CD_BCO).Select(b => b.NM_BCO).FirstOrDefaultAsync(ct),
 			CdEntFisi = c.CD_ENT_FISI,
+			DescricaoEntregaFisica = RegrasContrato.DescricaoEntregaFisica(c.CD_ENT_FISI),
 			DataCadastro = c.DT_CAD,
 			UsuarioCadastro = c.NM_USU,
 			Parcelas = parcelas

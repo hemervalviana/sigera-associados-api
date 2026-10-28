@@ -139,6 +139,13 @@ Antes de começar:
 | [ ] | 18.4 | Situação quitado sem quitação | `"cdSituacao": 9` sem `dataQuitacao` | **400** |
 | [ ] | 18.4 | Vínculo de órgão de outro associado | `sqOrgao` inexistente para o associado | **400** "não é deste associado" |
 | [ ] | 18.4 | Sem mensalidade nem índice | Tire `valorMensalidade` e informe `cdCarencia` sem índice para 12 parcelas | **400** "Não há índice cadastrado" |
+| [ ] | 18.4 | Tipo do contrato fora da lista | `"cdTipoContrato": 6` | **400** |
+| [ ] | 18.4 | Compra de dívida sem tipo | `"valorCompraDivida": 500` sem `tipoCompraDivida` | **400** |
+| [ ] | 18.4 | Depósito incompleto (produto 2) | Só `"cdOrigemRecurso"` | **400** "informe juntos" |
+| [ ] | 18.4 | Depósito no plano associativo | Produto 1 com os quatro campos | **201**, depósito nulo no 18.5 |
+| [ ] | 18.4 | Comissão enviada | `"valorComissao": 50` | **201**, `valorComissao` nulo no 18.5 |
+| [ ] | 18.6 | Trocar a data do contrato | `"dataContrato"` um dia antes | **200**; com data igual ou depois da 1ª parcela, **400** |
+| [ ] | 18.1 | Busca na máscara | `busca=01-000123` (filial e número do 18.4) | **200**, só esse contrato |
 | [ ] | 18.6 | Alterar contrato | — | **200**, mensalidade 300; parcelas continuam 280,50 |
 | [ ] | 18.6 | Alterar trocando o associado ou o produto | Outro `sqPesCli` ou `cdProduto` | **400** |
 | [ ] | 18.6 | Situação 4 (encerrado) | `"cdSituacao": 4` | **200**, `dataEncerramento` = hoje; voltando para 2, fica nula |

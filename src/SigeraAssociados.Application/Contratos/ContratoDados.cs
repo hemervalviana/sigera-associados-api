@@ -2,8 +2,9 @@
 
 /// <summary>
 /// Dados de inclusão e alteração do contrato (T009CTRT). Na alteração, envie
-/// o contrato inteiro: campo opcional omitido fica nulo. Associado, produto,
-/// filial e data do contrato não mudam depois da inclusão.
+/// o contrato inteiro: campo opcional omitido fica nulo. Associado, produto e
+/// filial não mudam depois da inclusão. Comissão (VR_CMS, DT_PGT_CMS) não é
+/// gravada por aqui.
 /// </summary>
 public sealed class ContratoDados
 {
@@ -39,7 +40,10 @@ public sealed class ContratoDados
 	/// <summary>Município (CD_MUN), de GET /api/cadastros/municipios.</summary>
 	public decimal? CdMunicipio { get; init; }
 
-	/// <summary>Data do contrato (DT_CTR). Omitida na inclusão: hoje. Não muda na alteração.</summary>
+	/// <summary>
+	/// Data do contrato (DT_CTR, só a data). Omitida: hoje na inclusão; na
+	/// alteração mantém a gravada. A 1ª parcela vence depois dela.
+	/// </summary>
 	public DateTime? DataContrato { get; init; }
 
 	/// <summary>Data da 1ª parcela (DT_PRI_PCL). Obrigatória e posterior à data do contrato.</summary>
@@ -97,13 +101,19 @@ public sealed class ContratoDados
 	/// <summary>Data de cancelamento (DT_CAN_CTRT): obrigatória com situação 10, e só com ela.</summary>
 	public DateTime? DataCancelamento { get; init; }
 
-	/// <summary>Valor da compra de dívida (VR_CMP_DIV).</summary>
+	/// <summary>
+	/// Valor da compra de dívida (VR_CMP_DIV). Maior que zero exige
+	/// tipoCompraDivida; zero ou nulo grava o tipo nulo.
+	/// </summary>
 	public decimal? ValorCompraDivida { get; init; }
 
-	/// <summary>Tipo da compra de dívida (VR_CMP_DIV_TP, até 2 dígitos).</summary>
+	/// <summary>Tipo da compra de dívida (VR_CMP_DIV_TP): 1 = INTERNA, 2 = EXTERNA. Exige valorCompraDivida.</summary>
 	public decimal? TipoCompraDivida { get; init; }
 
-	/// <summary>Tipo do contrato (CD_TP_CTRT, até 2 dígitos).</summary>
+	/// <summary>
+	/// Tipo do contrato (CD_TP_CTRT): 1 = NOVO, 2 = RENOVAÇÃO, 3 = COMPRA DE
+	/// DÍVIDA, 4 = COMPLEMENTO DE MARGEM, 5 = REFIN E COMPRA DE DÍVIDA.
+	/// </summary>
 	public decimal? CdTipoContrato { get; init; }
 
 	/// <summary>Tarifa bancária (VR_TAR_BCO, até 99,99).</summary>
@@ -135,28 +145,26 @@ public sealed class ContratoDados
 	/// <summary>Categoria (CD_CAT), de GET /api/contratos/categorias. Obrigatória.</summary>
 	public decimal? CdCategoria { get; init; }
 
-	/// <summary>Origem do recurso (CD_ORI_REC), de GET /api/contratos/origens-recurso.</summary>
+	// Depósito ao associado (pagamento do empréstimo): origem do recurso,
+	// pagamento do auxílio, valor do depósito e banco, os quatro juntos ou
+	// nenhum. No PLANO ASSOCIATIVO (produto 1) os quatro são ignorados.
+
+	/// <summary>Origem do recurso (CD_ORI_REC), de GET /api/contratos/origens-recurso. Depósito ao associado.</summary>
 	public decimal? CdOrigemRecurso { get; init; }
 
 	/// <summary>Produtor (SQ_PRD), de GET /api/contratos/produtores?sqPesCorretor=.</summary>
 	public decimal? SqProdutor { get; init; }
 
-	/// <summary>Comissão (VR_CMS).</summary>
-	public decimal? ValorComissao { get; init; }
-
-	/// <summary>Pagamento da comissão (DT_PGT_CMS).</summary>
-	public DateTime? DataPagamentoComissao { get; init; }
-
-	/// <summary>Pagamento do auxílio (DT_PGT_AUX).</summary>
+	/// <summary>Pagamento do auxílio (DT_PGT_AUX). Depósito ao associado.</summary>
 	public DateTime? DataPagamentoAuxilio { get; init; }
 
-	/// <summary>Valor do depósito (VR_DEP).</summary>
+	/// <summary>Valor do depósito (VR_DEP), maior que zero. Depósito ao associado.</summary>
 	public decimal? ValorDeposito { get; init; }
 
-	/// <summary>Banco do depósito (CD_BCO), de GET /api/cadastros/bancos.</summary>
+	/// <summary>Banco do depósito (CD_BCO), de GET /api/cadastros/bancos. Depósito ao associado.</summary>
 	public decimal? CdBanco { get; init; }
 
-	/// <summary>CD_ENT_FISI (1 dígito).</summary>
+	/// <summary>Entrega física (CD_ENT_FISI): 1 = ENTREGUE, 2 = NÃO ENTREGUE, 3 = PENDENTE.</summary>
 	public decimal? CdEntFisi { get; init; }
 }
 
@@ -209,7 +217,15 @@ public sealed class ContratoDto
 
 	public decimal? ValorCompraDivida { get; init; }
 	public decimal? TipoCompraDivida { get; init; }
+
+	/// <summary>INTERNA ou EXTERNA.</summary>
+	public string? DescricaoTipoCompraDivida { get; init; }
+
 	public decimal? CdTipoContrato { get; init; }
+
+	/// <summary>NOVO, RENOVAÇÃO, COMPRA DE DÍVIDA, COMPLEMENTO DE MARGEM ou REFIN E COMPRA DE DÍVIDA.</summary>
+	public string? DescricaoTipoContrato { get; init; }
+
 	public decimal? ValorTarifaBancaria { get; init; }
 	public decimal? ValorDespesaAdministrativa { get; init; }
 	public decimal? ValorIna { get; init; }
@@ -224,13 +240,20 @@ public sealed class ContratoDto
 	public string? OrigemRecurso { get; init; }
 	public decimal? SqProdutor { get; init; }
 	public string? Produtor { get; init; }
+	/// <summary>Comissão (VR_CMS): só leitura nesta rota.</summary>
 	public decimal? ValorComissao { get; init; }
+
+	/// <summary>Pagamento da comissão (DT_PGT_CMS): só leitura nesta rota.</summary>
 	public DateTime? DataPagamentoComissao { get; init; }
+
 	public DateTime? DataPagamentoAuxilio { get; init; }
 	public decimal? ValorDeposito { get; init; }
 	public decimal? CdBanco { get; init; }
 	public string? Banco { get; init; }
 	public decimal? CdEntFisi { get; init; }
+
+	/// <summary>ENTREGUE, NÃO ENTREGUE ou PENDENTE.</summary>
+	public string? DescricaoEntregaFisica { get; init; }
 
 	/// <summary>Cadastro (DT_CAD) e usuário que incluiu (NM_USU).</summary>
 	public DateTime DataCadastro { get; init; }
@@ -272,7 +295,10 @@ public sealed class ContratoResumoDto
 
 public sealed class PesquisaContratosRequest
 {
-	/// <summary>Número do contrato, CPF do associado ou começo do nome do associado.</summary>
+	/// <summary>
+	/// Contrato na máscara ##-###### (filial + número, ex.: 01-000123), número
+	/// do contrato, CPF do associado ou começo do nome do associado.
+	/// </summary>
 	public string? Busca { get; init; }
 	public decimal? SqPesCli { get; init; }
 	public decimal? CdFil { get; init; }

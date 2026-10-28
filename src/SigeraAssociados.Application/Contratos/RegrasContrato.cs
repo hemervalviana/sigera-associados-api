@@ -20,6 +20,12 @@ public static class RegrasContrato
 	/// </summary>
 	public const decimal ProdutoAuxilioFinanceiro = 2;
 
+	/// <summary>
+	/// Produto sem depósito ao associado (a tela esconde a seção): PLANO
+	/// ASSOCIATIVO. Os campos do depósito são ignorados nele.
+	/// </summary>
+	public const decimal ProdutoPlanoAssociativo = 1;
+
 	public const decimal SequenciaMaxima = 99_999_999;
 	public const int ParcelasMaximo = 999;
 	public const decimal NumeroParcelaMaximo = 99_999;
@@ -44,6 +50,9 @@ public static class RegrasContrato
 			?? DatasDaSituacao(d.CdSituacao, d.DataQuitacao, d.DataFinalizacao, d.DataCancelamento)
 			?? Valores(d)
 			?? Codigos(d)
+			?? Listas(d)
+			?? CompraDivida(d.ValorCompraDivida, d.TipoCompraDivida)
+			?? (d.CdProduto == ProdutoPlanoAssociativo ? null : Deposito(d))
 			?? RegrasCampos.Tamanho(d.Observacao, 2000, "observacao")
 			?? RegrasCampos.Tamanho(d.ObservacaoSnt, 255, "observacaoSnt");
 	}
@@ -104,7 +113,6 @@ public static class RegrasContrato
 		?? Monetario(d.ValorTarifaBancaria, 99.99m, "valorTarifaBancaria")
 		?? Monetario(d.ValorDespesaAdministrativa, Valor7, "valorDespesaAdministrativa")
 		?? Monetario(d.ValorIna, Valor11, "valorIna")
-		?? Monetario(d.ValorComissao, Valor11, "valorComissao")
 		?? Monetario(d.ValorDeposito, Valor11, "valorDeposito")
 		?? (d.Indice is decimal i && (i < 0 || i > IndiceMaximo || decimal.Round(i, 4) != i)
 			? "O índice deve estar entre 0 e 9,9999, com até 4 casas."
@@ -124,15 +132,93 @@ public static class RegrasContrato
 		?? RegrasCampos.Inteiro(d.CdCarencia, 0, 9, "cdCarencia")
 		?? RegrasCampos.Inteiro(d.SqConsignante, 1, 9_999_999, "sqConsignante")
 		?? RegrasCampos.Inteiro(d.NumeroProposta, 0, 999_999, "numeroProposta")
-		?? RegrasCampos.Inteiro(d.TipoCompraDivida, 0, 99, "tipoCompraDivida")
-		?? RegrasCampos.Inteiro(d.CdTipoContrato, 0, 99, "cdTipoContrato")
 		?? RegrasCampos.Inteiro(d.SqPesCorretor, 1, 9_999_999, "sqPesCorretor")
 		?? RegrasCampos.Inteiro(d.SqContaCorretor, 1, 99, "sqContaCorretor")
 		?? RegrasCampos.Inteiro(d.CdCategoria, 1, 999, "cdCategoria")
 		?? RegrasCampos.Inteiro(d.CdOrigemRecurso, 0, 99_999, "cdOrigemRecurso")
 		?? RegrasCampos.Inteiro(d.SqProdutor, 1, 9_999_999, "sqProdutor")
-		?? RegrasCampos.Inteiro(d.CdBanco, 0, 999, "cdBanco")
-		?? RegrasCampos.Inteiro(d.CdEntFisi, 0, 9, "cdEntFisi");
+		?? RegrasCampos.Inteiro(d.CdBanco, 0, 999, "cdBanco");
+
+	// ----- Listas fixas do legado (sem tabela no banco) -----
+
+	/// <summary>Tipo do contrato (CD_TP_CTRT).</summary>
+	public static string? DescricaoTipoContrato(decimal? tipo) => tipo switch
+	{
+		1 => "NOVO",
+		2 => "RENOVAÇÃO",
+		3 => "COMPRA DE DÍVIDA",
+		4 => "COMPLEMENTO DE MARGEM",
+		5 => "REFIN E COMPRA DE DÍVIDA",
+		_ => null
+	};
+
+	/// <summary>Tipo da compra de dívida (VR_CMP_DIV_TP).</summary>
+	public static string? DescricaoTipoCompraDivida(decimal? tipo) => tipo switch
+	{
+		1 => "INTERNA",
+		2 => "EXTERNA",
+		_ => null
+	};
+
+	/// <summary>Entrega física (CD_ENT_FISI).</summary>
+	public static string? DescricaoEntregaFisica(decimal? codigo) => codigo switch
+	{
+		1 => "ENTREGUE",
+		2 => "NÃO ENTREGUE",
+		3 => "PENDENTE",
+		_ => null
+	};
+
+	private static string? Listas(ContratoDados d)
+	{
+		if (d.CdTipoContrato is not null && DescricaoTipoContrato(d.CdTipoContrato) is null)
+			return "O tipo do contrato (cdTipoContrato) deve ser 1 (NOVO), 2 (RENOVAÇÃO), 3 (COMPRA DE DÍVIDA), 4 (COMPLEMENTO DE MARGEM) ou 5 (REFIN E COMPRA DE DÍVIDA).";
+		if (d.TipoCompraDivida is not null && DescricaoTipoCompraDivida(d.TipoCompraDivida) is null)
+			return "O tipo da compra de dívida (tipoCompraDivida) deve ser 1 (INTERNA) ou 2 (EXTERNA).";
+		if (d.CdEntFisi is not null && DescricaoEntregaFisica(d.CdEntFisi) is null)
+			return "A entrega física (cdEntFisi) deve ser 1 (ENTREGUE), 2 (NÃO ENTREGUE) ou 3 (PENDENTE).";
+		return null;
+	}
+
+	/// <summary>
+	/// Compra de dívida: valor maior que zero exige o tipo, e o tipo exige
+	/// valor maior que zero. Valor zero ou nulo grava o tipo nulo
+	/// (TipoCompraDividaGravado).
+	/// </summary>
+	public static string? CompraDivida(decimal? valor, decimal? tipo)
+	{
+		if (valor is > 0 && tipo is null)
+			return "Informe o tipo da compra de dívida (tipoCompraDivida): 1 (INTERNA) ou 2 (EXTERNA).";
+		if (tipo is not null && valor is not > 0)
+			return "O tipo da compra de dívida exige o valor da compra de dívida (valorCompraDivida) maior que zero.";
+		return null;
+	}
+
+	/// <summary>Tipo da compra de dívida que vai para o banco: nulo sem valor.</summary>
+	public static decimal? TipoCompraDividaGravado(decimal? valor, decimal? tipo) => valor is > 0 ? tipo : null;
+
+	/// <summary>
+	/// Depósito ao associado (pagamento do empréstimo): origem do recurso,
+	/// pagamento do auxílio, valor do depósito e banco, os quatro juntos ou
+	/// nenhum; valor do depósito maior que zero. Não vale para o PLANO
+	/// ASSOCIATIVO, que não tem depósito.
+	/// </summary>
+	public static string? Deposito(ContratoDados d)
+	{
+		var preenchidos = new[]
+		{
+			d.CdOrigemRecurso is not null,
+			d.DataPagamentoAuxilio is not null,
+			d.ValorDeposito is not null,
+			d.CdBanco is not null
+		}.Count(x => x);
+
+		if (preenchidos is > 0 and < 4)
+			return "Depósito ao associado: informe juntos a origem do recurso (cdOrigemRecurso), o pagamento do auxílio (dataPagamentoAuxilio), o valor do depósito (valorDeposito) e o banco (cdBanco), ou nenhum deles.";
+		if (d.ValorDeposito is <= 0)
+			return "O valor do depósito (valorDeposito) deve ser maior que zero.";
+		return null;
+	}
 
 	/// <summary>Valor de 0 até o máximo da coluna, com até 2 casas.</summary>
 	public static string? Monetario(decimal? valor, decimal maximo, string campo) =>
