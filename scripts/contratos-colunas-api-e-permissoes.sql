@@ -16,7 +16,8 @@
 
   2) Permissão do login usr_sisgera_api:
      - INSERT e UPDATE em T009CTRT (sem DELETE: a exclusão é lógica);
-     - INSERT, UPDATE e DELETE em T009PAGA (parcelas não baixadas).
+     - INSERT, UPDATE e DELETE em T009PAGA (parcelas);
+     - INSERT, UPDATE e DELETE em T009CAT (categorias, só administradores).
      A leitura das tabelas de apoio (T009SCTR, T009CARE, T009OREC, T009PROD,
      T009INDI, T009RBSR, T009PARM) já vem do db_datareader.
 
@@ -60,6 +61,7 @@ IF DATABASE_PRINCIPAL_ID(N''usr_sisgera_api'') IS NOT NULL
 BEGIN
     GRANT INSERT, UPDATE ON dbo.T009CTRT TO usr_sisgera_api;
     GRANT INSERT, UPDATE, DELETE ON dbo.T009PAGA TO usr_sisgera_api;
+    GRANT INSERT, UPDATE, DELETE ON dbo.T009CAT TO usr_sisgera_api;
     PRINT N''Permissões de contratos concedidas em ' + @Banco + N''';
 END
 ELSE
@@ -124,17 +126,27 @@ GO
 
   SELECT CD_FIL, SQ_PRM, DE_PRM, TP_FLG FROM dbo.T009PARM WHERE SQ_PRM = 1 ORDER BY CD_FIL;
 
-  6) Triggers nessas tabelas:
+  6) Categorias usadas pelos contratos que não existem em T009CAT (a API
+     recusa a alteração desses contratos até a categoria existir; corrija
+     antes de rodar scripts/contratos-fk-categoria.sql):
+
+  SELECT c.CD_CAT, COUNT(*) AS contratos FROM dbo.T009CTRT c
+   WHERE c.CD_CAT IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM dbo.T009CAT t WHERE t.CD_EMP = c.CD_EMP AND t.CD_CAT = c.CD_CAT)
+   GROUP BY c.CD_CAT;
+
+  7) Triggers nessas tabelas:
 
   SELECT t.name AS tabela, tr.name AS trigger_nome, te.type_desc AS evento
     FROM sys.triggers tr
     JOIN sys.tables t ON t.object_id = tr.parent_id
     JOIN sys.trigger_events te ON te.object_id = tr.object_id
-   WHERE t.name IN ('T009CTRT', 'T009PAGA');
+   WHERE t.name IN ('T009CTRT', 'T009PAGA', 'T009CAT');
 
   Para desfazer (em cada base; só depois de voltar a API para a versão anterior):
 
   REVOKE INSERT, UPDATE ON dbo.T009CTRT FROM usr_sisgera_api;
   REVOKE INSERT, UPDATE, DELETE ON dbo.T009PAGA FROM usr_sisgera_api;
+  REVOKE INSERT, UPDATE, DELETE ON dbo.T009CAT FROM usr_sisgera_api;
   ALTER TABLE dbo.T009CTRT DROP COLUMN DT_EXC_API, NM_USU_EXC_API;
 */

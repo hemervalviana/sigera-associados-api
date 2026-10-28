@@ -132,7 +132,7 @@ public sealed class ContratoDados
 	/// <summary>Conta bancária do corretor (SQ_CTA_COR_CRRT), de GET /api/corretores/{sq}/contas.</summary>
 	public decimal? SqContaCorretor { get; init; }
 
-	/// <summary>Categoria (CD_CAT, até 3 dígitos). Obrigatória.</summary>
+	/// <summary>Categoria (CD_CAT), de GET /api/contratos/categorias. Obrigatória.</summary>
 	public decimal? CdCategoria { get; init; }
 
 	/// <summary>Origem do recurso (CD_ORI_REC), de GET /api/contratos/origens-recurso.</summary>
@@ -219,6 +219,7 @@ public sealed class ContratoDto
 	public string? Corretor { get; init; }
 	public decimal? SqContaCorretor { get; init; }
 	public decimal? CdCategoria { get; init; }
+	public string? Categoria { get; init; }
 	public decimal? CdOrigemRecurso { get; init; }
 	public string? OrigemRecurso { get; init; }
 	public decimal? SqProdutor { get; init; }

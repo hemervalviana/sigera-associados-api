@@ -129,6 +129,11 @@ Antes de começar:
 | [ ] | 17.1 | Corretor excluído | Depois do 16.6 | **404** "Corretor não encontrado" |
 | [ ] | — | Script de contratos | `scripts\contratos-colunas-api-e-permissoes.sql` nas 4 bases, antes de subir a API | Colunas e permissões criadas |
 | [ ] | 18.1 | Contratos do associado de teste | `sqPesCli` do 04 | **200** |
+| [ ] | 18.12 | Categorias do contrato | — | **200**; use um código no `cdCategoria` do 18.4 |
+| [ ] | 18.13 | Incluir categoria | Como administrador | **201**, `cdCategoria` salvo |
+| [ ] | 18.13 | Incluir categoria como Gestor | Outro usuário | **403** |
+| [ ] | 18.14 | Excluir categoria usada por contrato | Categoria do 18.4 | **409** "há contratos com ela" |
+| [ ] | 18.4 | Categoria inexistente | `"cdCategoria": 999` (sem cadastro) | **400** "não está cadastrada (T009CAT)" |
 | [ ] | 18.4 | Incluir contrato | Códigos reais de produto, convênio, forma, situação (18.2) e categoria | **201**, 12 parcelas de 280,50 (10/12/2026 a 10/11/2027); `cdFilContrato` e `sqCtr` salvos |
 | [ ] | 18.4 | 1ª parcela até a data do contrato | `"dataPrimeiraParcela"` = hoje | **400** |
 | [ ] | 18.4 | Situação quitado sem quitação | `"cdSituacao": 9` sem `dataQuitacao` | **400** |

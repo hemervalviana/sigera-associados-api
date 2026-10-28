@@ -603,6 +603,10 @@ public sealed class ContratosService : IContratosService
 			&& !await db.ContasBancarias.AnyAsync(c => c.CD_EMP == emp && c.SQ_PES == corretor && c.SQ_CTA_COR == contaCro, ct))
 			return new($"A conta bancária {contaCro:0} não é do corretor {corretor:0} (T000CCOR).");
 
+		var categoria = d.CdCategoria!.Value;
+		if (!await db.Categorias.AnyAsync(c => c.CD_EMP == emp && c.CD_CAT == categoria, ct))
+			return new($"A categoria {categoria:0} não está cadastrada (T009CAT).");
+
 		if (d.CdOrigemRecurso is decimal ori && !await db.OrigensRecurso.AnyAsync(o => o.CD_EMP == emp && o.CD_ORI_REC == ori, ct))
 			return new($"A origem do recurso {ori:0} não está cadastrada (T009OREC).");
 
@@ -739,6 +743,7 @@ public sealed class ContratosService : IContratosService
 			Corretor = await NomeAsync(c.SQ_PES_CRO),
 			SqContaCorretor = c.SQ_CTA_COR_CRRT,
 			CdCategoria = c.CD_CAT,
+			Categoria = await db.Categorias.AsNoTracking().Where(x => x.CD_EMP == emp && x.CD_CAT == c.CD_CAT).Select(x => x.NM_CAT).FirstOrDefaultAsync(ct),
 			CdOrigemRecurso = c.CD_ORI_REC,
 			OrigemRecurso = await db.OrigensRecurso.AsNoTracking().Where(o => o.CD_EMP == emp && o.CD_ORI_REC == c.CD_ORI_REC).Select(o => o.DE_ORI_REC).FirstOrDefaultAsync(ct),
 			SqProdutor = c.SQ_PRD,

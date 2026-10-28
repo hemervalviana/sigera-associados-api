@@ -25,11 +25,16 @@ namespace SigeraAssociados.Api.Controllers;
 public sealed class ContratosController : ControllerBase
 {
 	private readonly IContratosService _contratos;
+	private readonly ICategoriasContratoService _categorias;
 	private readonly ILogger<ContratosController> _logger;
 
-	public ContratosController(IContratosService contratos, ILogger<ContratosController> logger)
+	public ContratosController(
+		IContratosService contratos,
+		ICategoriasContratoService categorias,
+		ILogger<ContratosController> logger)
 	{
 		_contratos = contratos;
+		_categorias = categorias;
 		_logger = logger;
 	}
 
@@ -236,6 +241,100 @@ public sealed class ContratosController : ControllerBase
 	[ProducesResponseType(typeof(IReadOnlyList<IndiceContratoDto>), StatusCodes.Status200OK)]
 	public async Task<IActionResult> Indices([FromQuery] decimal? cdCarencia, [FromQuery] decimal? quantidadeParcelas, CancellationToken cancellationToken) =>
 		Ok(await _contratos.IndicesAsync(cdCarencia, quantidadeParcelas, cancellationToken));
+
+	// ===================== Categorias (T009CAT) =====================
+
+	/// <summary>
+	/// Categorias do contrato (T009CAT), ordenadas pelo nome.
+	/// </summary>
+	/// <param name="busca">Começo do nome ou código (opcional). Até 500 itens.</param>
+	/// <param name="cancellationToken">Cancelamento da requisição.</param>
+	/// <response code="200">Categorias.</response>
+	[HttpGet("categorias")]
+	[ProducesResponseType(StatusCodes.Status200OK)]
+	public async Task<IActionResult> Categorias([FromQuery] string? busca, CancellationToken cancellationToken)
+	{
+		var categorias = await _categorias.ListarAsync(busca, cancellationToken);
+
+		return Ok(new { quantidade = categorias.Count, categorias });
+	}
+
+	/// <summary>
+	/// Inclui uma categoria. Somente administradores.
+	/// </summary>
+	/// <remarks>
+	/// `cdCategoria` omitido: MAX + 1 (até 999). Obrigatório: `descricao` (até 35).
+	///
+	///     POST /api/contratos/categorias
+	///     { "descricao": "SERVIDOR ESTADUAL" }
+	/// </remarks>
+	/// <response code="201">Incluída.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="409">Código já existe.</response>
+	[HttpPost("categorias")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(CategoriaContratoDados), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> IncluirCategoria([FromBody] CategoriaContratoDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _categorias.IncluirAsync(dados, cancellationToken);
+		RegistrarCategoria(resultado.Status, "Categoria incluída", resultado.Item?.CdCategoria);
+		return this.Converter(resultado, criado: true);
+	}
+
+	/// <summary>
+	/// Altera o nome de uma categoria. Somente administradores.
+	/// </summary>
+	/// <response code="200">Alterada.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrada.</response>
+	[HttpPut("categorias/{cdCategoria:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(CategoriaContratoDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	public async Task<IActionResult> AlterarCategoria(decimal cdCategoria, [FromBody] CategoriaContratoDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _categorias.AlterarAsync(cdCategoria, dados, cancellationToken);
+		RegistrarCategoria(resultado.Status, "Categoria alterada", cdCategoria);
+		return this.Converter(resultado);
+	}
+
+	/// <summary>
+	/// Exclui uma categoria. Somente administradores.
+	/// </summary>
+	/// <remarks>Recusada (409) se houver contratos com a categoria.</remarks>
+	/// <response code="200">Excluída.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrada.</response>
+	/// <response code="409">Em uso por contratos.</response>
+	[HttpDelete("categorias/{cdCategoria:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[ProducesResponseType(typeof(CategoriaContratoDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> ExcluirCategoria(decimal cdCategoria, CancellationToken cancellationToken)
+	{
+		var resultado = await _categorias.ExcluirAsync(cdCategoria, cancellationToken);
+		RegistrarCategoria(resultado.Status, "Categoria excluída", cdCategoria);
+		return this.Converter(resultado);
+	}
+
+	private void RegistrarCategoria(StatusTabelaApoio status, string operacao, decimal? codigo)
+	{
+		if (status == StatusTabelaApoio.Sucesso)
+		{
+			_logger.LogInformation("{Operacao}: categoria {CdCategoria}, por {Usuario}.", operacao, codigo, Login());
+		}
+	}
 
 	private string Login() =>
 		User.FindFirstValue(ClaimTypes.Email)

@@ -6710,6 +6710,183 @@
               }
             }
           ]
+        },
+        {
+          "name": "18.12 - Categorias do contrato",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/categorias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "categorias"
+              ]
+            },
+            "description": "T009CAT. `busca` opcional (começo do nome ou código)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.13 - Incluir categoria (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/categorias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "categorias"
+              ]
+            },
+            "description": "`cdCategoria` omitido: MAX + 1 (até 999). `descricao` até 35. Guarda `cdCategoria`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"CATEGORIA TESTE API\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"cdCategoria\", pm.response.json().item.cdCategoria);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.14 - Alterar categoria (somente administradores)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/categorias/{{cdCategoria}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "categorias",
+                "{{cdCategoria}}"
+              ]
+            },
+            "description": "Troca o nome da categoria do 18.13.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"CATEGORIA TESTE API ALTERADA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.15 - Excluir categoria (somente administradores)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/categorias/{{cdCategoria}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "categorias",
+                "{{cdCategoria}}"
+              ]
+            },
+            "description": "Exclui a categoria do 18.13. Com contratos usando a categoria: 409."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
@@ -6923,6 +7100,11 @@
       "key": "nrParcela",
       "value": "",
       "description": "Preenchido pelo 18.8 (parcela de teste)."
+    },
+    {
+      "key": "cdCategoria",
+      "value": "",
+      "description": "Preenchido pelo 18.13 (categoria de teste)."
     }
   ]
 }

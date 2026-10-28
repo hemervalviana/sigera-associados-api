@@ -57,6 +57,7 @@ public sealed class SigeraDbContext : DbContext
 	public DbSet<T009PROD> Produtores => Set<T009PROD>();
 	public DbSet<T009INDI> Indices => Set<T009INDI>();
 	public DbSet<T009PARM> Parametros => Set<T009PARM>();
+	public DbSet<T009CAT> Categorias => Set<T009CAT>();
 
 	/// <summary>
 	/// Aplica automaticamente as configurações de entidades
