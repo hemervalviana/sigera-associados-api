@@ -38,7 +38,8 @@ public sealed class ContratosController : ControllerBase
 	/// </summary>
 	/// <remarks>
 	/// `busca`: número do contrato, CPF do associado (11 dígitos, com ou sem
-	/// pontuação) ou começo do nome do associado. Mais recentes primeiro.
+	/// pontuação) ou começo do nome do associado. Ordem: data do contrato
+	/// (mais recente primeiro), depois nome do associado e número do contrato.
 	///
 	///     GET /api/contratos?sqPesCli=12345
 	///     GET /api/contratos?busca=MARIA&amp;cdSituacao=2&amp;cdFil=1

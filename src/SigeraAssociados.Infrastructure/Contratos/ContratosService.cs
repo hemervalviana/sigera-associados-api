@@ -125,6 +125,7 @@ public sealed class ContratosService : IContratosService
 
 		var linhas = await Projetar(db, query)
 			.OrderByDescending(l => l.DataContrato)
+			.ThenBy(l => l.Nome)
 			.ThenByDescending(l => l.SqCtr)
 			.Skip((request.Pagina - 1) * request.TamanhoPagina)
 			.Take(request.TamanhoPagina)
