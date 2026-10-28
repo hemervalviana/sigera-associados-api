@@ -303,6 +303,12 @@ Implementação: `Api/Erros/RespostasErro.cs` (formato e títulos), `Api/Erros/T
 | POST / PUT / DELETE | `/api/corretores/agentes`, `/api/corretores/gerentes-vendas` (PUT e DELETE com `/{codigo}`) | Admin |
 | GET | `/api/corretores/{sqPesCorretor}/enderecos`, `/telefones`, `/contas`, `/referencias`, `/pix` | Quem tem acesso ao sistema (mesmas tabelas e regras do associado) |
 | POST / PUT / DELETE | `/api/corretores/{sqPesCorretor}/enderecos`, `/telefones`, `/contas`, `/referencias`, `/pix` (PUT e DELETE com `/{sequencia}`) | Admin e Gestores |
+| GET | `/api/contratos?busca=&sqPesCli=&cdFil=&cdSituacao=&sqPesCorretor=&cdProduto=`, `/api/contratos/{cdFil}/{sqCtr}` | Conforme acessos (carteira do corretor: só os contratos dele) |
+| POST / PUT | `/api/contratos` (PUT com `/{cdFil}/{sqCtr}`) | Conforme acessos (a inclusão gera as parcelas) |
+| DELETE | `/api/contratos/{cdFil}/{sqCtr}` | Admin e Gestores (exclusão lógica) |
+| GET / POST | `/api/contratos/{cdFil}/{sqCtr}/parcelas` | Conforme acessos (só vencimento e valor; parcela baixada não muda) |
+| PUT / DELETE | `/api/contratos/{cdFil}/{sqCtr}/parcelas/{numeroParcela}` | Conforme acessos; DELETE só Admin e Gestores |
+| GET | `/api/contratos/situacoes`, `/carencias`, `/origens-recurso`, `/produtores?sqPesCorretor=`, `/indices?cdCarencia=&quantidadeParcelas=` | Quem tem acesso ao sistema |
 | GET / POST | `/api/associados/{sqPesCli}/orgaos` | Conforme acessos (vínculos do associado com órgãos) |
 | PUT / DELETE | `/api/associados/{sqPesCli}/orgaos/{sqOrg}` | Conforme acessos; DELETE só Admin e Gestores |
 | GET | `/api/cadastros/filiais`, `/filiais/{cdFil}`, `/situacoes`, `/tratamentos`, `/municipios?uf=&busca=` | Quem tem acesso ao sistema (`X-Sigera-Sistema`) |

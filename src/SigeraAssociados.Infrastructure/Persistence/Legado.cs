@@ -70,6 +70,8 @@ internal static class Legado
 
 	public static ResultadoTabelaApoio<T> Conflito<T>(string mensagem) => new(StatusTabelaApoio.Conflito, mensagem);
 
+	public static ResultadoTabelaApoio<T> Proibido<T>(string mensagem) => new(StatusTabelaApoio.Proibido, mensagem);
+
 	public static ResultadoTabelaApoio<T> NaoEncontrado<T>(string mensagem) => new(StatusTabelaApoio.NaoEncontrado, mensagem);
 
 	public static ResultadoTabelaApoio<T> EmpresaIndefinida<T>() =>

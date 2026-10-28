@@ -69,6 +69,14 @@ public sealed class RotasSemSistemaTests : IClassFixture<SigeraApiFactory>
 	[InlineData("/api/corretores/1/referencias")]
 	[InlineData("/api/corretores/1/pix")]
 	[InlineData("/api/cadastros/tipos-telefone")]
+	[InlineData("/api/contratos")]
+	[InlineData("/api/contratos/1/123")]
+	[InlineData("/api/contratos/1/123/parcelas")]
+	[InlineData("/api/contratos/situacoes")]
+	[InlineData("/api/contratos/carencias")]
+	[InlineData("/api/contratos/origens-recurso")]
+	[InlineData("/api/contratos/produtores")]
+	[InlineData("/api/contratos/indices")]
 	public async Task TabelasDeApoio_SemCabecalhoDoSistema_DevemExigir(string rota)
 	{
 		using var client = _factory.CreateClient();

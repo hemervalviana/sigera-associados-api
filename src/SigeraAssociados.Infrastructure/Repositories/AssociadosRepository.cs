@@ -251,7 +251,7 @@ public sealed class AssociadosRepository : IAssociadosRepository
 	/// <summary>
 	/// Junta duas condições com OR, usando o mesmo parâmetro de entrada.
 	/// </summary>
-	private static Expression<Func<T, bool>> Ou<T>(
+	internal static Expression<Func<T, bool>> Ou<T>(
 		Expression<Func<T, bool>> primeira,
 		Expression<Func<T, bool>> segunda)
 	{
@@ -296,7 +296,7 @@ public sealed class AssociadosRepository : IAssociadosRepository
 
 		var query = AplicarEscopo(
 			AssociadosValidos(dbContext),
-			dbContext.Contratos.AsNoTracking(),
+			dbContext.Contratos.AsNoTracking().Where(c => c.DT_EXC_API == null),
 			escopo);
 
 		return await ProjetarAssociados(
@@ -326,7 +326,7 @@ public sealed class AssociadosRepository : IAssociadosRepository
 
 		var query = AplicarEscopo(
 			AssociadosValidos(dbContext),
-			dbContext.Contratos.AsNoTracking(),
+			dbContext.Contratos.AsNoTracking().Where(c => c.DT_EXC_API == null),
 			escopo);
 
 		// Os filtros do consumidor atuam somente dentro do escopo.

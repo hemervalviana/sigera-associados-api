@@ -106,6 +106,7 @@ public sealed class SigeraSystemMiddleware
 			|| caminho.StartsWithSegments("/api/orgaos")
 			|| caminho.StartsWithSegments("/api/convenios")
 			|| caminho.StartsWithSegments("/api/corretores")
+			|| caminho.StartsWithSegments("/api/contratos")
 			|| caminho.StartsWithSegments("/api/diagnostico");
 	}
 }

@@ -313,7 +313,7 @@ public sealed class CreditosAssociadoService : ICreditosAssociadoService
 			var fil = dados.CdFil!.Value;
 
 			if (!await db.Contratos.AnyAsync(
-					c => c.CD_EMP == emp && c.CD_FIL == fil && c.SQ_CTR == contrato && c.SQ_PES_CLI == sqPesCli,
+					c => c.CD_EMP == emp && c.CD_FIL == fil && c.SQ_CTR == contrato && c.SQ_PES_CLI == sqPesCli && c.DT_EXC_API == null,
 					cancellationToken))
 			{
 				return $"O contrato {contrato:0} da filial {fil:0} não existe ou não é deste associado.";

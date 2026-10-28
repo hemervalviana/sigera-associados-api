@@ -6220,6 +6220,498 @@
           ]
         }
       ]
+    },
+    {
+      "name": "18 - Contratos e parcelas",
+      "description": "Contrato do associado (T009CTRT) e parcelas (T009PAGA), com as regras da tela \"Cadastrar Contrato\" do legado. Rode antes `scripts\\contratos-colunas-api-e-permissoes.sql`. Permissões iguais às do associado; excluir só Administradores e Gestores.",
+      "item": [
+        {
+          "name": "18.1 - Pesquisar contratos do associado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos?sqPesCli={{sqPesCli}}&pagina=1&tamanhoPagina=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos"
+              ],
+              "query": [
+                {
+                  "key": "sqPesCli",
+                  "value": "{{sqPesCli}}"
+                },
+                {
+                  "key": "pagina",
+                  "value": "1"
+                },
+                {
+                  "key": "tamanhoPagina",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Contratos do associado de teste (`sqPesCli`). Também aceita `busca` (número do contrato, CPF ou começo do nome), `cdFil`, `cdSituacao`, `sqPesCorretor`, `cdProduto`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.2 - Situações do contrato",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/situacoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "situacoes"
+              ]
+            },
+            "description": "T009SCTR. Use um código no `cdSituacao` do 18.4."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.3 - Carências e índices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/indices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "indices"
+              ]
+            },
+            "description": "T009INDI (carência x quantidade de parcelas). As carências estão em `/api/contratos/carencias`; origens do recurso em `/origens-recurso`; produtores em `/produtores?sqPesCorretor=`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.4 - Incluir contrato (gera as parcelas)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos"
+              ]
+            },
+            "description": "Inclui o contrato e gera `quantidadeParcelas` parcelas de `valorMensalidade` (+ `valorCoberturaPeculio`), mês a mês a partir de `dataPrimeiraParcela`.\n\nAntes: `sqPesCli` (04), `sqOrg` (09), `sqConta` (11) e `sqPesCorretor` (16) preenchidos; troque `cdProduto`, `cdConvenio`, `cdFormaPagamento`, `cdSituacao` e `cdCategoria` por códigos reais. `dataPrimeiraParcela` precisa ser depois de hoje.\n\nGuarda `cdFilContrato` e `sqCtr`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdFil\": 1,\n  \"sqPesCli\": {{sqPesCli}},\n  \"cdProduto\": 2,\n  \"cdConvenio\": 1,\n  \"cdFormaPagamento\": 1,\n  \"cdSituacao\": 2,\n  \"sqOrgao\": {{sqOrg}},\n  \"sqContaAssociado\": {{sqConta}},\n  \"dataPrimeiraParcela\": \"2026-12-10\",\n  \"valorContrato\": 3000.00,\n  \"quantidadeParcelas\": 12,\n  \"valorMensalidade\": 280.50,\n  \"cdCategoria\": 1,\n  \"sqPesCorretor\": {{sqPesCorretor}},\n  \"observacao\": \"CONTRATO DE TESTE DA API\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) { const i = pm.response.json().item; pm.collectionVariables.set(\"cdFilContrato\", i.cdFil); pm.collectionVariables.set(\"sqCtr\", i.sqCtr); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.5 - Detalhe do contrato",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/{{cdFilContrato}}/{{sqCtr}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "{{cdFilContrato}}",
+                "{{sqCtr}}"
+              ]
+            },
+            "description": "Contrato com descrições e parcelas (`parcelas.itens`)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.6 - Alterar contrato",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/{{cdFilContrato}}/{{sqCtr}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "{{cdFilContrato}}",
+                "{{sqCtr}}"
+              ]
+            },
+            "description": "Envie o contrato inteiro. `sqPesCli`, `cdProduto` e `dataContrato` não mudam (400). Mudar a mensalidade não regera parcelas; `quantidadeParcelas` é ignorada.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"sqPesCli\": {{sqPesCli}},\n  \"cdProduto\": 2,\n  \"cdConvenio\": 1,\n  \"cdFormaPagamento\": 1,\n  \"cdSituacao\": 2,\n  \"sqOrgao\": {{sqOrg}},\n  \"sqContaAssociado\": {{sqConta}},\n  \"dataPrimeiraParcela\": \"2026-12-10\",\n  \"valorContrato\": 3000.00,\n  \"quantidadeParcelas\": 12,\n  \"valorMensalidade\": 300.00,\n  \"cdCategoria\": 1,\n  \"sqPesCorretor\": {{sqPesCorretor}},\n  \"observacao\": \"CONTRATO DE TESTE DA API ALTERADO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.7 - Parcelas do contrato",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/{{cdFilContrato}}/{{sqCtr}}/parcelas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "{{cdFilContrato}}",
+                "{{sqCtr}}",
+                "parcelas"
+              ]
+            },
+            "description": "Parcelas e totais. `baixada: true` = paga, averbada ou em remessa (não muda pela API)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.8 - Incluir parcela",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/{{cdFilContrato}}/{{sqCtr}}/parcelas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "{{cdFilContrato}}",
+                "{{sqCtr}}",
+                "parcelas"
+              ]
+            },
+            "description": "Nova parcela no fim (número = MAX + 1). O contrato passa a ter uma parcela a mais (`quantidadeParcelas`). Guarda `nrParcela`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataVencimento\": \"2027-12-10\",\n  \"valor\": 280.50\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"nrParcela\", pm.response.json().item.numeroParcela);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.9 - Alterar parcela",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/{{cdFilContrato}}/{{sqCtr}}/parcelas/{{nrParcela}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "{{cdFilContrato}}",
+                "{{sqCtr}}",
+                "parcelas",
+                "{{nrParcela}}"
+              ]
+            },
+            "description": "Troca vencimento e valor (saldo = -valor). Parcela baixada: 409.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataVencimento\": \"2027-12-15\",\n  \"valor\": 290.00\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.10 - Excluir parcela (Administradores e Gestores)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/{{cdFilContrato}}/{{sqCtr}}/parcelas/{{nrParcela}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "{{cdFilContrato}}",
+                "{{sqCtr}}",
+                "parcelas",
+                "{{nrParcela}}"
+              ]
+            },
+            "description": "Exclusão física da parcela incluída no 18.8. Baixada ou única parcela: 409."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.11 - Excluir contrato (Administradores e Gestores)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/{{cdFilContrato}}/{{sqCtr}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "{{cdFilContrato}}",
+                "{{sqCtr}}"
+              ]
+            },
+            "description": "Exclusão lógica (DT_EXC_API). Depois disso o 18.5 dá 404. Rode por último."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
@@ -6416,6 +6908,21 @@
       "key": "sqGerenteVendas",
       "description": "Preenchido pelo 16.10 (gerente de vendas de teste).",
       "value": ""
+    },
+    {
+      "key": "cdFilContrato",
+      "value": "",
+      "description": "Preenchido pelo 18.4 (filial do contrato de teste)."
+    },
+    {
+      "key": "sqCtr",
+      "value": "",
+      "description": "Preenchido pelo 18.4 (número do contrato de teste)."
+    },
+    {
+      "key": "nrParcela",
+      "value": "",
+      "description": "Preenchido pelo 18.8 (parcela de teste)."
     }
   ]
 }

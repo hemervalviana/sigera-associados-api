@@ -136,7 +136,10 @@ public enum StatusTabelaApoio
 	/// </summary>
 	Conflito,
 
-	Falha
+	Falha,
+
+	/// <summary>Fora dos acessos do usuário para esta gravação (403).</summary>
+	Proibido
 }
 
 public sealed record ResultadoTabelaApoio<T>(

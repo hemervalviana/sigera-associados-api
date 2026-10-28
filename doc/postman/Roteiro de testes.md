@@ -127,6 +127,23 @@ Antes de começar:
 | [ ] | 17.6 | Incluir chave Pix no corretor | — | **201** |
 | [ ] | 17.2 | Incluir como Atendimento | Outro usuário | **403** |
 | [ ] | 17.1 | Corretor excluído | Depois do 16.6 | **404** "Corretor não encontrado" |
+| [ ] | — | Script de contratos | `scripts\contratos-colunas-api-e-permissoes.sql` nas 4 bases, antes de subir a API | Colunas e permissões criadas |
+| [ ] | 18.1 | Contratos do associado de teste | `sqPesCli` do 04 | **200** |
+| [ ] | 18.4 | Incluir contrato | Códigos reais de produto, convênio, forma, situação (18.2) e categoria | **201**, 12 parcelas de 280,50 (10/12/2026 a 10/11/2027); `cdFilContrato` e `sqCtr` salvos |
+| [ ] | 18.4 | 1ª parcela até a data do contrato | `"dataPrimeiraParcela"` = hoje | **400** |
+| [ ] | 18.4 | Situação quitado sem quitação | `"cdSituacao": 9` sem `dataQuitacao` | **400** |
+| [ ] | 18.4 | Vínculo de órgão de outro associado | `sqOrgao` inexistente para o associado | **400** "não é deste associado" |
+| [ ] | 18.4 | Sem mensalidade nem índice | Tire `valorMensalidade` e informe `cdCarencia` sem índice para 12 parcelas | **400** "Não há índice cadastrado" |
+| [ ] | 18.6 | Alterar contrato | — | **200**, mensalidade 300; parcelas continuam 280,50 |
+| [ ] | 18.6 | Alterar trocando o associado ou o produto | Outro `sqPesCli` ou `cdProduto` | **400** |
+| [ ] | 18.6 | Situação 4 (encerrado) | `"cdSituacao": 4` | **200**, `dataEncerramento` = hoje; voltando para 2, fica nula |
+| [ ] | 18.8 | Incluir parcela | — | **201**, número 13; 18.5 mostra `quantidadeParcelas` 13 |
+| [ ] | 18.9 | Alterar parcela | — | **200**, saldo -290,00 |
+| [ ] | 18.9 | Alterar parcela paga | Uma parcela com `baixada: true` | **409** |
+| [ ] | 18.10 | Excluir parcela como Corretor ou Atendimento | Outro usuário | **403** |
+| [ ] | 18.10 | Excluir parcela | Como administrador | **200**; `quantidadeParcelas` volta a 12 |
+| [ ] | 18.x | Corretor vendo contrato de outro corretor | Usuário com acesso só à carteira de outro corretor | **404** no 18.5; não aparece no 18.1 |
+| [ ] | 18.11 | Excluir contrato | Como administrador | **200**; 18.5 dá **404**; no banco, `DT_EXC_API` preenchida e parcelas mantidas |
 | [ ] | 04.x | Associado que também é corretor | Listar endereços pelo associado e pelo corretor | Mesma lista nas duas rotas |
 | [ ] | 16.2 | Detalhe como administrador | — | **200**, com `senhaRepresentante` |
 | [ ] | 16.2 | Detalhe como Atendimento | Outro usuário | **200**, `senhaRepresentante` nula |

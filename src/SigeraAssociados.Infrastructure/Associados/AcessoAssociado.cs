@@ -41,7 +41,7 @@ internal static class AcessoAssociado
 
 		var corretores = await db.Contratos
 			.AsNoTracking()
-			.Where(c => c.CD_EMP == empresa && c.SQ_PES_CLI == sqPesCli)
+			.Where(c => c.CD_EMP == empresa && c.SQ_PES_CLI == sqPesCli && c.DT_EXC_API == null)
 			.Select(c => c.SQ_PES_CRO)
 			.Distinct()
 			.ToListAsync(cancellationToken);

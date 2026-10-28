@@ -28,6 +28,7 @@ public static class RespostaTabelaApoio
 			StatusTabelaApoio.NaoEncontrado => StatusCodes.Status404NotFound,
 			StatusTabelaApoio.Invalido => StatusCodes.Status400BadRequest,
 			StatusTabelaApoio.Conflito => StatusCodes.Status409Conflict,
+			StatusTabelaApoio.Proibido => StatusCodes.Status403Forbidden,
 			_ => StatusCodes.Status500InternalServerError
 		};
 

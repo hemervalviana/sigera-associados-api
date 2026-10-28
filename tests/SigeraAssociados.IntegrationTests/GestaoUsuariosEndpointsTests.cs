@@ -647,6 +647,24 @@ public sealed class GestaoUsuariosEndpointsTests
 		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
 	}
 
+	// ----- Contratos e parcelas: permissões -----
+
+	[Theory]
+	[InlineData("Corretores")]
+	[InlineData("Atendimento")]
+	[InlineData("Financeiro")]
+	public async Task ExcluirContratoOuParcela_SemSerAdministradorOuGestor_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var contrato = await cliente.DeleteAsync("/api/contratos/1/123");
+		using var parcela = await cliente.DeleteAsync("/api/contratos/1/123/parcelas/1");
+
+		Assert.Equal(HttpStatusCode.Forbidden, contrato.StatusCode);
+		Assert.Equal(HttpStatusCode.Forbidden, parcela.StatusCode);
+	}
+
 	// ----- Endereços, telefones, contas, referências e Pix do corretor: permissões -----
 
 	[Theory]
