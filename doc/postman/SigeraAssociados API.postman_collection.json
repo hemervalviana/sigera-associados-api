@@ -6512,7 +6512,7 @@
                 "parcelas"
               ]
             },
-            "description": "Parcelas e totais. `baixada: true` = paga, averbada ou em remessa (não muda pela API)."
+            "description": "Parcelas e totais. `paga: true` = tipo de baixa diferente de 3 (só Administradores e Financeiro excluem)."
           },
           "response": [],
           "event": [
@@ -6555,7 +6555,7 @@
                 "parcelas"
               ]
             },
-            "description": "Nova parcela no fim (número = MAX + 1). O contrato passa a ter uma parcela a mais (`quantidadeParcelas`). Guarda `nrParcela`.",
+            "description": "Nova parcela no fim (número = MAX + 1). Com `valorPago` e `dataPagamento` já nasce paga (baixa manual). Contrato quitado: 409. Guarda `nrParcela`.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"dataVencimento\": \"2027-12-10\",\n  \"valor\": 280.50\n}",
@@ -6581,7 +6581,7 @@
           ]
         },
         {
-          "name": "18.9 - Alterar parcela",
+          "name": "18.9 - Alterar parcela (baixa manual)",
           "request": {
             "method": "PUT",
             "header": [
@@ -6609,10 +6609,10 @@
                 "{{nrParcela}}"
               ]
             },
-            "description": "Troca vencimento e valor (saldo = -valor). Parcela baixada: 409.",
+            "description": "Envie a parcela inteira. `valorPago` > 0 com `dataPagamento` faz a baixa manual (saldo = pago - valor, tipo de baixa 1, forma 5); nulo desfaz (saldo = -valor, tipo 3). Com o parâmetro 1 da filial ligado, o pagamento precisa ser igual ao valor (400). Contrato quitado: 409.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"dataVencimento\": \"2027-12-15\",\n  \"valor\": 290.00\n}",
+              "raw": "{\n  \"dataVencimento\": \"2027-12-15\",\n  \"valor\": 290.00,\n  \"dataPagamento\": \"2027-12-08\",\n  \"valorPago\": 290.00\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -6634,7 +6634,7 @@
           ]
         },
         {
-          "name": "18.10 - Excluir parcela (Administradores e Gestores)",
+          "name": "18.10 - Excluir parcela (não paga: Admin/Gestores; paga: Admin/Financeiro)",
           "request": {
             "method": "DELETE",
             "header": [
@@ -6658,7 +6658,7 @@
                 "{{nrParcela}}"
               ]
             },
-            "description": "Exclusão física da parcela incluída no 18.8. Baixada ou única parcela: 409."
+            "description": "Exclusão física da parcela do 18.8. Paga (tipo de baixa diferente de 3): só Administradores e Financeiro; não paga: Administradores e Gestores. Única parcela ou contrato quitado: 409."
           },
           "response": [],
           "event": [

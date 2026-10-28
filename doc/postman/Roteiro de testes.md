@@ -138,9 +138,15 @@ Antes de começar:
 | [ ] | 18.6 | Alterar trocando o associado ou o produto | Outro `sqPesCli` ou `cdProduto` | **400** |
 | [ ] | 18.6 | Situação 4 (encerrado) | `"cdSituacao": 4` | **200**, `dataEncerramento` = hoje; voltando para 2, fica nula |
 | [ ] | 18.8 | Incluir parcela | — | **201**, número 13; 18.5 mostra `quantidadeParcelas` 13 |
-| [ ] | 18.9 | Alterar parcela | — | **200**, saldo -290,00 |
-| [ ] | 18.9 | Alterar parcela paga | Uma parcela com `baixada: true` | **409** |
+| [ ] | 18.9 | Alterar parcela | Sem pagamento | **200**, saldo -290,00, `tipoBaixa` 3 |
+| [ ] | 18.9 | Baixa manual | `"dataPagamento": "2027-12-08", "valorPago": 290.00` | **200**, saldo 0, `tipoBaixa` 1, `cdFormaPagamento` 5, `paga: true` |
+| [ ] | 18.9 | Pagamento parcial com o parâmetro 1 ligado | `"valorPago": 200.00` (filial com T009PARM SQ_PRM 1 = 'S') | **400** "Saldo do pagamento inválido"; com o parâmetro desligado, **200** e saldo -90,00 |
+| [ ] | 18.9 | Data de pagamento sem valor | Tire `valorPago` | **400** |
+| [ ] | 18.9 | Desfazer o pagamento | `valorPago` e `dataPagamento` nulos | **200**, saldo -290,00, `tipoBaixa` 3 |
+| [ ] | 18.9 | Contrato quitado | Contrato com situação 9 | **409** em incluir, alterar e excluir parcela |
 | [ ] | 18.10 | Excluir parcela como Corretor ou Atendimento | Outro usuário | **403** |
+| [ ] | 18.10 | Excluir parcela paga como Gestor | Parcela com `paga: true` | **403** "Administradores e o grupo Financeiro" |
+| [ ] | 18.10 | Excluir parcela não paga como Financeiro | Parcela com `paga: false` | **403** |
 | [ ] | 18.10 | Excluir parcela | Como administrador | **200**; `quantidadeParcelas` volta a 12 |
 | [ ] | 18.x | Corretor vendo contrato de outro corretor | Usuário com acesso só à carteira de outro corretor | **404** no 18.5; não aparece no 18.1 |
 | [ ] | 18.11 | Excluir contrato | Como administrador | **200**; 18.5 dá **404**; no banco, `DT_EXC_API` preenchida e parcelas mantidas |

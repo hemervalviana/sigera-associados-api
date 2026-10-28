@@ -4,8 +4,9 @@ using SigeraAssociados.Application.Contratos;
 namespace SigeraAssociados.Application.Interfaces.Contratos;
 
 /// <summary>
-/// Parcelas do contrato (T009PAGA). Cada gravação acerta QT_PCL (e
-/// DT_ULT_DCT no produto 2) do contrato. Parcela baixada não muda.
+/// Parcelas do contrato (T009PAGA), com a baixa manual do legado. Cada
+/// gravação acerta QT_PCL (e DT_ULT_DCT no produto 2) do contrato. Contrato
+/// quitado (9) trava as parcelas.
 /// </summary>
 public interface IParcelasContratoService
 {
@@ -16,6 +17,9 @@ public interface IParcelasContratoService
 
 	Task<ResultadoTabelaApoio<ParcelaDto>> AlterarAsync(decimal cdFil, decimal sqCtr, decimal numeroParcela, ParcelaDados dados, CancellationToken cancellationToken = default);
 
-	/// <summary>Exclusão física; recusada se baixada ou se for a única parcela.</summary>
-	Task<ResultadoTabelaApoio<ParcelaDto>> ExcluirAsync(decimal cdFil, decimal sqCtr, decimal numeroParcela, CancellationToken cancellationToken = default);
+	/// <summary>
+	/// Exclusão física. Parcela paga exige podeExcluirPaga; não paga,
+	/// podeExcluirNaoPaga (senão Proibido). A única parcela não é excluída.
+	/// </summary>
+	Task<ResultadoTabelaApoio<ParcelaDto>> ExcluirAsync(decimal cdFil, decimal sqCtr, decimal numeroParcela, bool podeExcluirPaga, bool podeExcluirNaoPaga, CancellationToken cancellationToken = default);
 }

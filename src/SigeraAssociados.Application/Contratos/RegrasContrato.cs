@@ -202,24 +202,75 @@ public static class RegrasContrato
 		return parcelas;
 	}
 
-	/// <summary>Valor máximo de VR_PCL.</summary>
+	/// <summary>Valor da parcela gerada: maior que zero e dentro de VR_PCL.</summary>
 	public static string? ValidarValorParcela(decimal valor) =>
 		valor <= 0
 			? "O valor da parcela deve ser maior que zero."
 			: Monetario(valor, Valor11, "valor");
 
-	/// <summary>Validação da parcela enviada (vencimento e valor).</summary>
+	/// <summary>Tipo de baixa da parcela (T009PAGA.ID_PGT_AUT).</summary>
+	public const decimal BaixaManual = 1;
+	public const decimal BaixaAutomatica = 2;
+	public const decimal SemBaixa = 3;
+
+	/// <summary>Forma de pagamento gravada na baixa manual (TP_PGT = OUTROS).</summary>
+	public const decimal FormaPagamentoOutros = 5;
+
+	/// <summary>Parâmetro (T009PARM.SQ_PRM) que exige saldo zero na parcela paga.</summary>
+	public const decimal ParametroSaldoZero = 1;
+
+	public static string? DescricaoTipoBaixa(decimal? tipo) => tipo switch
+	{
+		BaixaManual => "MANUAL",
+		BaixaAutomatica => "AUTOMÁTICA",
+		SemBaixa => "SEM BAIXA",
+		_ => null
+	};
+
+	/// <summary>
+	/// Validação da parcela enviada (pfc_validation de o_tc_t009paga).
+	/// </summary>
 	public static string? ValidarParcela(ParcelaDados? d)
 	{
 		if (d is null) return "Informe os dados da parcela.";
 		if (d.DataVencimento is null) return "A data de vencimento (dataVencimento) é obrigatória.";
 		if (d.Valor is null) return "O valor da parcela (valor) é obrigatório.";
-		return ValidarValorParcela(d.Valor.Value);
+
+		if ((Monetario(d.Valor, Valor11, "valor") ?? Monetario(d.ValorPago, Valor11, "valorPago")) is string erro)
+		{
+			return erro;
+		}
+
+		if (d.DataPagamento is not null && d.ValorPago is not > 0)
+			return "Informe o valor do pagamento (valorPago) da parcela com data de pagamento.";
+		if (d.ValorPago is > 0 && d.DataPagamento is null)
+			return "Informe a data do pagamento (dataPagamento) da parcela com valor pago.";
+		return null;
 	}
 
 	/// <summary>
-	/// Parcela paga, averbada ou enviada para remessa: a API não altera nem exclui.
+	/// Baixa manual (itemchanged de vr_pgt): com valor pago, saldo = pago -
+	/// valor, baixa MANUAL e forma OUTROS; sem valor pago, saldo = -valor,
+	/// SEM BAIXA e forma nula, valor pago 0.
 	/// </summary>
-	public static bool ParcelaBaixada(DateTime? dataPagamento, decimal? valorPago, decimal? averbacao, bool? remessa) =>
-		dataPagamento is not null || (valorPago ?? 0) > 0 || averbacao is not null || remessa == true;
+	public static (decimal ValorPago, decimal Saldo, decimal TipoBaixa, decimal? Forma) Pagamento(decimal valor, decimal? valorPago) =>
+		valorPago is decimal pago and > 0
+			? (pago, pago - valor, BaixaManual, FormaPagamentoOutros)
+			: (0, -valor, SemBaixa, null);
+
+	/// <summary>
+	/// Parâmetro 1 ligado: parcela paga tem de ficar com saldo zero.
+	/// </summary>
+	public static string? ValidarSaldoZero(bool parametroLigado, decimal? valorPago, decimal? saldo) =>
+		parametroLigado && valorPago is > 0 && saldo is not 0
+			? "Saldo do pagamento inválido: com o parâmetro 1 da filial ligado, o valor pago deve ser igual ao valor da parcela."
+			: null;
+
+	/// <summary>
+	/// Parcela paga (oe_delete): tipo de baixa preenchido e diferente de 3.
+	/// </summary>
+	public static bool ParcelaPaga(decimal? tipoBaixa) => tipoBaixa is not null && tipoBaixa != SemBaixa;
+
+	/// <summary>Contrato quitado (9): parcelas não são incluídas, alteradas nem excluídas.</summary>
+	public static bool ParcelasTravadas(decimal? situacaoContrato) => situacaoContrato == SituacaoQuitado;
 }

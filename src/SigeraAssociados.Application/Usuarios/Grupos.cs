@@ -68,6 +68,29 @@ public static class Grupos
 	];
 
 	/// <summary>
+	/// Perfis que chegam à exclusão de parcela. O serviço decide pela parcela:
+	/// não paga, PodemExcluirParcelaNaoPaga; paga, PodemExcluirParcelaPaga.
+	/// </summary>
+	public const string PerfisExclusaoParcelas =
+		AdministradorLegado + "," + Administradores + "," + Gestores + "," + Financeiro;
+
+	/// <summary>Excluem parcela não paga (sem baixa).</summary>
+	public static readonly IReadOnlyList<string> PodemExcluirParcelaNaoPaga =
+	[
+		AdministradorLegado,
+		Administradores,
+		Gestores
+	];
+
+	/// <summary>Excluem parcela paga (no legado, só o grupo Financeiro).</summary>
+	public static readonly IReadOnlyList<string> PodemExcluirParcelaPaga =
+	[
+		AdministradorLegado,
+		Administradores,
+		Financeiro
+	];
+
+	/// <summary>
 	/// Os sete grupos funcionais oficiais.
 	/// </summary>
 	public static readonly IReadOnlyList<string> Funcionais =

@@ -653,16 +653,28 @@ public sealed class GestaoUsuariosEndpointsTests
 	[InlineData("Corretores")]
 	[InlineData("Atendimento")]
 	[InlineData("Financeiro")]
-	public async Task ExcluirContratoOuParcela_SemSerAdministradorOuGestor_DeveRetornar403(string grupo)
+	public async Task ExcluirContrato_SemSerAdministradorOuGestor_DeveRetornar403(string grupo)
 	{
 		using var cliente = Cliente(grupo);
 		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
 
-		using var contrato = await cliente.DeleteAsync("/api/contratos/1/123");
-		using var parcela = await cliente.DeleteAsync("/api/contratos/1/123/parcelas/1");
+		using var resposta = await cliente.DeleteAsync("/api/contratos/1/123");
 
-		Assert.Equal(HttpStatusCode.Forbidden, contrato.StatusCode);
-		Assert.Equal(HttpStatusCode.Forbidden, parcela.StatusCode);
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	// Financeiro chega à exclusão de parcela (parcela paga); a decisão final é do serviço.
+	[Theory]
+	[InlineData("Corretores")]
+	[InlineData("Atendimento")]
+	public async Task ExcluirParcela_ForaDosGruposDeExclusao_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.DeleteAsync("/api/contratos/1/123/parcelas/1");
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
 	}
 
 	// ----- Endereços, telefones, contas, referências e Pix do corretor: permissões -----

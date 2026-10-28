@@ -201,26 +201,84 @@ public sealed class RegrasContratoTests
 			parcelas.Select(p => p.Vencimento));
 	}
 
-	// ----- Parcelas -----
+	// ----- Parcelas (o_tc_t009paga) -----
+
+	private static ParcelaDados Parcela(decimal? valor = 100m, DateTime? pagamento = null, decimal? pago = null) => new()
+	{
+		DataVencimento = new DateTime(2027, 1, 10),
+		Valor = valor,
+		DataPagamento = pagamento,
+		ValorPago = pago
+	};
 
 	[Fact]
-	public void Parcela_ExigeVencimentoEValorPositivo()
+	public void Parcela_ExigeVencimentoEValor_ZeroEhAceito()
 	{
 		Assert.Contains("dataVencimento", RegrasContrato.ValidarParcela(new ParcelaDados { Valor = 10 }));
 		Assert.Contains("valor", RegrasContrato.ValidarParcela(new ParcelaDados { DataVencimento = DateTime.Today }));
-		Assert.NotNull(RegrasContrato.ValidarParcela(new ParcelaDados { DataVencimento = DateTime.Today, Valor = 0 }));
-		Assert.NotNull(RegrasContrato.ValidarParcela(new ParcelaDados { DataVencimento = DateTime.Today, Valor = 10.555m }));
-		Assert.Null(RegrasContrato.ValidarParcela(new ParcelaDados { DataVencimento = DateTime.Today, Valor = 10.55m }));
+		Assert.Null(RegrasContrato.ValidarParcela(Parcela(valor: 0)));
+		Assert.NotNull(RegrasContrato.ValidarParcela(Parcela(valor: -1)));
+		Assert.NotNull(RegrasContrato.ValidarParcela(Parcela(valor: 10.555m)));
 	}
 
 	[Fact]
-	public void ParcelaBaixada_PagaAverbadaOuEmRemessa()
+	public void DataDePagamentoSemValorPago_DeveSerRecusada()
 	{
-		Assert.False(RegrasContrato.ParcelaBaixada(null, null, null, null));
-		Assert.False(RegrasContrato.ParcelaBaixada(null, 0, null, false));
-		Assert.True(RegrasContrato.ParcelaBaixada(DateTime.Today, null, null, null));
-		Assert.True(RegrasContrato.ParcelaBaixada(null, 10, null, null));
-		Assert.True(RegrasContrato.ParcelaBaixada(null, null, 15, null));
-		Assert.True(RegrasContrato.ParcelaBaixada(null, null, null, true));
+		Assert.Contains("valorPago", RegrasContrato.ValidarParcela(Parcela(pagamento: DateTime.Today)));
+		Assert.Contains("valorPago", RegrasContrato.ValidarParcela(Parcela(pagamento: DateTime.Today, pago: 0)));
+	}
+
+	[Fact]
+	public void ValorPagoSemData_DeveSerRecusado()
+	{
+		Assert.Contains("dataPagamento", RegrasContrato.ValidarParcela(Parcela(pago: 50)));
+	}
+
+	[Fact]
+	public void PagamentoCompleto_DeveSerValido()
+	{
+		Assert.Null(RegrasContrato.ValidarParcela(Parcela(pagamento: DateTime.Today, pago: 100)));
+	}
+
+	[Fact]
+	public void Pagamento_BaixaManualComFormaOutros()
+	{
+		Assert.Equal((80m, -20m, 1m, (decimal?)5m), RegrasContrato.Pagamento(100m, 80m));
+		Assert.Equal((120m, 20m, 1m, (decimal?)5m), RegrasContrato.Pagamento(100m, 120m));
+	}
+
+	[Fact]
+	public void SemValorPago_SemBaixa()
+	{
+		Assert.Equal((0m, -100m, 3m, (decimal?)null), RegrasContrato.Pagamento(100m, null));
+		Assert.Equal((0m, -100m, 3m, (decimal?)null), RegrasContrato.Pagamento(100m, 0m));
+	}
+
+	[Fact]
+	public void ParametroDoSaldoZero_SoValeParaParcelaPaga()
+	{
+		Assert.NotNull(RegrasContrato.ValidarSaldoZero(true, 80m, -20m));
+		Assert.NotNull(RegrasContrato.ValidarSaldoZero(true, 120m, 20m));
+		Assert.Null(RegrasContrato.ValidarSaldoZero(true, 100m, 0m));
+		Assert.Null(RegrasContrato.ValidarSaldoZero(true, 0m, -100m));
+		Assert.Null(RegrasContrato.ValidarSaldoZero(false, 80m, -20m));
+	}
+
+	[Theory]
+	[InlineData(null, false)]
+	[InlineData(3, false)]
+	[InlineData(1, true)]
+	[InlineData(2, true)]
+	public void ParcelaPaga_TipoDeBaixaDiferenteDe3(int? tipo, bool paga)
+	{
+		Assert.Equal(paga, RegrasContrato.ParcelaPaga(tipo));
+	}
+
+	[Fact]
+	public void ContratoQuitado_TravaAsParcelas()
+	{
+		Assert.True(RegrasContrato.ParcelasTravadas(9));
+		Assert.False(RegrasContrato.ParcelasTravadas(13));
+		Assert.False(RegrasContrato.ParcelasTravadas(null));
 	}
 }

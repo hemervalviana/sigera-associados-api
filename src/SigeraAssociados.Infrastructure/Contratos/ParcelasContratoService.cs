@@ -12,10 +12,11 @@ using static SigeraAssociados.Infrastructure.Persistence.Legado;
 namespace SigeraAssociados.Infrastructure.Contratos;
 
 /// <summary>
-/// Parcelas do contrato (T009PAGA). NR_PCL = MAX + 1 do contrato
-/// (UPDLOCK, HOLDLOCK). A API só grava vencimento e valor; parcela paga,
-/// averbada ou em remessa não muda. Toda gravação acerta QT_PCL e, no
-/// produto 2, DT_ULT_DCT do contrato.
+/// Parcelas do contrato (T009PAGA), com as regras de o_tc_t009paga:
+/// NR_PCL = MAX + 1 do contrato (UPDLOCK, HOLDLOCK); baixa manual pelo
+/// valor pago; parâmetro 1 da filial exige saldo zero na parcela paga;
+/// contrato quitado (9) trava as parcelas. Toda gravação acerta QT_PCL e,
+/// no produto 2, DT_ULT_DCT do contrato.
 /// </summary>
 public sealed class ParcelasContratoService : IParcelasContratoService
 {
@@ -67,6 +68,19 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 			return NaoEncontrado<ParcelaDto>("Contrato não encontrado.");
 		}
 
+		if (RegrasContrato.ParcelasTravadas(contrato.CD_ST_CTR))
+		{
+			return Conflito<ParcelaDto>(ContratoQuitado);
+		}
+
+		var valor = dados.Valor!.Value;
+		var (pago, saldo, tipoBaixa, forma) = RegrasContrato.Pagamento(valor, dados.ValorPago);
+
+		if (RegrasContrato.ValidarSaldoZero(await SaldoZeroAsync(db, contrato, cancellationToken), pago, saldo) is string erroSaldo)
+		{
+			return Invalido<ParcelaDto>(erroSaldo);
+		}
+
 		await using var transacao = await db.Database.BeginTransactionAsync(cancellationToken);
 
 		var emp = contrato.CD_EMP;
@@ -81,8 +95,6 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 			return Invalido<ParcelaDto>("O contrato atingiu o limite de parcelas.");
 		}
 
-		var valor = dados.Valor!.Value;
-
 		var parcela = new T009PAGA
 		{
 			CD_EMP = emp,
@@ -91,7 +103,11 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 			NR_PCL = numero,
 			DT_VEN = dados.DataVencimento!.Value.Date,
 			VR_PCL = valor,
-			VR_SD_PCL = -valor,
+			DT_PGT = pago > 0 ? dados.DataPagamento!.Value.Date : null,
+			VR_PGT = pago,
+			VR_SD_PCL = saldo,
+			ID_PGT_AUT = tipoBaixa,
+			TP_PGT = forma,
 			DT_GER_PCL = DateTime.Now,
 			NM_USU = login.Length <= 50 ? login : login[..50]
 		};
@@ -130,6 +146,11 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 			return NaoEncontrado<ParcelaDto>("Contrato não encontrado.");
 		}
 
+		if (RegrasContrato.ParcelasTravadas(contrato.CD_ST_CTR))
+		{
+			return Conflito<ParcelaDto>(ContratoQuitado);
+		}
+
 		var parcela = await Parcelas(db, contrato).FirstOrDefaultAsync(p => p.NR_PCL == numeroParcela, cancellationToken);
 
 		if (parcela is null)
@@ -137,14 +158,33 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 			return NaoEncontrado<ParcelaDto>("Parcela não encontrada.");
 		}
 
-		if (Baixada(parcela))
-		{
-			return Conflito<ParcelaDto>("A parcela já foi paga, averbada ou enviada para remessa e não pode ser alterada.");
-		}
-
 		parcela.DT_VEN = dados.DataVencimento!.Value.Date;
 		parcela.VR_PCL = dados.Valor!.Value;
-		parcela.VR_SD_PCL = -parcela.VR_PCL;
+
+		// Como o itemchanged do legado: a baixa (tipo e forma) só muda quando o
+		// valor pago muda; mudar só o valor da parcela recalcula o saldo e
+		// preserva uma baixa automática.
+		var pagoNovo = dados.ValorPago is > 0 ? dados.ValorPago.Value : 0;
+
+		if (pagoNovo != (parcela.VR_PGT ?? 0))
+		{
+			var (pago, saldo, tipoBaixa, forma) = RegrasContrato.Pagamento(parcela.VR_PCL, dados.ValorPago);
+			parcela.VR_PGT = pago;
+			parcela.VR_SD_PCL = saldo;
+			parcela.ID_PGT_AUT = tipoBaixa;
+			parcela.TP_PGT = forma;
+		}
+		else
+		{
+			parcela.VR_SD_PCL = (parcela.VR_PGT ?? 0) - parcela.VR_PCL;
+		}
+
+		parcela.DT_PGT = pagoNovo > 0 ? dados.DataPagamento!.Value.Date : null;
+
+		if (RegrasContrato.ValidarSaldoZero(await SaldoZeroAsync(db, contrato, cancellationToken), parcela.VR_PGT, parcela.VR_SD_PCL) is string erroSaldo)
+		{
+			return Invalido<ParcelaDto>(erroSaldo);
+		}
 
 		return await GravarAsync(db, contrato, cancellationToken) is string erroGravacao
 			? Invalido<ParcelaDto>(erroGravacao)
@@ -156,6 +196,8 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 		decimal cdFil,
 		decimal sqCtr,
 		decimal numeroParcela,
+		bool podeExcluirPaga,
+		bool podeExcluirNaoPaga,
 		CancellationToken cancellationToken = default)
 	{
 		await using var db = CriarContexto();
@@ -167,6 +209,11 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 			return NaoEncontrado<ParcelaDto>("Contrato não encontrado.");
 		}
 
+		if (RegrasContrato.ParcelasTravadas(contrato.CD_ST_CTR))
+		{
+			return Conflito<ParcelaDto>(ContratoQuitado);
+		}
+
 		var parcela = await Parcelas(db, contrato).FirstOrDefaultAsync(p => p.NR_PCL == numeroParcela, cancellationToken);
 
 		if (parcela is null)
@@ -174,12 +221,15 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 			return NaoEncontrado<ParcelaDto>("Parcela não encontrada.");
 		}
 
-		if (Baixada(parcela))
+		// oe_delete: parcela paga só o Financeiro apaga (aqui também os administradores).
+		if (RegrasContrato.ParcelaPaga(parcela.ID_PGT_AUT) ? !podeExcluirPaga : !podeExcluirNaoPaga)
 		{
-			return Conflito<ParcelaDto>("A parcela já foi paga, averbada ou enviada para remessa e não pode ser excluída.");
+			return Proibido<ParcelaDto>(RegrasContrato.ParcelaPaga(parcela.ID_PGT_AUT)
+				? "Somente Administradores e o grupo Financeiro podem excluir parcela paga."
+				: "Somente Administradores e Gestores podem excluir parcela não paga.");
 		}
 
-		// Como no legado, o contrato não fica sem parcelas.
+		// O contrato não fica sem parcelas (o legado não salva sem parcelas).
 		if (await Parcelas(db, contrato).CountAsync(cancellationToken) <= 1)
 		{
 			return Conflito<ParcelaDto>("O contrato precisa ter ao menos uma parcela.");
@@ -192,6 +242,14 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 			? Conflito<ParcelaDto>(erroGravacao)
 			: Sucesso("Parcela excluída.", dto);
 	}
+
+	private const string ContratoQuitado = "Contrato quitado (situação 9): as parcelas não podem ser incluídas, alteradas nem excluídas.";
+
+	/// <summary>f_retornar_parametro(1): parâmetro 1 da filial do contrato ligado (TP_FLG = 'S').</summary>
+	private static Task<bool> SaldoZeroAsync(SigeraDbContext db, T009CTRT c, CancellationToken cancellationToken) =>
+		db.Parametros.AsNoTracking().AnyAsync(
+			p => p.CD_EMP == c.CD_EMP && p.CD_FIL == c.CD_FIL && p.SQ_PRM == RegrasContrato.ParametroSaldoZero && p.TP_FLG == "S",
+			cancellationToken);
 
 	// ----- Apoio -----
 
@@ -207,7 +265,7 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 		return new ResumoParcelas
 		{
 			Quantidade = itens.Count,
-			Baixadas = itens.Count(p => p.Baixada),
+			Pagas = itens.Count(p => p.Paga),
 			TotalParcelas = itens.Sum(p => p.Valor),
 			TotalPago = itens.Sum(p => p.ValorPago ?? 0),
 			Itens = itens
@@ -216,9 +274,6 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 
 	private static IQueryable<T009PAGA> Parcelas(SigeraDbContext db, T009CTRT c) =>
 		db.Parcelas.Where(p => p.CD_EMP == c.CD_EMP && p.CD_FIL == c.CD_FIL && p.SQ_CTR == c.SQ_CTR);
-
-	private static bool Baixada(T009PAGA p) =>
-		RegrasContrato.ParcelaBaixada(p.DT_PGT, p.VR_PGT, p.CD_AVB, p.ID_REM);
 
 	/// <summary>Grava a parcela e depois acerta QT_PCL/DT_ULT_DCT do contrato.</summary>
 	private static async Task<string?> GravarAsync(SigeraDbContext db, T009CTRT contrato, CancellationToken cancellationToken)
@@ -289,12 +344,13 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 		NumeroCheque = p.NR_CHQ,
 		Remessa = p.ID_REM,
 		TipoBaixa = p.ID_PGT_AUT,
+		DescricaoTipoBaixa = RegrasContrato.DescricaoTipoBaixa(p.ID_PGT_AUT),
 		CdFormaPagamento = p.TP_PGT,
 		CdConvenio = p.CD_CVN,
 		CdAverbacao = p.CD_AVB,
 		IdCobranca = p.ID_COB_PCL,
 		DataGeracao = p.DT_GER_PCL,
 		Usuario = p.NM_USU,
-		Baixada = Baixada(p)
+		Paga = RegrasContrato.ParcelaPaga(p.ID_PGT_AUT)
 	};
 }

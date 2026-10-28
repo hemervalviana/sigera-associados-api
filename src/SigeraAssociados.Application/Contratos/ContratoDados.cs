@@ -242,7 +242,7 @@ public sealed class ContratoDto
 public sealed class ResumoParcelas
 {
 	public int Quantidade { get; init; }
-	public int Baixadas { get; init; }
+	public int Pagas { get; init; }
 	public decimal TotalParcelas { get; init; }
 	public decimal TotalPago { get; init; }
 	public IReadOnlyList<ParcelaDto> Itens { get; init; } = [];
@@ -292,16 +292,28 @@ public sealed class PesquisaContratosResultado
 }
 
 /// <summary>
-/// Inclusão e alteração de parcela: só vencimento e valor. Os campos de
-/// pagamento (baixa) são gravados pelas rotinas do legado.
+/// Inclusão e alteração de parcela, com a baixa manual do legado
+/// (o_tc_t009paga). Na alteração, envie a parcela inteira.
 /// </summary>
 public sealed class ParcelaDados
 {
 	/// <summary>Vencimento (DT_VEN). Obrigatório.</summary>
 	public DateTime? DataVencimento { get; init; }
 
-	/// <summary>Valor (VR_PCL), maior que zero. Obrigatório.</summary>
+	/// <summary>Valor (VR_PCL), zero ou mais. Obrigatório.</summary>
 	public decimal? Valor { get; init; }
+
+	/// <summary>Data do pagamento (DT_PGT). Exige valorPago maior que zero.</summary>
+	public DateTime? DataPagamento { get; init; }
+
+	/// <summary>
+	/// Valor pago (VR_PGT). Maior que zero exige dataPagamento e faz a baixa
+	/// manual: saldo = pago - valor, tipo de baixa 1 (MANUAL), forma 5
+	/// (OUTROS). Nulo ou zero desfaz: saldo = -valor, tipo de baixa 3 (SEM
+	/// BAIXA). Com o parâmetro 1 da filial ligado (T009PARM), o pagamento
+	/// precisa zerar o saldo (pago = valor).
+	/// </summary>
+	public decimal? ValorPago { get; init; }
 }
 
 /// <summary>Parcela do contrato (T009PAGA).</summary>
@@ -315,10 +327,17 @@ public sealed class ParcelaDto
 	public decimal? ValorMulta { get; init; }
 	public decimal? ValorJuros { get; init; }
 	public decimal? ValorDesconto { get; init; }
+
+	/// <summary>Saldo (VR_SD_PCL): pago - valor (negativo = em aberto).</summary>
 	public decimal? Saldo { get; init; }
+
 	public decimal? NumeroCheque { get; init; }
 	public bool? Remessa { get; init; }
+
+	/// <summary>Tipo de baixa (ID_PGT_AUT): 1 = MANUAL, 2 = AUTOMÁTICA, 3 = SEM BAIXA.</summary>
 	public decimal? TipoBaixa { get; init; }
+
+	public string? DescricaoTipoBaixa { get; init; }
 	public decimal? CdFormaPagamento { get; init; }
 	public decimal? CdConvenio { get; init; }
 	public decimal? CdAverbacao { get; init; }
@@ -327,10 +346,10 @@ public sealed class ParcelaDto
 	public string? Usuario { get; init; }
 
 	/// <summary>
-	/// True quando a parcela já foi paga, averbada ou foi para remessa: aí não
-	/// pode ser alterada nem excluída pela API.
+	/// Paga (tipo de baixa preenchido e diferente de 3): só Administradores e
+	/// Financeiro excluem.
 	/// </summary>
-	public bool Baixada { get; init; }
+	public bool Paga { get; init; }
 }
 
 /// <summary>Item de tabela de apoio do contrato.</summary>

@@ -18,7 +18,7 @@
      - INSERT e UPDATE em T009CTRT (sem DELETE: a exclusão é lógica);
      - INSERT, UPDATE e DELETE em T009PAGA (parcelas não baixadas).
      A leitura das tabelas de apoio (T009SCTR, T009CARE, T009OREC, T009PROD,
-     T009INDI, T009RBSR) já vem do db_datareader.
+     T009INDI, T009RBSR, T009PARM) já vem do db_datareader.
 
   Execute com um login que possa alterar tabelas e conceder permissões
   (sa ou db_owner nas bases).
@@ -119,7 +119,12 @@ GO
 
   SELECT CD_PRD, DE_PRD FROM dbo.T009PRDT ORDER BY CD_PRD;
 
-  5) Triggers nessas tabelas:
+  5) Parâmetro 1 (saldo zero na parcela paga) por filial. A API considera
+     ligado quando TP_FLG = 'S':
+
+  SELECT CD_FIL, SQ_PRM, DE_PRM, TP_FLG FROM dbo.T009PARM WHERE SQ_PRM = 1 ORDER BY CD_FIL;
+
+  6) Triggers nessas tabelas:
 
   SELECT t.name AS tabela, tr.name AS trigger_nome, te.type_desc AS evento
     FROM sys.triggers tr
