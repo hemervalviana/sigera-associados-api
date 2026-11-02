@@ -6464,7 +6464,7 @@
                 "{{sqCtr}}"
               ]
             },
-            "description": "Envie o contrato inteiro. `sqPesCli`, `cdProduto` e `dataContrato` não mudam (400). Mudar a mensalidade não regera parcelas; `quantidadeParcelas` é ignorada.",
+            "description": "Envie o contrato inteiro. `sqPesCli`, `cdProduto` e `dataContrato` não mudam (400). Mudar a mensalidade não regera parcelas; `quantidadeParcelas` é ignorada. A situação não muda por aqui (use 18.16/18.17).",
             "body": {
               "mode": "raw",
               "raw": "{\n    \"sqPesCli\": {{sqPesCli}},\n  \"cdProduto\": 2,\n  \"cdConvenio\": 1,\n  \"cdFormaPagamento\": 1,\n  \"cdSituacao\": 2,\n  \"sqOrgao\": {{sqOrg}},\n  \"sqContaAssociado\": {{sqConta}},\n  \"dataPrimeiraParcela\": \"2026-12-10\",\n  \"valorContrato\": 3000.00,\n  \"quantidadeParcelas\": 12,\n  \"valorMensalidade\": 300.00,\n  \"cdCategoria\": 1,\n  \"sqPesCorretor\": {{sqPesCorretor}},\n  \"observacao\": \"CONTRATO DE TESTE DA API ALTERADO\"\n}",
@@ -6659,6 +6659,110 @@
               ]
             },
             "description": "Exclusão física da parcela do 18.8. Paga (tipo de baixa diferente de 3): só Administradores e Financeiro; não paga: Administradores e Gestores. Única parcela ou contrato quitado: 409."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.16 - Quitar, encerrar, finalizar ou cancelar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/{{cdFilContrato}}/{{sqCtr}}/encerramento",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "{{cdFilContrato}}",
+                "{{sqCtr}}",
+                "encerramento"
+              ]
+            },
+            "description": "Só para contrato APROVADO (2) ou em RENOVAÇÃO (5); senão 409. `cdSituacao`: 9 ou 13 (quitar; `data` = referência de quitação, `valorQuitacao` opcional), 4 (encerrar; sem data), 12 (finalizar), 10 (cancelar). `data` omitida = hoje. Com 9 as parcelas travam: rode depois dos testes de parcela.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdSituacao\": 10,\n  \"data\": \"2026-10-28\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.17 - Mudar a situação (demais situações)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/{{cdFilContrato}}/{{sqCtr}}/situacao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "{{cdFilContrato}}",
+                "{{sqCtr}}",
+                "situacao"
+              ]
+            },
+            "description": "Qualquer situação menos 4, 9, 10, 12 e 13. Limpa as datas de encerramento (reabre o contrato).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdSituacao\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
           "response": [],
           "event": [

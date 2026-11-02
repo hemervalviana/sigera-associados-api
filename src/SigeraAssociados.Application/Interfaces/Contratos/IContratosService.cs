@@ -21,6 +21,12 @@ public interface IContratosService
 	/// <summary>Altera o contrato (não mexe nas parcelas).</summary>
 	Task<ResultadoTabelaApoio<ContratoDto>> AlterarAsync(decimal cdFil, decimal sqCtr, ContratoDados dados, CancellationToken cancellationToken = default);
 
+	/// <summary>Quitar (9, 13), encerrar (4), finalizar (12) ou cancelar (10).</summary>
+	Task<ResultadoTabelaApoio<ContratoDto>> EncerrarAsync(decimal cdFil, decimal sqCtr, EncerramentoContratoDados dados, CancellationToken cancellationToken = default);
+
+	/// <summary>Qualquer outra situação; limpa as datas de encerramento.</summary>
+	Task<ResultadoTabelaApoio<ContratoDto>> AlterarSituacaoAsync(decimal cdFil, decimal sqCtr, SituacaoContratoDados dados, CancellationToken cancellationToken = default);
+
 	/// <summary>Exclusão lógica (DT_EXC_API e NM_USU_EXC_API); as parcelas ficam.</summary>
 	Task<ResultadoTabelaApoio<ContratoResumoDto>> ExcluirAsync(decimal cdFil, decimal sqCtr, string login, CancellationToken cancellationToken = default);
 

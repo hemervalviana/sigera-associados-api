@@ -47,7 +47,7 @@ public static class RegrasContrato
 
 		return Obrigatorios(d, inclusao)
 			?? (inclusao ? PrimeiraParcela(d.DataPrimeiraParcela, d.DataContrato ?? DateTime.Today) : null)
-			?? DatasDaSituacao(d.CdSituacao, d.DataQuitacao, d.DataFinalizacao, d.DataCancelamento)
+			?? (inclusao ? DatasDaSituacao(d.CdSituacao, d.DataQuitacao, d.DataFinalizacao, d.DataCancelamento) : null)
 			?? Valores(d)
 			?? Codigos(d)
 			?? Listas(d)
@@ -64,7 +64,7 @@ public static class RegrasContrato
 		if (d.CdProduto is null or <= 0) return "O produto (cdProduto) é obrigatório.";
 		if (d.CdConvenio is null or <= 0) return "O convênio (cdConvenio) é obrigatório.";
 		if (d.CdFormaPagamento is null) return "A forma de pagamento (cdFormaPagamento) é obrigatória.";
-		if (d.CdSituacao is null) return "A situação (cdSituacao) é obrigatória.";
+		if (inclusao && d.CdSituacao is null) return "A situação (cdSituacao) é obrigatória.";
 		if (d.SqOrgao is null or <= 0) return "O órgão do associado (sqOrgao) é obrigatório.";
 		if (d.SqContaAssociado is null or <= 0) return "A conta bancária do associado (sqContaAssociado) é obrigatória.";
 		if (d.DataPrimeiraParcela is null) return "A data da 1ª parcela (dataPrimeiraParcela) é obrigatória.";
@@ -79,6 +79,58 @@ public static class RegrasContrato
 		primeiraParcela is DateTime p && p.Date <= dataContrato.Date
 			? "A data da 1ª parcela não pode ser menor ou igual à data do contrato."
 			: null;
+
+	/// <summary>
+	/// Situações de encerramento, só pelo POST .../encerramento: quitar (9 e
+	/// 13), encerrar (4), finalizar (12) e cancelar (10). As outras, só pelo
+	/// PUT .../situacao.
+	/// </summary>
+	public static readonly IReadOnlySet<decimal> SituacoesEncerramento = new HashSet<decimal>
+	{
+		SituacaoEncerrado, SituacaoQuitado, SituacaoCancelado, SituacaoFinalizado, SituacaoQuitadoPorDentro
+	};
+
+	public static bool EhEncerramento(decimal? situacao) => situacao is decimal s && SituacoesEncerramento.Contains(s);
+
+	/// <summary>Situações de contrato em vigor (a trigger TR_CLIE_UPD do associado também usa 2 e 5).</summary>
+	public const decimal SituacaoAprovado = 2;
+	public const decimal SituacaoRenovacao = 5;
+
+	/// <summary>
+	/// Só contrato APROVADO (2) ou em RENOVAÇÃO (5) pode ser quitado,
+	/// encerrado, finalizado ou cancelado.
+	/// </summary>
+	public static string? PodeEncerrar(decimal? situacaoAtual) =>
+		situacaoAtual is SituacaoAprovado or SituacaoRenovacao
+			? null
+			: $"Só contrato APROVADO (2) ou em RENOVAÇÃO (5) pode ser quitado, encerrado, finalizado ou cancelado; a situação atual é {(situacaoAtual is decimal atual ? atual.ToString("0") : "vazia")}.";
+
+	/// <summary>Dados do POST .../encerramento.</summary>
+	public static string? ValidarEncerramento(EncerramentoContratoDados? d)
+	{
+		if (d is null) return "Informe o encerramento do contrato.";
+		if (d.CdSituacao is null) return "Informe a situação (cdSituacao): 9 ou 13 (quitar), 4 (encerrar), 12 (finalizar) ou 10 (cancelar).";
+		if (!EhEncerramento(d.CdSituacao))
+			return $"A situação {d.CdSituacao:0} não é de encerramento: use PUT .../situacao. Aqui: 9 ou 13 (quitar), 4 (encerrar), 12 (finalizar) ou 10 (cancelar).";
+
+		var quitacao = d.CdSituacao is SituacaoQuitado or SituacaoQuitadoPorDentro;
+
+		if (d.ValorQuitacao is not null && !quitacao)
+			return "O valor da quitação (valorQuitacao) só vale para quitar (9 ou 13).";
+		if (d.Data is not null && d.CdSituacao == SituacaoEncerrado)
+			return "Encerrar (4) não tem data própria: a data de encerramento é sempre a de hoje.";
+
+		return Monetario(d.ValorQuitacao, Valor13, "valorQuitacao");
+	}
+
+	/// <summary>Dados do PUT .../situacao.</summary>
+	public static string? ValidarSituacao(SituacaoContratoDados? d)
+	{
+		if (d is null || d.CdSituacao is null) return "Informe a situação (cdSituacao).";
+		if (EhEncerramento(d.CdSituacao))
+			return $"A situação {d.CdSituacao:0} é de encerramento: use POST .../encerramento (quitar, encerrar, finalizar ou cancelar).";
+		return RegrasCampos.Inteiro(d.CdSituacao, 0, 99, "cdSituacao");
+	}
 
 	/// <summary>
 	/// Cada data de encerramento anda junto com a sua situação:

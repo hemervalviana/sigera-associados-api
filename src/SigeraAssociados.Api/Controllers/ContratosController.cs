@@ -176,7 +176,12 @@ public sealed class ContratosController : ControllerBase
 	/// Altera o contrato (envie o contrato inteiro). Não mexe nas parcelas.
 	/// </summary>
 	/// <remarks>
-	/// `sqPesCli` e `cdProduto` não mudam (400 se vierem diferentes).
+	/// `sqPesCli` e `cdProduto` não mudam (400 se vierem diferentes). A
+	/// situação também não muda aqui (`cdSituacao` omitido ou igual ao
+	/// gravado): use POST .../encerramento (quitar, encerrar, finalizar,
+	/// cancelar) ou PUT .../situacao (as demais). Pelo mesmo motivo,
+	/// `dataQuitacao`, `valorQuitacao`, `dataFinalizacao` e `dataCancelamento`
+	/// são ignorados (mantém o gravado).
 	/// `dataContrato` pode mudar (só a data; omitida mantém a gravada), e a 1ª
 	/// parcela tem de vencer depois dela. `quantidadeParcelas` é ignorada:
 	/// acompanha as parcelas (/api/contratos/{cdFil}/{sqCtr}/parcelas). Mudar
@@ -198,6 +203,71 @@ public sealed class ContratosController : ControllerBase
 	{
 		var resultado = await _contratos.AlterarAsync(cdFil, sqCtr, dados, cancellationToken);
 		Registrar(resultado.Status, "Contrato alterado", cdFil, sqCtr);
+		return this.Converter(resultado);
+	}
+
+	/// <summary>
+	/// Quita, encerra, finaliza ou cancela o contrato.
+	/// </summary>
+	/// <remarks>
+	/// Só para contrato APROVADO (2) ou em RENOVAÇÃO (5); nas outras
+	/// situações, 409.
+	///
+	/// `cdSituacao`:
+	/// - 9 (QUITADO) ou 13 (QUITADO PGTO POR DENTRO): `data` = referência de
+	///   quitação (omitida: hoje); `valorQuitacao` opcional (omitido mantém).
+	///   Com 9 as parcelas ficam travadas.
+	/// - 4 (ENCERRADO): sem `data`; o encerramento é hoje.
+	/// - 12 (FINALIZADO): `data` = data de finalização (omitida: hoje).
+	/// - 10 (CANCELADO): `data` = data de cancelamento (omitida: hoje).
+	///
+	/// As datas das outras situações são limpas. `dataEncerramento` = hoje
+	/// com 4 e 9. Outras situações: PUT .../situacao.
+	///
+	///     POST /api/contratos/1/123/encerramento
+	///     { "cdSituacao": 9, "data": "2026-10-28", "valorQuitacao": 1500.00 }
+	/// </remarks>
+	/// <response code="200">Contrato com a situação nova.</response>
+	/// <response code="400">Situação que não é de encerramento, ou dados inválidos.</response>
+	/// <response code="404">Contrato não encontrado.</response>
+	/// <response code="409">Contrato não está APROVADO nem em RENOVAÇÃO.</response>
+	[HttpPost("{cdFil:decimal}/{sqCtr:decimal}/encerramento")]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(ContratoDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> Encerrar(decimal cdFil, decimal sqCtr, [FromBody] EncerramentoContratoDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _contratos.EncerrarAsync(cdFil, sqCtr, dados, cancellationToken);
+		Registrar(resultado.Status, $"Contrato com situação {dados?.CdSituacao:0}", cdFil, sqCtr);
+		return this.Converter(resultado);
+	}
+
+	/// <summary>
+	/// Muda a situação do contrato para uma que não seja de encerramento.
+	/// </summary>
+	/// <remarks>
+	/// Qualquer situação de GET /api/contratos/situacoes, menos 4, 9, 10, 12 e
+	/// 13 (essas: POST .../encerramento). Limpa a referência de quitação e as
+	/// datas de finalização, cancelamento e encerramento (serve também para
+	/// reabrir um contrato encerrado).
+	///
+	///     PUT /api/contratos/1/123/situacao
+	///     { "cdSituacao": 2 }
+	/// </remarks>
+	/// <response code="200">Contrato com a situação nova.</response>
+	/// <response code="400">Situação de encerramento ou inexistente.</response>
+	/// <response code="404">Contrato não encontrado.</response>
+	[HttpPut("{cdFil:decimal}/{sqCtr:decimal}/situacao")]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(ContratoDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	public async Task<IActionResult> AlterarSituacao(decimal cdFil, decimal sqCtr, [FromBody] SituacaoContratoDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _contratos.AlterarSituacaoAsync(cdFil, sqCtr, dados, cancellationToken);
+		Registrar(resultado.Status, $"Contrato com situação {dados?.CdSituacao:0}", cdFil, sqCtr);
 		return this.Converter(resultado);
 	}
 

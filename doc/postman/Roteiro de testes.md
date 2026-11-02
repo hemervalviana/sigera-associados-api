@@ -148,7 +148,14 @@ Antes de começar:
 | [ ] | 18.1 | Busca na máscara | `busca=01-000123` (filial e número do 18.4) | **200**, só esse contrato |
 | [ ] | 18.6 | Alterar contrato | — | **200**, mensalidade 300; parcelas continuam 280,50 |
 | [ ] | 18.6 | Alterar trocando o associado ou o produto | Outro `sqPesCli` ou `cdProduto` | **400** |
-| [ ] | 18.6 | Situação 4 (encerrado) | `"cdSituacao": 4` | **200**, `dataEncerramento` = hoje; voltando para 2, fica nula |
+| [ ] | 18.6 | Mudar a situação pelo PUT | `"cdSituacao": 4` | **400** indicando POST .../encerramento |
+| [ ] | 18.16 | Encerrar (4) | Contrato aprovado (2); `{ "cdSituacao": 4 }` | **200**, `dataEncerramento` = hoje |
+| [ ] | 18.16 | Quitar (9) | `{ "cdSituacao": 9, "data": "2026-10-28", "valorQuitacao": 1500 }` | **200**, `dataQuitacao` e `valorQuitacao` gravados; parcelas travadas (409 no 18.9) |
+| [ ] | 18.16 | Cancelar (10) sem data | `{ "cdSituacao": 10 }` | **200**, `dataCancelamento` = hoje, `dataQuitacao` nula |
+| [ ] | 18.16 | Encerrar contrato que não está aprovado nem em renovação | Contrato já cancelado (situação 10) | **409** "Só contrato APROVADO (2) ou em RENOVAÇÃO (5)" |
+| [ ] | 18.16 | Situação comum no encerramento | `{ "cdSituacao": 2 }` | **400** indicando PUT .../situacao |
+| [ ] | 18.17 | Reabrir | `{ "cdSituacao": 2 }` | **200**, datas de quitação, finalização, cancelamento e encerramento nulas |
+| [ ] | 18.17 | Encerramento pelo PUT de situação | `{ "cdSituacao": 9 }` | **400** indicando POST .../encerramento |
 | [ ] | 18.8 | Incluir parcela | — | **201**, número 13; 18.5 mostra `quantidadeParcelas` 13 |
 | [ ] | 18.9 | Alterar parcela | Sem pagamento | **200**, saldo -290,00, `tipoBaixa` 3 |
 | [ ] | 18.9 | Baixa manual | `"dataPagamento": "2027-12-08", "valorPago": 290.00` | **200**, saldo 0, `tipoBaixa` 1, `cdFormaPagamento` 5, `paga: true` |

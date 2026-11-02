@@ -400,4 +400,72 @@ public sealed class RegrasContratoTests
 		// Contrato antigo: a regra da alteração usa a data gravada (no serviço).
 		Assert.Null(RegrasContrato.Validar(Valido(dataContrato: new DateTime(2020, 1, 1), primeira: new DateTime(2020, 2, 1)), inclusao: false));
 	}
+
+	// ----- Situação: encerramento e demais -----
+
+	[Theory]
+	[InlineData(4)]
+	[InlineData(9)]
+	[InlineData(10)]
+	[InlineData(12)]
+	[InlineData(13)]
+	public void Encerramento_AceitaSo4_9_10_12_13(int situacao)
+	{
+		Assert.Null(RegrasContrato.ValidarEncerramento(new EncerramentoContratoDados { CdSituacao = situacao }));
+		Assert.Contains("encerramento", RegrasContrato.ValidarSituacao(new SituacaoContratoDados { CdSituacao = situacao }));
+	}
+
+	[Theory]
+	[InlineData(1)]
+	[InlineData(2)]
+	[InlineData(5)]
+	public void DemaisSituacoes_SoPeloPutDeSituacao(int situacao)
+	{
+		Assert.Contains("situacao", RegrasContrato.ValidarEncerramento(new EncerramentoContratoDados { CdSituacao = situacao }));
+		Assert.Null(RegrasContrato.ValidarSituacao(new SituacaoContratoDados { CdSituacao = situacao }));
+	}
+
+	[Fact]
+	public void Encerramento_ExigeSituacao()
+	{
+		Assert.NotNull(RegrasContrato.ValidarEncerramento(null));
+		Assert.NotNull(RegrasContrato.ValidarEncerramento(new EncerramentoContratoDados()));
+		Assert.NotNull(RegrasContrato.ValidarSituacao(new SituacaoContratoDados()));
+	}
+
+	[Fact]
+	public void ValorDaQuitacao_SoParaQuitar()
+	{
+		Assert.Null(RegrasContrato.ValidarEncerramento(new EncerramentoContratoDados { CdSituacao = 9, ValorQuitacao = 100 }));
+		Assert.Null(RegrasContrato.ValidarEncerramento(new EncerramentoContratoDados { CdSituacao = 13, ValorQuitacao = 100 }));
+		Assert.Contains("valorQuitacao", RegrasContrato.ValidarEncerramento(new EncerramentoContratoDados { CdSituacao = 10, ValorQuitacao = 100 }));
+		Assert.NotNull(RegrasContrato.ValidarEncerramento(new EncerramentoContratoDados { CdSituacao = 9, ValorQuitacao = -1 }));
+	}
+
+	[Fact]
+	public void Encerrar4_NaoTemData()
+	{
+		Assert.NotNull(RegrasContrato.ValidarEncerramento(new EncerramentoContratoDados { CdSituacao = 4, Data = DateTime.Today }));
+		Assert.Null(RegrasContrato.ValidarEncerramento(new EncerramentoContratoDados { CdSituacao = 12, Data = DateTime.Today }));
+	}
+
+	[Fact]
+	public void Alteracao_NaoExigeSituacaoNemConfereAsDatasDela()
+	{
+		Assert.Null(RegrasContrato.Validar(Valido(situacao: null), inclusao: false));
+		Assert.Null(RegrasContrato.Validar(Valido(situacao: 2, quitacao: DateTime.Today), inclusao: false));
+		Assert.NotNull(RegrasContrato.Validar(Valido(situacao: null), inclusao: true));
+	}
+
+	[Theory]
+	[InlineData(2, true)]
+	[InlineData(5, true)]
+	[InlineData(9, false)]
+	[InlineData(10, false)]
+	[InlineData(1, false)]
+	[InlineData(null, false)]
+	public void Encerrar_SoDeAprovadoOuRenovacao(int? atual, bool pode)
+	{
+		Assert.Equal(pode, RegrasContrato.PodeEncerrar(atual) is null);
+	}
 }

@@ -25,7 +25,11 @@ public sealed class ContratoDados
 	/// <summary>Forma de pagamento (TP_FMA_PGT), de GET /api/cadastros/formas-pagamento. Obrigatória.</summary>
 	public decimal? CdFormaPagamento { get; init; }
 
-	/// <summary>Situação (CD_ST_CTR), de GET /api/contratos/situacoes. Obrigatória.</summary>
+	/// <summary>
+	/// Situação (CD_ST_CTR), de GET /api/contratos/situacoes. Obrigatória na
+	/// inclusão. Na alteração não muda (omitida ou igual à gravada): use
+	/// POST .../encerramento ou PUT .../situacao.
+	/// </summary>
 	public decimal? CdSituacao { get; init; }
 
 	/// <summary>
@@ -86,10 +90,14 @@ public sealed class ContratoDados
 	/// <summary>Valor pago por fora (VR_PGT_FORA).</summary>
 	public decimal? ValorPagoFora { get; init; }
 
-	/// <summary>Referência de quitação (DT_QIT_CTRT): obrigatória com situação 9 ou 13, e só com elas.</summary>
+	/// <summary>
+	/// Referência de quitação (DT_QIT_CTRT): obrigatória com situação 9 ou 13, e
+	/// só com elas. Só na inclusão; depois, pelo encerramento (as datas de
+	/// quitação, finalização e cancelamento são ignoradas na alteração).
+	/// </summary>
 	public DateTime? DataQuitacao { get; init; }
 
-	/// <summary>Valor da quitação (VR_QIT_CTR).</summary>
+	/// <summary>Valor da quitação (VR_QIT_CTR). Só na inclusão; depois, pelo encerramento.</summary>
 	public decimal? ValorQuitacao { get; init; }
 
 	/// <summary>Previsão de quitação (DT_PRV_QIT).</summary>
@@ -166,6 +174,36 @@ public sealed class ContratoDados
 
 	/// <summary>Entrega física (CD_ENT_FISI): 1 = ENTREGUE, 2 = NÃO ENTREGUE, 3 = PENDENTE.</summary>
 	public decimal? CdEntFisi { get; init; }
+}
+
+/// <summary>
+/// POST /api/contratos/{cdFil}/{sqCtr}/encerramento: quitar (9 ou 13),
+/// encerrar (4), finalizar (12) ou cancelar (10).
+/// </summary>
+public sealed class EncerramentoContratoDados
+{
+	/// <summary>9 = QUITADO, 13 = QUITADO PGTO POR DENTRO, 4 = ENCERRADO, 12 = FINALIZADO, 10 = CANCELADO.</summary>
+	public decimal? CdSituacao { get; init; }
+
+	/// <summary>
+	/// Data do encerramento: referência de quitação (9 e 13), finalização (12)
+	/// ou cancelamento (10). Omitida: hoje. Não vale para 4 (encerrar).
+	/// </summary>
+	public DateTime? Data { get; init; }
+
+	/// <summary>Valor da quitação (VR_QIT_CTR), só para 9 e 13. Omitido: mantém o gravado.</summary>
+	public decimal? ValorQuitacao { get; init; }
+}
+
+/// <summary>
+/// PUT /api/contratos/{cdFil}/{sqCtr}/situacao: qualquer situação que não
+/// seja de encerramento (4, 9, 10, 12 e 13). Limpa as datas de quitação,
+/// finalização, cancelamento e encerramento.
+/// </summary>
+public sealed class SituacaoContratoDados
+{
+	/// <summary>Situação (CD_ST_CTR), de GET /api/contratos/situacoes.</summary>
+	public decimal? CdSituacao { get; init; }
 }
 
 /// <summary>Contrato com as descrições, o resumo e as parcelas.</summary>

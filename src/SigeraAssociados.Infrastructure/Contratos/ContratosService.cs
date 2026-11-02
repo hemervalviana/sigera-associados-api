@@ -92,13 +92,21 @@ public sealed class ContratosService : IContratosService
 			throw new DadosInvalidosException("Não foi possível identificar a empresa do sistema: a tabela T009EMPS deve ter exatamente uma empresa.");
 		}
 
-		var query = AcessoContrato.AplicarEscopo(AcessoContrato.Validos(db, emp).AsNoTracking(), escopo);
+		// Etapa 1: só contrato + associado (join), para filtrar, contar e achar
+		// as chaves da página. Nada de subconsulta por linha aqui: a ordem
+		// (data, nome, número) obriga o banco a ordenar todos os contratos
+		// filtrados, e cada coluna calculada por linha multiplicaria o custo.
+		var contratos = AcessoContrato.AplicarEscopo(
+			db.Contratos.AsNoTracking().Where(c => c.CD_EMP == emp && c.DT_EXC_API == null),
+			escopo);
 
-		if (request.SqPesCli is decimal cli) query = query.Where(c => c.SQ_PES_CLI == cli);
-		if (request.CdFil is decimal fil) query = query.Where(c => c.CD_FIL == fil);
-		if (request.CdSituacao is decimal sit) query = query.Where(c => c.CD_ST_CTR == sit);
-		if (request.SqPesCorretor is decimal cro) query = query.Where(c => c.SQ_PES_CRO == cro);
-		if (request.CdProduto is decimal prd) query = query.Where(c => c.CD_PRD == prd);
+		if (request.SqPesCli is decimal cli) contratos = contratos.Where(c => c.SQ_PES_CLI == cli);
+		if (request.CdFil is decimal fil) contratos = contratos.Where(c => c.CD_FIL == fil);
+		if (request.CdSituacao is decimal sit) contratos = contratos.Where(c => c.CD_ST_CTR == sit);
+		if (request.SqPesCorretor is decimal cro) contratos = contratos.Where(c => c.SQ_PES_CRO == cro);
+		if (request.CdProduto is decimal prd) contratos = contratos.Where(c => c.CD_PRD == prd);
+
+		string? inicioNome = null;
 
 		if (!string.IsNullOrWhiteSpace(request.Busca))
 		{
@@ -107,33 +115,75 @@ public sealed class ContratosService : IContratosService
 
 			if (LerMascaraContrato(busca) is (decimal filialBusca, decimal numeroBusca))
 			{
-				query = query.Where(c => c.CD_FIL == filialBusca && c.SQ_CTR == numeroBusca);
+				contratos = contratos.Where(c => c.CD_FIL == filialBusca && c.SQ_CTR == numeroBusca);
 			}
 			else if (digitos.Length == 11 && busca.All(ch => char.IsAsciiDigit(ch) || ch is '.' or '-'))
 			{
+				// CPF: acha as pessoas antes (poucas) e filtra o contrato pelo código.
 				var cpf = decimal.Parse(digitos);
-				query = query.Where(c => db.PessoasFisicas.Any(f => f.CD_EMP == c.CD_EMP && f.SQ_PES_FIS == c.SQ_PES_CLI && f.NR_CPF == cpf));
+				var pessoas = await db.PessoasFisicas.AsNoTracking()
+					.Where(f => f.CD_EMP == emp && f.NR_CPF == cpf)
+					.Select(f => f.SQ_PES_FIS)
+					.ToListAsync(cancellationToken);
+
+				contratos = contratos.Where(c => pessoas.Contains(c.SQ_PES_CLI));
 			}
 			else if (digitos.Length is > 0 and <= 8 && digitos.Length == busca.Length)
 			{
 				var numero = decimal.Parse(digitos);
-				query = query.Where(c => c.SQ_CTR == numero);
+				contratos = contratos.Where(c => c.SQ_CTR == numero);
 			}
 			else
 			{
-				query = query.Where(c => db.Pessoas.Any(p => p.CD_EMP == c.CD_EMP && p.SQ_PES == c.SQ_PES_CLI && p.NM_PES.StartsWith(busca)));
+				inicioNome = busca;
 			}
 		}
 
-		var total = await query.CountAsync(cancellationToken);
+		var comAssociado =
+			from c in contratos
+			join a in db.Associados.AsNoTracking()
+				on new { Emp = c.CD_EMP, Cli = c.SQ_PES_CLI } equals new { Emp = a.CD_EMP, Cli = a.SQ_PES_CLI }
+			join p in db.Pessoas.AsNoTracking()
+				on new { Emp = c.CD_EMP, Cli = c.SQ_PES_CLI } equals new { Emp = p.CD_EMP, Cli = p.SQ_PES }
+			where a.DT_EXC_API == null
+			select new { c.CD_FIL, c.SQ_CTR, c.DT_CTR, Nome = p.NM_PES };
 
-		var linhas = await Projetar(db, query)
-			.OrderByDescending(l => l.DataContrato)
-			.ThenBy(l => l.Nome)
-			.ThenByDescending(l => l.SqCtr)
+		if (inicioNome is not null)
+		{
+			comAssociado = comAssociado.Where(x => x.Nome.StartsWith(inicioNome));
+		}
+
+		var total = await comAssociado.CountAsync(cancellationToken);
+
+		var pagina = await comAssociado
+			.OrderByDescending(x => x.DT_CTR)
+			.ThenBy(x => x.Nome)
+			.ThenByDescending(x => x.SQ_CTR)
 			.Skip((request.Pagina - 1) * request.TamanhoPagina)
 			.Take(request.TamanhoPagina)
+			.Select(x => new { x.CD_FIL, x.SQ_CTR })
 			.ToListAsync(cancellationToken);
+
+		// Etapa 2: descrições só dos contratos da página.
+		var linhas = new List<LinhaContrato>();
+
+		if (pagina.Count > 0)
+		{
+			var filiais = pagina.Select(x => x.CD_FIL).Distinct().ToList();
+			var numeros = pagina.Select(x => x.SQ_CTR).Distinct().ToList();
+
+			var candidatos = await Projetar(db, db.Contratos.AsNoTracking()
+					.Where(c => c.CD_EMP == emp && filiais.Contains(c.CD_FIL) && numeros.Contains(c.SQ_CTR)))
+				.ToListAsync(cancellationToken);
+
+			// Mantém a ordem da etapa 1 (e descarta combinações filial x número fora da página).
+			var porChave = candidatos.ToDictionary(l => (l.CdFil, l.SqCtr));
+			linhas = pagina
+				.Select(x => porChave.GetValueOrDefault((x.CD_FIL, x.SQ_CTR)))
+				.Where(l => l is not null)
+				.Select(l => l!)
+				.ToList();
+		}
 
 		return new PesquisaContratosResultado
 		{
@@ -317,6 +367,11 @@ public sealed class ContratosService : IContratosService
 			DT_CAD = agora,
 			NM_USU = Truncar(login, 20),
 			QT_PCL = quantidade,
+			CD_ST_CTR = dados.CdSituacao,
+			DT_QIT_CTRT = dados.DataQuitacao?.Date,
+			VR_QIT_CTR = dados.ValorQuitacao,
+			DT_FIN_CTR = dados.DataFinalizacao?.Date,
+			DT_CAN_CTRT = dados.DataCancelamento?.Date,
 			DT_ENC_CTR = RegrasContrato.DataEncerramento(null, dados.CdSituacao, null, agora)
 		};
 
@@ -385,6 +440,13 @@ public sealed class ContratosService : IContratosService
 			return NaoEncontrado<ContratoDto>("Contrato não encontrado.");
 		}
 
+		if (dados.CdSituacao is decimal situacaoPedida && situacaoPedida != contrato.CD_ST_CTR)
+		{
+			return Invalido<ContratoDto>(RegrasContrato.EhEncerramento(situacaoPedida)
+				? "A situação não muda por aqui: para quitar, encerrar, finalizar ou cancelar use POST /api/contratos/{cdFil}/{sqCtr}/encerramento."
+				: "A situação não muda por aqui: use PUT /api/contratos/{cdFil}/{sqCtr}/situacao.");
+		}
+
 		if (Imutaveis(dados, contrato) is string erroImutavel)
 		{
 			return Invalido<ContratoDto>(erroImutavel);
@@ -422,8 +484,6 @@ public sealed class ContratosService : IContratosService
 			return Invalido<ContratoDto>(erroCalculo);
 		}
 
-		contrato.DT_ENC_CTR = RegrasContrato.DataEncerramento(contrato.CD_ST_CTR, dados.CdSituacao, contrato.DT_ENC_CTR, DateTime.Now);
-
 		if (dados.DataContrato is DateTime novaData)
 		{
 			contrato.DT_CTR = novaData.Date;
@@ -445,6 +505,121 @@ public sealed class ContratosService : IContratosService
 		if (d.CdProduto != c.CD_PRD) return "O produto do contrato não pode ser alterado.";
 		if (d.CdFil is decimal fil && fil != c.CD_FIL) return "A filial do contrato não pode ser alterada.";
 		return null;
+	}
+
+	// ===================== Situação =====================
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<ContratoDto>> EncerrarAsync(
+		decimal cdFil,
+		decimal sqCtr,
+		EncerramentoContratoDados dados,
+		CancellationToken cancellationToken = default)
+	{
+		if (RegrasContrato.ValidarEncerramento(dados) is string erro)
+		{
+			return Invalido<ContratoDto>(erro);
+		}
+
+		return await MudarSituacaoAsync(cdFil, sqCtr, dados.CdSituacao!.Value, (contrato, agora) =>
+		{
+			var situacao = dados.CdSituacao!.Value;
+			var data = (dados.Data ?? agora).Date;
+			var quitacao = situacao is RegrasContrato.SituacaoQuitado or RegrasContrato.SituacaoQuitadoPorDentro;
+
+			// Só a data da situação nova fica preenchida (regra das datas por situação).
+			contrato.DT_QIT_CTRT = quitacao ? data : null;
+			contrato.DT_FIN_CTR = situacao == RegrasContrato.SituacaoFinalizado ? data : null;
+			contrato.DT_CAN_CTRT = situacao == RegrasContrato.SituacaoCancelado ? data : null;
+
+			if (quitacao && dados.ValorQuitacao is decimal valor)
+			{
+				contrato.VR_QIT_CTR = valor;
+			}
+
+			return situacao switch
+			{
+				RegrasContrato.SituacaoQuitado => "Contrato quitado.",
+				RegrasContrato.SituacaoQuitadoPorDentro => "Contrato quitado (pagamento por dentro).",
+				RegrasContrato.SituacaoEncerrado => "Contrato encerrado.",
+				RegrasContrato.SituacaoFinalizado => "Contrato finalizado.",
+				_ => "Contrato cancelado."
+			};
+		}, cancellationToken, RegrasContrato.PodeEncerrar);
+	}
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<ContratoDto>> AlterarSituacaoAsync(
+		decimal cdFil,
+		decimal sqCtr,
+		SituacaoContratoDados dados,
+		CancellationToken cancellationToken = default)
+	{
+		if (RegrasContrato.ValidarSituacao(dados) is string erro)
+		{
+			return Invalido<ContratoDto>(erro);
+		}
+
+		return await MudarSituacaoAsync(cdFil, sqCtr, dados.CdSituacao!.Value, (contrato, _) =>
+		{
+			// Fora do encerramento, nenhuma data de encerramento vale.
+			contrato.DT_QIT_CTRT = null;
+			contrato.DT_FIN_CTR = null;
+			contrato.DT_CAN_CTRT = null;
+			return "Situação do contrato alterada.";
+		}, cancellationToken);
+	}
+
+	/// <summary>
+	/// Carrega o contrato no escopo, confere a situação em T009SCTR, aplica as
+	/// datas e grava a situação e o encerramento (DT_ENC_CTR: hoje com 4 e 9).
+	/// </summary>
+	private async Task<ResultadoTabelaApoio<ContratoDto>> MudarSituacaoAsync(
+		decimal cdFil,
+		decimal sqCtr,
+		decimal situacao,
+		Func<T009CTRT, DateTime, string> aplicar,
+		CancellationToken cancellationToken,
+		Func<decimal?, string?>? conferirAtual = null)
+	{
+		var escopo = await _escopoAcesso.ObterEscopoAsync(cancellationToken);
+
+		await using var db = CriarContexto();
+
+		if (await ObterEmpresaAsync(db, cancellationToken) is not decimal emp)
+		{
+			return EmpresaIndefinida<ContratoDto>();
+		}
+
+		var contrato = await AcessoContrato.CarregarAsync(db, emp, cdFil, sqCtr, escopo, rastrear: true, cancellationToken);
+
+		if (contrato is null)
+		{
+			return NaoEncontrado<ContratoDto>("Contrato não encontrado.");
+		}
+
+		if (conferirAtual?.Invoke(contrato.CD_ST_CTR) is string recusa)
+		{
+			return Conflito<ContratoDto>(recusa);
+		}
+
+		if (!await db.SituacoesContrato.AnyAsync(s => s.CD_EMP == emp && s.CD_ST_CTR == situacao, cancellationToken))
+		{
+			return Invalido<ContratoDto>($"A situação {situacao:0} não está cadastrada (T009SCTR).");
+		}
+
+		var agora = DateTime.Now;
+		var mensagem = aplicar(contrato, agora);
+
+		contrato.DT_ENC_CTR = RegrasContrato.DataEncerramento(contrato.CD_ST_CTR, situacao, contrato.DT_ENC_CTR, agora);
+		contrato.CD_ST_CTR = situacao;
+
+		if (await SalvarAsync(db, cancellationToken) is string erroGravacao)
+		{
+			return Invalido<ContratoDto>(erroGravacao);
+		}
+
+		return Sucesso(mensagem, await ParaDtoAsync(db, contrato, cancellationToken));
 	}
 
 	// ===================== Exclusão =====================
@@ -591,8 +766,8 @@ public sealed class ContratosService : IContratosService
 		if (!await db.FormasPagamento.AnyAsync(f => f.CD_EMP == emp && f.TP_FMA_PGT == forma, ct))
 			return new($"A forma de pagamento {forma:0} não está cadastrada (T009FRPG).");
 
-		var situacao = d.CdSituacao!.Value;
-		if (!await db.SituacoesContrato.AnyAsync(s => s.CD_EMP == emp && s.CD_ST_CTR == situacao, ct))
+		if (d.CdSituacao is decimal situacao
+			&& !await db.SituacoesContrato.AnyAsync(s => s.CD_EMP == emp && s.CD_ST_CTR == situacao, ct))
 			return new($"A situação {situacao:0} não está cadastrada (T009SCTR).");
 
 		var sqOrg = d.SqOrgao!.Value;
@@ -659,12 +834,15 @@ public sealed class ContratosService : IContratosService
 		return new(null, cdOrgao.Value, indiceTabela);
 	}
 
-	/// <summary>Grava os campos editáveis (os mesmos na inclusão e na alteração).</summary>
+	/// <summary>
+	/// Grava os campos editáveis (os mesmos na inclusão e na alteração). A
+	/// situação e as datas de encerramento ficam fora: inclusão, encerramento
+	/// e PUT .../situacao.
+	/// </summary>
 	private static void Aplicar(ContratoDados d, T009CTRT c, decimal corretor, decimal cdOrgao, decimal? indice, decimal? mensalidade)
 	{
 		c.CD_CVN = d.CdConvenio;
 		c.TP_FMA_PGT = d.CdFormaPagamento!.Value;
-		c.CD_ST_CTR = d.CdSituacao;
 		c.SQ_ORG = d.SqOrgao;
 		c.CD_ORG = cdOrgao;
 		c.SQ_CTA_COR = d.SqContaAssociado;
@@ -678,11 +856,7 @@ public sealed class ContratosService : IContratosService
 		c.SQ_PES_CCG = d.SqConsignante;
 		c.NR_PRP = d.NumeroProposta;
 		c.VR_PGT_FORA = d.ValorPagoFora;
-		c.DT_QIT_CTRT = d.DataQuitacao?.Date;
-		c.VR_QIT_CTR = d.ValorQuitacao;
 		c.DT_PRV_QIT = d.DataPrevisaoQuitacao?.Date;
-		c.DT_FIN_CTR = d.DataFinalizacao?.Date;
-		c.DT_CAN_CTRT = d.DataCancelamento?.Date;
 		c.VR_CMP_DIV = d.ValorCompraDivida;
 		c.VR_CMP_DIV_TP = RegrasContrato.TipoCompraDividaGravado(d.ValorCompraDivida, d.TipoCompraDivida);
 		c.CD_TP_CTRT = d.CdTipoContrato;
