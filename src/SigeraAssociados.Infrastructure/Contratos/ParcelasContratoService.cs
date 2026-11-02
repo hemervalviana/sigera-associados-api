@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SigeraAssociados.Application.Cadastros;
 using SigeraAssociados.Application.Contratos;
+using SigeraAssociados.Application.Creditos;
 using SigeraAssociados.Application.Interfaces.Acesso;
 using SigeraAssociados.Application.Interfaces.Contratos;
 using SigeraAssociados.Infrastructure.Persistence.Context;
@@ -241,6 +242,123 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 		return await GravarAsync(db, contrato, cancellationToken) is string erroGravacao
 			? Conflito<ParcelaDto>(erroGravacao)
 			: Sucesso("Parcela excluída.", dto);
+	}
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<EstornoParcelaDto>> EstornarAsync(
+		decimal cdFil,
+		decimal sqCtr,
+		decimal numeroParcela,
+		string login,
+		CancellationToken cancellationToken = default)
+	{
+		await using var db = CriarContexto();
+
+		var contrato = await AbrirAsync(db, cdFil, sqCtr, rastrear: true, cancellationToken);
+
+		if (contrato is null)
+		{
+			return NaoEncontrado<EstornoParcelaDto>("Contrato não encontrado.");
+		}
+
+		if (RegrasContrato.ParcelasTravadas(contrato.CD_ST_CTR))
+		{
+			return Conflito<EstornoParcelaDto>(ContratoQuitado + " Estorne o contrato antes (POST .../estorno).");
+		}
+
+		var parcela = await Parcelas(db, contrato).FirstOrDefaultAsync(p => p.NR_PCL == numeroParcela, cancellationToken);
+
+		if (parcela is null)
+		{
+			return NaoEncontrado<EstornoParcelaDto>("Parcela não encontrada.");
+		}
+
+		if (RegrasContrato.PodeEstornarParcela(parcela.ID_PGT_AUT, parcela.VR_PGT) is string recusa)
+		{
+			return Conflito<EstornoParcelaDto>(recusa);
+		}
+
+		var tipoEstornado = parcela.ID_PGT_AUT;
+		var valorPago = parcela.VR_PGT ?? 0;
+		var geraCredito = RegrasContrato.EstornoGeraCredito(tipoEstornado) && valorPago > 0;
+		var formaOriginal = parcela.TP_PGT;
+		var convenioOriginal = parcela.CD_CVN;
+		var averbacaoOriginal = parcela.CD_AVB;
+
+		await using var transacao = await db.Database.BeginTransactionAsync(cancellationToken);
+
+		// Volta para SEM BAIXA, como o itemchanged do legado ao apagar o valor
+		// pago, e sai da averbação/remessa (convênio, averbação e remessa limpos).
+		parcela.DT_PGT = null;
+		parcela.VR_PGT = 0;
+		parcela.VR_MLT = null;
+		parcela.VR_JUR = null;
+		parcela.VR_DSC = null;
+		parcela.VR_SD_PCL = -parcela.VR_PCL;
+		parcela.ID_PGT_AUT = RegrasContrato.SemBaixa;
+		parcela.TP_PGT = null;
+		parcela.CD_CVN = null;
+		parcela.CD_AVB = null;
+		parcela.ID_REM = null;
+
+		decimal? sqCredito = null;
+
+		if (geraCredito)
+		{
+			var emp = contrato.CD_EMP;
+			var cli = contrato.SQ_PES_CLI;
+
+			var sequencia = await NumeroAsync(db,
+				$"SELECT ISNULL(MAX(SQ_PGT), 0) + 1 AS [Value] FROM dbo.T009EXTRA WITH (UPDLOCK, HOLDLOCK) WHERE CD_EMP = {emp} AND SQ_PES_CLI = {cli}",
+				cancellationToken);
+
+			if (sequencia > RegrasCredito.SequenciaMaxima)
+			{
+				return Invalido<EstornoParcelaDto>("O associado atingiu o limite de sequência de créditos.");
+			}
+
+			// O crédito existe para ser usado depois: saldo = valor, qualquer
+			// que seja a forma de pagamento. Produto 0 (TODOS).
+			db.Creditos.Add(new T009EXTRA
+			{
+				CD_EMP = emp,
+				SQ_PES_CLI = cli,
+				SQ_PGT = sequencia,
+				DT_PGT = DateTime.Today,
+				VR_PGT = valorPago,
+				VR_SLD = valorPago,
+				TP_PGT = formaOriginal ?? RegrasContrato.FormaPagamentoOutros,
+				ID_PGT_AUT = RegrasCredito.BaixaCredito,
+				DE_OBS = $"ESTORNO DA PARCELA {numeroParcela:0} DO CONTRATO {cdFil:00}-{sqCtr:000000}",
+				CD_FIL = cdFil,
+				SQ_CTR = sqCtr,
+				NR_PCL = numeroParcela,
+				CD_CVN = convenioOriginal,
+				CD_AVB = averbacaoOriginal,
+				CD_PRD = RegrasCredito.ProdutoTodos
+			});
+
+			sqCredito = sequencia;
+		}
+
+		if (await GravarAsync(db, contrato, cancellationToken) is string erroGravacao)
+		{
+			return Invalido<EstornoParcelaDto>(erroGravacao);
+		}
+
+		await transacao.CommitAsync(cancellationToken);
+
+		var mensagem = sqCredito is decimal credito
+			? $"Pagamento da parcela {numeroParcela:0} estornado; crédito {credito:0} de {valorPago:N2} gerado para o associado."
+			: $"Pagamento da parcela {numeroParcela:0} estornado.";
+
+		return Sucesso(mensagem, new EstornoParcelaDto
+		{
+			Parcela = ParaDto(parcela),
+			TipoBaixaEstornada = tipoEstornado,
+			ValorEstornado = valorPago,
+			SqCreditoGerado = sqCredito
+		});
 	}
 
 	private const string ContratoQuitado = "Contrato quitado (situação 9): as parcelas não podem ser incluídas, alteradas nem excluídas.";

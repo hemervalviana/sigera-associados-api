@@ -6674,7 +6674,7 @@
           ]
         },
         {
-          "name": "18.16 - Quitar, encerrar, finalizar ou cancelar",
+          "name": "18.16 - Encerrar ou finalizar",
           "request": {
             "method": "POST",
             "header": [
@@ -6701,10 +6701,114 @@
                 "encerramento"
               ]
             },
-            "description": "Só para contrato APROVADO (2) ou em RENOVAÇÃO (5); senão 409. `cdSituacao`: 9 ou 13 (quitar; `data` = referência de quitação, `valorQuitacao` opcional), 4 (encerrar; sem data), 12 (finalizar), 10 (cancelar). `data` omitida = hoje. Com 9 as parcelas travam: rode depois dos testes de parcela.",
+            "description": "Só para contrato APROVADO (2) ou em RENOVAÇÃO (5); senão 409. `cdSituacao`: 4 (encerrar; sem data) ou 12 (finalizar; `data` omitida = hoje). Para quitar use o 18.18 e para cancelar o 18.19.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cdSituacao\": 10,\n  \"data\": \"2026-10-28\"\n}",
+              "raw": "{\n  \"cdSituacao\": 12,\n  \"data\": \"2026-11-02\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.18 - Quitar o contrato",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/{{cdFilContrato}}/{{sqCtr}}/quitacao",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "{{cdFilContrato}}",
+                "{{sqCtr}}",
+                "quitacao"
+              ]
+            },
+            "description": "Quita o contrato (só de APROVADO (2) ou RENOVAÇÃO (5); senão 409). `data` = referência da quitação (omitida: hoje); `valorQuitacao` opcional; `pagamentoPorDentro: true` grava 13 (QUITADO PGTO POR DENTRO), senão 9 (QUITADO, trava as parcelas: rode depois dos testes de parcela).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": \"2026-11-02\",\n  \"valorQuitacao\": 1500.0,\n  \"pagamentoPorDentro\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.19 - Cancelar o contrato",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/{{cdFilContrato}}/{{sqCtr}}/cancelamento",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "{{cdFilContrato}}",
+                "{{sqCtr}}",
+                "cancelamento"
+              ]
+            },
+            "description": "Cancela o contrato: situação 10 (só de APROVADO (2) ou RENOVAÇÃO (5); senão 409). `data` = data do cancelamento (omitida: hoje).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": \"2026-11-02\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -6763,6 +6867,99 @@
                 }
               }
             }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.18 - Estornar contrato (Administradores e Gestores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/{{cdFilContrato}}/{{sqCtr}}/estorno",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "{{cdFilContrato}}",
+                "{{sqCtr}}",
+                "estorno"
+              ]
+            },
+            "description": "Volta para APROVADO (2) ou RENOVAÇÃO (5) de qualquer outra situação. Limpa quitação (data e valor), finalização, cancelamento e encerramento. Já na situação pedida: 409.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdSituacao\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (200)\", () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.19 - Estornar pagamento da parcela",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/{{cdFilContrato}}/{{sqCtr}}/parcelas/{{nrParcela}}/estorno",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "{{cdFilContrato}}",
+                "{{sqCtr}}",
+                "parcelas",
+                "{{nrParcela}}",
+                "estorno"
+              ]
+            },
+            "description": "Desfaz o pagamento (SEM BAIXA). Baixa automática gera crédito do associado (`sqCreditoGerado`). Admin, Gestores, Coordenadora e Financeiro. Parcela não paga ou contrato quitado: 409."
           },
           "response": [],
           "event": [

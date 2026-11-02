@@ -110,6 +110,49 @@ public sealed class ContratoParcelasController : ControllerBase
 	}
 
 	/// <summary>
+	/// Estorna o pagamento da parcela. Administradores, Gestores, Coordenadora Adm. &amp; Operacional e Financeiro.
+	/// </summary>
+	/// <remarks>
+	/// A parcela volta para SEM BAIXA (tipo de baixa 3): data e valor pagos,
+	/// multa, juros, desconto, forma de pagamento, convênio, averbação e
+	/// remessa são limpos; saldo = -valor.
+	///
+	/// - Baixa MANUAL (1): só desfaz o pagamento.
+	/// - Baixa AUTOMÁTICA (2): desfaz o pagamento e gera um crédito do
+	///   associado com o valor pago (saldo = valor, produto 0 TODOS, com
+	///   filial, contrato, parcela e o convênio e a averbação que a parcela
+	///   tinha antes do estorno), em
+	///   /api/associados/{sqPesCli}/creditos. A resposta traz `sqCreditoGerado`.
+	///
+	/// Parcela não paga: 409. Contrato quitado (9): 409 (estorne o contrato antes).
+	///
+	///     POST /api/contratos/1/123/parcelas/5/estorno
+	/// </remarks>
+	/// <response code="200">Pagamento estornado.</response>
+	/// <response code="403">Grupo sem permissão.</response>
+	/// <response code="404">Contrato ou parcela não encontrados.</response>
+	/// <response code="409">Parcela não paga, ou contrato quitado.</response>
+	[HttpPost("{numeroParcela:decimal}/estorno")]
+	[Authorize(Roles = Grupos.PerfisEstornoParcela)]
+	[ProducesResponseType(typeof(EstornoParcelaDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> Estornar(decimal cdFil, decimal sqCtr, decimal numeroParcela, CancellationToken cancellationToken)
+	{
+		var resultado = await _parcelas.EstornarAsync(cdFil, sqCtr, numeroParcela, Login(), cancellationToken);
+
+		if (resultado.Status == StatusTabelaApoio.Sucesso)
+		{
+			_logger.LogInformation(
+				"Pagamento de parcela estornado: filial {CdFil}, contrato {SqCtr}, parcela {NumeroParcela}, baixa {TipoBaixa}, valor {Valor}, crédito {SqCredito}, por {Usuario}.",
+				cdFil, sqCtr, numeroParcela, resultado.Item?.TipoBaixaEstornada, resultado.Item?.ValorEstornado, resultado.Item?.SqCreditoGerado, Login());
+		}
+
+		return this.Converter(resultado);
+	}
+
+	/// <summary>
 	/// Exclui uma parcela (exclusão física).
 	/// </summary>
 	/// <remarks>

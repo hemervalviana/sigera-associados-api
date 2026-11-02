@@ -123,12 +123,27 @@ public static class RegrasContrato
 		return Monetario(d.ValorQuitacao, Valor13, "valorQuitacao");
 	}
 
+	/// <summary>
+	/// Estorno do contrato (POST .../estorno): volta para APROVADO (2) ou
+	/// RENOVAÇÃO (5), a partir de qualquer outra situação.
+	/// </summary>
+	public static string? ValidarEstorno(EstornoContratoDados? d) =>
+		d?.CdSituacao is SituacaoAprovado or SituacaoRenovacao
+			? null
+			: "O estorno volta o contrato para APROVADO (cdSituacao 2) ou RENOVAÇÃO (cdSituacao 5).";
+
+	/// <summary>O contrato já está na situação pedida: nada a estornar.</summary>
+	public static string? PodeEstornar(decimal? situacaoAtual, decimal situacaoNova) =>
+		situacaoAtual == situacaoNova
+			? $"O contrato já está na situação {situacaoNova:0}: não há o que estornar."
+			: null;
+
 	/// <summary>Dados do PUT .../situacao.</summary>
 	public static string? ValidarSituacao(SituacaoContratoDados? d)
 	{
 		if (d is null || d.CdSituacao is null) return "Informe a situação (cdSituacao).";
 		if (EhEncerramento(d.CdSituacao))
-			return $"A situação {d.CdSituacao:0} é de encerramento: use POST .../encerramento (quitar, encerrar, finalizar ou cancelar).";
+			return $"A situação {d.CdSituacao:0} é de encerramento: use POST .../quitacao (9 e 13), .../cancelamento (10) ou .../encerramento (4 e 12).";
 		return RegrasCampos.Inteiro(d.CdSituacao, 0, 99, "cdSituacao");
 	}
 
@@ -408,6 +423,18 @@ public static class RegrasContrato
 	/// Parcela paga (oe_delete): tipo de baixa preenchido e diferente de 3.
 	/// </summary>
 	public static bool ParcelaPaga(decimal? tipoBaixa) => tipoBaixa is not null && tipoBaixa != SemBaixa;
+
+	/// <summary>
+	/// Estorno da parcela: só parcela paga (tipo de baixa 1 MANUAL ou 2
+	/// AUTOMÁTICA). Baixa automática gera crédito do associado.
+	/// </summary>
+	public static string? PodeEstornarParcela(decimal? tipoBaixa, decimal? valorPago) =>
+		ParcelaPaga(tipoBaixa) || valorPago is > 0
+			? null
+			: "A parcela não está paga: não há pagamento para estornar.";
+
+	/// <summary>Estorno de baixa automática vira crédito do associado.</summary>
+	public static bool EstornoGeraCredito(decimal? tipoBaixa) => tipoBaixa == BaixaAutomatica;
 
 	/// <summary>Contrato quitado (9): parcelas não são incluídas, alteradas nem excluídas.</summary>
 	public static bool ParcelasTravadas(decimal? situacaoContrato) => situacaoContrato == SituacaoQuitado;

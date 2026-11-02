@@ -177,8 +177,64 @@ public sealed class ContratoDados
 }
 
 /// <summary>
-/// POST /api/contratos/{cdFil}/{sqCtr}/encerramento: quitar (9 ou 13),
-/// encerrar (4), finalizar (12) ou cancelar (10).
+/// POST /api/contratos/{cdFil}/{sqCtr}/quitacao: quita o contrato
+/// (9 = QUITADO ou 13 = QUITADO PGTO POR DENTRO).
+/// </summary>
+public sealed class QuitacaoContratoDados
+{
+	/// <summary>
+	/// Data de referência da quitação (REF_QIT). Omitida: hoje.
+	/// </summary>
+	public DateTime? Data { get; init; }
+
+	/// <summary>
+	/// Valor da quitação (VR_QIT_CTR). Omitido: mantém o gravado.
+	/// </summary>
+	public decimal? ValorQuitacao { get; init; }
+
+	/// <summary>
+	/// true = 13 (QUITADO PGTO POR DENTRO); false ou omitido = 9 (QUITADO,
+	/// que trava as parcelas).
+	/// </summary>
+	public bool? PagamentoPorDentro { get; init; }
+
+	/// <summary>
+	/// Converte para a regra comum de encerramento.
+	/// </summary>
+	public EncerramentoContratoDados ParaEncerramento() => new()
+	{
+		CdSituacao = PagamentoPorDentro == true
+			? RegrasContrato.SituacaoQuitadoPorDentro
+			: RegrasContrato.SituacaoQuitado,
+		Data = Data,
+		ValorQuitacao = ValorQuitacao
+	};
+}
+
+/// <summary>
+/// POST /api/contratos/{cdFil}/{sqCtr}/cancelamento: cancela o contrato (10).
+/// </summary>
+public sealed class CancelamentoContratoDados
+{
+	/// <summary>
+	/// Data do cancelamento (DT_CAN). Omitida: hoje.
+	/// </summary>
+	public DateTime? Data { get; init; }
+
+	/// <summary>
+	/// Converte para a regra comum de encerramento.
+	/// </summary>
+	public EncerramentoContratoDados ParaEncerramento() => new()
+	{
+		CdSituacao = RegrasContrato.SituacaoCancelado,
+		Data = Data
+	};
+}
+
+/// <summary>
+/// POST /api/contratos/{cdFil}/{sqCtr}/encerramento: encerrar (4) ou
+/// finalizar (12). Quitar e cancelar têm endpoints próprios (.../quitacao e
+/// .../cancelamento); este ainda aceita 9, 10 e 13 por compatibilidade.
 /// </summary>
 public sealed class EncerramentoContratoDados
 {
@@ -193,6 +249,35 @@ public sealed class EncerramentoContratoDados
 
 	/// <summary>Valor da quitação (VR_QIT_CTR), só para 9 e 13. Omitido: mantém o gravado.</summary>
 	public decimal? ValorQuitacao { get; init; }
+}
+
+/// <summary>
+/// POST /api/contratos/{cdFil}/{sqCtr}/estorno: volta o contrato para
+/// APROVADO (2) ou RENOVAÇÃO (5), de qualquer outra situação.
+/// </summary>
+public sealed class EstornoContratoDados
+{
+	/// <summary>2 = APROVADO, 5 = RENOVAÇÃO.</summary>
+	public decimal? CdSituacao { get; init; }
+}
+
+/// <summary>Resultado do estorno da parcela.</summary>
+public sealed class EstornoParcelaDto
+{
+	/// <summary>A parcela depois do estorno (sem baixa, saldo = -valor).</summary>
+	public ParcelaDto Parcela { get; init; } = new();
+
+	/// <summary>Tipo de baixa estornado: 1 = MANUAL, 2 = AUTOMÁTICA.</summary>
+	public decimal? TipoBaixaEstornada { get; init; }
+
+	/// <summary>Valor pago que foi estornado.</summary>
+	public decimal ValorEstornado { get; init; }
+
+	/// <summary>
+	/// Crédito gerado para o associado (só no estorno de baixa automática),
+	/// em /api/associados/{sqPesCli}/creditos. Nulo na baixa manual.
+	/// </summary>
+	public decimal? SqCreditoGerado { get; init; }
 }
 
 /// <summary>

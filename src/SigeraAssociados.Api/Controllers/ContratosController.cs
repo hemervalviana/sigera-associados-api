@@ -207,25 +207,91 @@ public sealed class ContratosController : ControllerBase
 	}
 
 	/// <summary>
-	/// Quita, encerra, finaliza ou cancela o contrato.
+	/// Quita o contrato.
+	/// </summary>
+	/// <remarks>
+	/// Só para contrato APROVADO (2) ou em RENOVAÇÃO (5); nas outras
+	/// situações, 409.
+	///
+	/// - `data`: referência da quitação (omitida: hoje).
+	/// - `valorQuitacao`: opcional (omitido mantém o gravado).
+	/// - `pagamentoPorDentro`: true grava 13 (QUITADO PGTO POR DENTRO);
+	///   false ou omitido grava 9 (QUITADO), que trava as parcelas.
+	///
+	/// Limpa finalização e cancelamento; com 9, `dataEncerramento` = hoje.
+	///
+	///     POST /api/contratos/1/123/quitacao
+	///     { "data": "2026-11-02", "valorQuitacao": 1500.00 }
+	/// </remarks>
+	/// <response code="200">Contrato quitado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="404">Contrato não encontrado.</response>
+	/// <response code="409">Contrato não está APROVADO nem em RENOVAÇÃO.</response>
+	[HttpPost("{cdFil:decimal}/{sqCtr:decimal}/quitacao")]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(ContratoDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> Quitar(decimal cdFil, decimal sqCtr, [FromBody] QuitacaoContratoDados? dados, CancellationToken cancellationToken)
+	{
+		var encerramento = (dados ?? new QuitacaoContratoDados()).ParaEncerramento();
+		var resultado = await _contratos.EncerrarAsync(cdFil, sqCtr, encerramento, cancellationToken);
+		Registrar(resultado.Status, $"Contrato quitado (situação {encerramento.CdSituacao:0})", cdFil, sqCtr);
+		return this.Converter(resultado);
+	}
+
+	/// <summary>
+	/// Cancela o contrato.
+	/// </summary>
+	/// <remarks>
+	/// Só para contrato APROVADO (2) ou em RENOVAÇÃO (5); nas outras
+	/// situações, 409. Grava a situação 10 (CANCELADO).
+	///
+	/// - `data`: data do cancelamento (omitida: hoje).
+	///
+	/// Limpa quitação e finalização.
+	///
+	///     POST /api/contratos/1/123/cancelamento
+	///     { "data": "2026-11-02" }
+	/// </remarks>
+	/// <response code="200">Contrato cancelado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="404">Contrato não encontrado.</response>
+	/// <response code="409">Contrato não está APROVADO nem em RENOVAÇÃO.</response>
+	[HttpPost("{cdFil:decimal}/{sqCtr:decimal}/cancelamento")]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(ContratoDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> Cancelar(decimal cdFil, decimal sqCtr, [FromBody] CancelamentoContratoDados? dados, CancellationToken cancellationToken)
+	{
+		var encerramento = (dados ?? new CancelamentoContratoDados()).ParaEncerramento();
+		var resultado = await _contratos.EncerrarAsync(cdFil, sqCtr, encerramento, cancellationToken);
+		Registrar(resultado.Status, "Contrato cancelado", cdFil, sqCtr);
+		return this.Converter(resultado);
+	}
+
+	/// <summary>
+	/// Encerra (4) ou finaliza (12) o contrato.
 	/// </summary>
 	/// <remarks>
 	/// Só para contrato APROVADO (2) ou em RENOVAÇÃO (5); nas outras
 	/// situações, 409.
 	///
 	/// `cdSituacao`:
-	/// - 9 (QUITADO) ou 13 (QUITADO PGTO POR DENTRO): `data` = referência de
-	///   quitação (omitida: hoje); `valorQuitacao` opcional (omitido mantém).
-	///   Com 9 as parcelas ficam travadas.
 	/// - 4 (ENCERRADO): sem `data`; o encerramento é hoje.
 	/// - 12 (FINALIZADO): `data` = data de finalização (omitida: hoje).
-	/// - 10 (CANCELADO): `data` = data de cancelamento (omitida: hoje).
+	///
+	/// Para quitar use POST .../quitacao e para cancelar POST .../cancelamento.
+	/// Por compatibilidade, este endpoint ainda aceita 9, 13 e 10.
 	///
 	/// As datas das outras situações são limpas. `dataEncerramento` = hoje
 	/// com 4 e 9. Outras situações: PUT .../situacao.
 	///
 	///     POST /api/contratos/1/123/encerramento
-	///     { "cdSituacao": 9, "data": "2026-10-28", "valorQuitacao": 1500.00 }
+	///     { "cdSituacao": 12, "data": "2026-11-02" }
 	/// </remarks>
 	/// <response code="200">Contrato com a situação nova.</response>
 	/// <response code="400">Situação que não é de encerramento, ou dados inválidos.</response>
@@ -245,11 +311,44 @@ public sealed class ContratosController : ControllerBase
 	}
 
 	/// <summary>
+	/// Estorna o contrato para APROVADO (2) ou RENOVAÇÃO (5). Administradores e Gestores.
+	/// </summary>
+	/// <remarks>
+	/// Vale a partir de qualquer outra situação (desfaz quitação, cancelamento,
+	/// encerramento, finalização ou qualquer outra). Limpa a referência e o
+	/// valor da quitação e as datas de finalização, cancelamento e
+	/// encerramento. As parcelas não mudam (estorno de parcela:
+	/// POST .../parcelas/{numeroParcela}/estorno).
+	///
+	///     POST /api/contratos/1/123/estorno
+	///     { "cdSituacao": 2 }
+	/// </remarks>
+	/// <response code="200">Contrato estornado.</response>
+	/// <response code="400">Situação diferente de 2 e 5.</response>
+	/// <response code="403">Não é Administrador nem Gestor.</response>
+	/// <response code="404">Contrato não encontrado.</response>
+	/// <response code="409">O contrato já está na situação pedida.</response>
+	[HttpPost("{cdFil:decimal}/{sqCtr:decimal}/estorno")]
+	[Authorize(Roles = Grupos.PerfisExclusaoAssociados)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(ContratoDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> Estornar(decimal cdFil, decimal sqCtr, [FromBody] EstornoContratoDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _contratos.EstornarAsync(cdFil, sqCtr, dados, cancellationToken);
+		Registrar(resultado.Status, $"Contrato estornado para a situação {dados?.CdSituacao:0}", cdFil, sqCtr);
+		return this.Converter(resultado);
+	}
+
+	/// <summary>
 	/// Muda a situação do contrato para uma que não seja de encerramento.
 	/// </summary>
 	/// <remarks>
 	/// Qualquer situação de GET /api/contratos/situacoes, menos 4, 9, 10, 12 e
-	/// 13 (essas: POST .../encerramento). Limpa a referência de quitação e as
+	/// 13 (essas: POST .../quitacao, .../cancelamento ou .../encerramento). Limpa a referência de quitação e as
 	/// datas de finalização, cancelamento e encerramento (serve também para
 	/// reabrir um contrato encerrado).
 	///

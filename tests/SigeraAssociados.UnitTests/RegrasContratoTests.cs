@@ -401,6 +401,36 @@ public sealed class RegrasContratoTests
 		Assert.Null(RegrasContrato.Validar(Valido(dataContrato: new DateTime(2020, 1, 1), primeira: new DateTime(2020, 2, 1)), inclusao: false));
 	}
 
+	// ----- Quitação e cancelamento por endpoints próprios -----
+
+	[Fact]
+	public void Quitacao_SemPagamentoPorDentro_GravaQuitado()
+	{
+		var dados = new QuitacaoContratoDados { Data = new DateTime(2026, 11, 2), ValorQuitacao = 1500m }.ParaEncerramento();
+
+		Assert.Equal(RegrasContrato.SituacaoQuitado, dados.CdSituacao);
+		Assert.Equal(new DateTime(2026, 11, 2), dados.Data);
+		Assert.Equal(1500m, dados.ValorQuitacao);
+	}
+
+	[Fact]
+	public void Quitacao_ComPagamentoPorDentro_GravaQuitadoPorDentro()
+	{
+		var dados = new QuitacaoContratoDados { PagamentoPorDentro = true }.ParaEncerramento();
+
+		Assert.Equal(RegrasContrato.SituacaoQuitadoPorDentro, dados.CdSituacao);
+	}
+
+	[Fact]
+	public void Cancelamento_GravaCancelado()
+	{
+		var dados = new CancelamentoContratoDados { Data = new DateTime(2026, 11, 2) }.ParaEncerramento();
+
+		Assert.Equal(RegrasContrato.SituacaoCancelado, dados.CdSituacao);
+		Assert.Equal(new DateTime(2026, 11, 2), dados.Data);
+		Assert.Null(dados.ValorQuitacao);
+	}
+
 	// ----- Situação: encerramento e demais -----
 
 	[Theory]
@@ -467,5 +497,44 @@ public sealed class RegrasContratoTests
 	public void Encerrar_SoDeAprovadoOuRenovacao(int? atual, bool pode)
 	{
 		Assert.Equal(pode, RegrasContrato.PodeEncerrar(atual) is null);
+	}
+
+	// ----- Estornos -----
+
+	[Theory]
+	[InlineData(2, true)]
+	[InlineData(5, true)]
+	[InlineData(9, false)]
+	[InlineData(null, false)]
+	public void EstornoDoContrato_SoParaAprovadoOuRenovacao(int? situacao, bool valido)
+	{
+		Assert.Equal(valido, RegrasContrato.ValidarEstorno(new EstornoContratoDados { CdSituacao = situacao }) is null);
+	}
+
+	[Fact]
+	public void EstornoDoContrato_DeQualquerSituacaoMenosAMesma()
+	{
+		Assert.Null(RegrasContrato.PodeEstornar(9, 2));
+		Assert.Null(RegrasContrato.PodeEstornar(5, 2));
+		Assert.Null(RegrasContrato.PodeEstornar(null, 5));
+		Assert.NotNull(RegrasContrato.PodeEstornar(2, 2));
+	}
+
+	[Theory]
+	[InlineData(1, 100, true)]
+	[InlineData(2, 100, true)]
+	[InlineData(3, 0, false)]
+	[InlineData(null, null, false)]
+	public void EstornoDaParcela_SoParcelaPaga(int? tipo, int? pago, bool pode)
+	{
+		Assert.Equal(pode, RegrasContrato.PodeEstornarParcela(tipo, pago) is null);
+	}
+
+	[Fact]
+	public void EstornoDaParcela_SoAutomaticaGeraCredito()
+	{
+		Assert.True(RegrasContrato.EstornoGeraCredito(2));
+		Assert.False(RegrasContrato.EstornoGeraCredito(1));
+		Assert.False(RegrasContrato.EstornoGeraCredito(3));
 	}
 }

@@ -443,7 +443,7 @@ public sealed class ContratosService : IContratosService
 		if (dados.CdSituacao is decimal situacaoPedida && situacaoPedida != contrato.CD_ST_CTR)
 		{
 			return Invalido<ContratoDto>(RegrasContrato.EhEncerramento(situacaoPedida)
-				? "A situação não muda por aqui: para quitar, encerrar, finalizar ou cancelar use POST /api/contratos/{cdFil}/{sqCtr}/encerramento."
+				? "A situação não muda por aqui: para quitar use POST /api/contratos/{cdFil}/{sqCtr}/quitacao, para cancelar .../cancelamento e para encerrar ou finalizar .../encerramento."
 				: "A situação não muda por aqui: use PUT /api/contratos/{cdFil}/{sqCtr}/situacao.");
 		}
 
@@ -568,6 +568,34 @@ public sealed class ContratosService : IContratosService
 			contrato.DT_CAN_CTRT = null;
 			return "Situação do contrato alterada.";
 		}, cancellationToken);
+	}
+
+	/// <inheritdoc />
+	public async Task<ResultadoTabelaApoio<ContratoDto>> EstornarAsync(
+		decimal cdFil,
+		decimal sqCtr,
+		EstornoContratoDados dados,
+		CancellationToken cancellationToken = default)
+	{
+		if (RegrasContrato.ValidarEstorno(dados) is string erro)
+		{
+			return Invalido<ContratoDto>(erro);
+		}
+
+		var situacao = dados.CdSituacao!.Value;
+
+		return await MudarSituacaoAsync(cdFil, sqCtr, situacao, (contrato, _) =>
+		{
+			// Desfaz quitação, finalização e cancelamento; o encerramento é
+			// limpo pela DataEncerramento (2 e 5 não têm encerramento).
+			contrato.DT_QIT_CTRT = null;
+			contrato.VR_QIT_CTR = null;
+			contrato.DT_FIN_CTR = null;
+			contrato.DT_CAN_CTRT = null;
+			return situacao == RegrasContrato.SituacaoAprovado
+				? "Contrato estornado para APROVADO."
+				: "Contrato estornado para RENOVAÇÃO.";
+		}, cancellationToken, atual => RegrasContrato.PodeEstornar(atual, situacao));
 	}
 
 	/// <summary>

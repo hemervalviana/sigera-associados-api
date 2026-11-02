@@ -24,6 +24,12 @@ public interface IContratosService
 	/// <summary>Quitar (9, 13), encerrar (4), finalizar (12) ou cancelar (10).</summary>
 	Task<ResultadoTabelaApoio<ContratoDto>> EncerrarAsync(decimal cdFil, decimal sqCtr, EncerramentoContratoDados dados, CancellationToken cancellationToken = default);
 
+	/// <summary>
+	/// Estorno: volta para APROVADO (2) ou RENOVAÇÃO (5) de qualquer outra
+	/// situação; limpa quitação (data e valor), finalização, cancelamento e encerramento.
+	/// </summary>
+	Task<ResultadoTabelaApoio<ContratoDto>> EstornarAsync(decimal cdFil, decimal sqCtr, EstornoContratoDados dados, CancellationToken cancellationToken = default);
+
 	/// <summary>Qualquer outra situação; limpa as datas de encerramento.</summary>
 	Task<ResultadoTabelaApoio<ContratoDto>> AlterarSituacaoAsync(decimal cdFil, decimal sqCtr, SituacaoContratoDados dados, CancellationToken cancellationToken = default);
 

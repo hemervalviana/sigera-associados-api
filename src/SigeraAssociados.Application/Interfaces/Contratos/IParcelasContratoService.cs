@@ -18,6 +18,12 @@ public interface IParcelasContratoService
 	Task<ResultadoTabelaApoio<ParcelaDto>> AlterarAsync(decimal cdFil, decimal sqCtr, decimal numeroParcela, ParcelaDados dados, CancellationToken cancellationToken = default);
 
 	/// <summary>
+	/// Estorna o pagamento da parcela (volta para SEM BAIXA). Baixa automática
+	/// gera crédito do associado (T009EXTRA) com o valor pago.
+	/// </summary>
+	Task<ResultadoTabelaApoio<EstornoParcelaDto>> EstornarAsync(decimal cdFil, decimal sqCtr, decimal numeroParcela, string login, CancellationToken cancellationToken = default);
+
+	/// <summary>
 	/// Exclusão física. Parcela paga exige podeExcluirPaga; não paga,
 	/// podeExcluirNaoPaga (senão Proibido). A única parcela não é excluída.
 	/// </summary>

@@ -150,10 +150,19 @@ Antes de começar:
 | [ ] | 18.6 | Alterar trocando o associado ou o produto | Outro `sqPesCli` ou `cdProduto` | **400** |
 | [ ] | 18.6 | Mudar a situação pelo PUT | `"cdSituacao": 4` | **400** indicando POST .../encerramento |
 | [ ] | 18.16 | Encerrar (4) | Contrato aprovado (2); `{ "cdSituacao": 4 }` | **200**, `dataEncerramento` = hoje |
-| [ ] | 18.16 | Quitar (9) | `{ "cdSituacao": 9, "data": "2026-10-28", "valorQuitacao": 1500 }` | **200**, `dataQuitacao` e `valorQuitacao` gravados; parcelas travadas (409 no 18.9) |
-| [ ] | 18.16 | Cancelar (10) sem data | `{ "cdSituacao": 10 }` | **200**, `dataCancelamento` = hoje, `dataQuitacao` nula |
+| [ ] | 18.18 | Quitar | `{ "data": "2026-11-02", "valorQuitacao": 1500 }` | **200**, situação 9, `dataQuitacao` e `valorQuitacao` gravados; parcelas travadas (409 no 18.9) |
+| [ ] | 18.18 | Quitar com pagamento por dentro | `{ "pagamentoPorDentro": true }` | **200**, situação 13 |
+| [ ] | 18.19 | Cancelar sem data | `{}` | **200**, situação 10, `dataCancelamento` = hoje, `dataQuitacao` nula |
+| [ ] | 18.19 | Cancelar contrato já cancelado | — | **409** "Só contrato APROVADO (2) ou em RENOVAÇÃO (5)" |
 | [ ] | 18.16 | Encerrar contrato que não está aprovado nem em renovação | Contrato já cancelado (situação 10) | **409** "Só contrato APROVADO (2) ou em RENOVAÇÃO (5)" |
 | [ ] | 18.16 | Situação comum no encerramento | `{ "cdSituacao": 2 }` | **400** indicando PUT .../situacao |
+| [ ] | 18.18 | Estornar contrato quitado | Contrato do 18.16 (quitado); `{ "cdSituacao": 2 }` como administrador | **200**, situação 2, quitação e encerramento nulos |
+| [ ] | 18.18 | Estornar para a situação atual | `{ "cdSituacao": 2 }` de novo | **409** |
+| [ ] | 18.18 | Estornar como Financeiro | Outro usuário | **403** |
+| [ ] | 18.19 | Estornar parcela com baixa manual | Parcela paga no 18.9 | **200**, `tipoBaixa` 3, saldo = -valor, `sqCreditoGerado` nulo |
+| [ ] | 18.19 | Estornar parcela com baixa automática | Parcela com `tipoBaixa` 2 | **200**, `sqCreditoGerado` preenchido; crédito aparece em /api/associados/{sqPesCli}/creditos com saldo = valor |
+| [ ] | 18.19 | Estornar parcela não paga | — | **409** |
+| [ ] | 18.19 | Estornar parcela de contrato quitado | Contrato com situação 9 | **409** "Estorne o contrato antes" |
 | [ ] | 18.17 | Reabrir | `{ "cdSituacao": 2 }` | **200**, datas de quitação, finalização, cancelamento e encerramento nulas |
 | [ ] | 18.17 | Encerramento pelo PUT de situação | `{ "cdSituacao": 9 }` | **400** indicando POST .../encerramento |
 | [ ] | 18.8 | Incluir parcela | — | **201**, número 13; 18.5 mostra `quantidadeParcelas` 13 |

@@ -91,6 +91,12 @@ public static class Grupos
 	];
 
 	/// <summary>
+	/// Perfis que estornam o pagamento de parcela (manual ou automático).
+	/// </summary>
+	public const string PerfisEstornoParcela =
+		AdministradorLegado + "," + Administradores + "," + Gestores + "," + CoordenadoraAdmOperacional + "," + Financeiro;
+
+	/// <summary>
 	/// Os sete grupos funcionais oficiais.
 	/// </summary>
 	public static readonly IReadOnlyList<string> Funcionais =

@@ -305,8 +305,12 @@ Implementação: `Api/Erros/RespostasErro.cs` (formato e títulos), `Api/Erros/T
 | POST / PUT / DELETE | `/api/corretores/{sqPesCorretor}/enderecos`, `/telefones`, `/contas`, `/referencias`, `/pix` (PUT e DELETE com `/{sequencia}`) | Admin e Gestores |
 | GET | `/api/contratos?busca=&sqPesCli=&cdFil=&cdSituacao=&sqPesCorretor=&cdProduto=`, `/api/contratos/{cdFil}/{sqCtr}` | Conforme acessos (carteira do corretor: só os contratos dele) |
 | POST / PUT | `/api/contratos` (PUT com `/{cdFil}/{sqCtr}`) | Conforme acessos (a inclusão gera as parcelas) |
-| POST | `/api/contratos/{cdFil}/{sqCtr}/encerramento` | Conforme acessos (quitar 9/13, encerrar 4, finalizar 12, cancelar 10) |
+| POST | `/api/contratos/{cdFil}/{sqCtr}/quitacao` | Conforme acessos (quitar: 9, ou 13 com `pagamentoPorDentro`) |
+| POST | `/api/contratos/{cdFil}/{sqCtr}/cancelamento` | Conforme acessos (cancelar: 10) |
+| POST | `/api/contratos/{cdFil}/{sqCtr}/encerramento` | Conforme acessos (encerrar 4, finalizar 12; ainda aceita 9/10/13) |
 | PUT | `/api/contratos/{cdFil}/{sqCtr}/situacao` | Conforme acessos (demais situações; o PUT do contrato não muda a situação) |
+| POST | `/api/contratos/{cdFil}/{sqCtr}/estorno` | Admin e Gestores (volta para APROVADO 2 ou RENOVAÇÃO 5, de qualquer situação) |
+| POST | `/api/contratos/{cdFil}/{sqCtr}/parcelas/{numeroParcela}/estorno` | Admin, Gestores, Coordenadora Adm. & Operacional e Financeiro (baixa automática gera crédito do associado) |
 | DELETE | `/api/contratos/{cdFil}/{sqCtr}` | Admin e Gestores (exclusão lógica) |
 | GET / POST | `/api/contratos/{cdFil}/{sqCtr}/parcelas` | Conforme acessos (vencimento, valor e baixa manual; contrato quitado trava as parcelas) |
 | PUT / DELETE | `/api/contratos/{cdFil}/{sqCtr}/parcelas/{numeroParcela}` | Conforme acessos; DELETE de parcela não paga: Admin e Gestores; de parcela paga: Admin e Financeiro |

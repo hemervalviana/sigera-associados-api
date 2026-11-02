@@ -681,6 +681,33 @@ public sealed class GestaoUsuariosEndpointsTests
 		Assert.Equal(HttpStatusCode.Forbidden, excluir.StatusCode);
 	}
 
+	[Theory]
+	[InlineData("Corretores")]
+	[InlineData("Atendimento")]
+	[InlineData("Financeiro")]
+	public async Task EstornarContrato_SemSerAdministradorOuGestor_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.PostAsJsonAsync("/api/contratos/1/123/estorno", new { cdSituacao = 2 });
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
+	[Theory]
+	[InlineData("Corretores")]
+	[InlineData("Atendimento")]
+	public async Task EstornarParcela_ForaDosGruposPermitidos_DeveRetornar403(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var resposta = await cliente.PostAsync("/api/contratos/1/123/parcelas/1/estorno", null);
+
+		Assert.Equal(HttpStatusCode.Forbidden, resposta.StatusCode);
+	}
+
 	// Financeiro chega à exclusão de parcela (parcela paga); a decisão final é do serviço.
 	[Theory]
 	[InlineData("Corretores")]
