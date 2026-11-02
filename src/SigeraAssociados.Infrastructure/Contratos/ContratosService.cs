@@ -611,13 +611,16 @@ public sealed class ContratosService : IContratosService
 			}
 
 			// Auxílio anterior: outro contrato de auxílio financeiro do associado
-			// (não excluído pela API, em qualquer situação) feito antes deste.
+			// (não excluído pela API) feito antes deste, numa situação que conta
+			// (2, 5, 4, 9, 12 e 13; cancelado e as demais não contam).
+			var situacoesQueContam = RegrasContrato.SituacoesQueContamComoAuxilioAnterior.ToList();
 			var temAuxilioAnterior = atual.CD_PRD == RegrasContrato.ProdutoAuxilioFinanceiro
 				&& await db.Contratos.AsNoTracking().AnyAsync(c =>
 					c.CD_EMP == emp
 					&& c.SQ_PES_CLI == atual.SQ_PES_CLI
 					&& c.CD_PRD == RegrasContrato.ProdutoAuxilioFinanceiro
 					&& c.DT_EXC_API == null
+					&& c.CD_ST_CTR != null && situacoesQueContam.Contains(c.CD_ST_CTR.Value)
 					&& !(c.CD_FIL == atual.CD_FIL && c.SQ_CTR == atual.SQ_CTR)
 					&& (c.DT_CTR < atual.DT_CTR || (c.DT_CTR == atual.DT_CTR && c.DT_CAD < atual.DT_CAD)),
 					cancellationToken);

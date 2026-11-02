@@ -505,6 +505,12 @@ public sealed class ParcelaDto
 	/// Financeiro excluem.
 	/// </summary>
 	public bool Paga { get; init; }
+
+	/// <summary>
+	/// Vinculada a uma remessa (averbação ou marca de remessa): não pode ser
+	/// alterada nem excluída, só estornada.
+	/// </summary>
+	public bool EmRemessa { get; init; }
 }
 
 /// <summary>Item de tabela de apoio do contrato.</summary>

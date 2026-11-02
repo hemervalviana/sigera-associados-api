@@ -568,4 +568,28 @@ public sealed class RegrasContratoTests
 		Assert.NotNull(RegrasContrato.SituacaoDoEstorno(7, false, null).Erro);
 		Assert.Equal(5m, RegrasContrato.SituacaoDoEstorno(7, false, 5).Situacao);
 	}
+
+	[Theory]
+	[InlineData(2, true)]
+	[InlineData(5, true)]
+	[InlineData(4, true)]
+	[InlineData(9, true)]
+	[InlineData(12, true)]
+	[InlineData(13, true)]
+	[InlineData(10, false)]
+	[InlineData(1, false)]
+	public void AuxilioAnterior_CanceladoNaoConta(int situacao, bool conta)
+	{
+		Assert.Equal(conta, RegrasContrato.SituacoesQueContamComoAuxilioAnterior.Contains(situacao));
+	}
+
+	[Theory]
+	[InlineData(null, null, false)]
+	[InlineData(null, false, false)]
+	[InlineData(15, null, true)]
+	[InlineData(null, true, true)]
+	public void ParcelaEmRemessa_AverbacaoOuMarca(int? averbacao, bool? remessa, bool emRemessa)
+	{
+		Assert.Equal(emRemessa, RegrasContrato.ParcelaEmRemessa(averbacao, remessa));
+	}
 }

@@ -158,12 +158,16 @@ Antes de começar:
 | [ ] | 18.16 | Situação comum no encerramento | `{ "cdSituacao": 2 }` | **400** indicando PUT .../situacao |
 | [ ] | 18.18 | Estornar plano associativo quitado | Contrato produto 1 quitado; `{ }` como administrador | **200**, situação 2, quitação e encerramento nulos |
 | [ ] | 18.18 | Estornar o primeiro auxílio financeiro | Contrato produto 2, primeiro do associado, cancelado; `{ }` | **200**, situação 2 |
-| [ ] | 18.18 | Estornar um auxílio a partir do segundo | Associado com auxílio anterior; `{ }` | **200**, situação 5 (RENOVAÇÃO) |
+| [ ] | 18.18 | Estornar um auxílio a partir do segundo | Associado com auxílio anterior aprovado, renovado, encerrado, quitado ou finalizado; `{ }` | **200**, situação 5 (RENOVAÇÃO) |
+| [ ] | 18.18 | Auxílio anterior cancelado | Único auxílio anterior do associado está cancelado (10); `{ }` | **200**, situação 2 (o cancelado não conta) |
 | [ ] | 18.18 | Pedir situação diferente da decidida | Plano associativo com `{ "cdSituacao": 5 }` | **400** com o motivo |
 | [ ] | 18.18 | Estornar para a situação atual | Mesmo contrato de novo | **409** |
 | [ ] | 18.18 | Estornar como Financeiro | Outro usuário | **403** |
 | [ ] | 18.19 | Estornar parcela com baixa manual | Parcela paga no 18.9 | **200**, `tipoBaixa` 3, saldo = -valor, `sqCreditoGerado` nulo |
 | [ ] | 18.19 | Estornar parcela com baixa automática | Parcela com `tipoBaixa` 2 | **200**, `sqCreditoGerado` preenchido; crédito aparece em /api/associados/{sqPesCli}/creditos com saldo = valor |
+| [ ] | 18.9 | Alterar parcela em remessa | Parcela com `emRemessa: true` | **409** "vinculada a uma remessa" |
+| [ ] | 18.10 | Excluir parcela em remessa | Parcela com `emRemessa: true` | **409** |
+| [ ] | 18.19 | Estornar parcela em remessa | Parcela paga com `emRemessa: true` | **200**; depois `emRemessa: false` e a parcela pode ser alterada |
 | [ ] | 18.19 | Estornar parcela não paga | — | **409** |
 | [ ] | 18.19 | Estornar parcela de contrato quitado | Contrato com situação 9 | **409** "Estorne o contrato antes" |
 | [ ] | 18.17 | Reabrir | `{ "cdSituacao": 2 }` | **200**, datas de quitação, finalização, cancelamento e encerramento nulas |

@@ -318,7 +318,8 @@ public sealed class ContratosController : ControllerBase
 	/// - PLANO ASSOCIATIVO (1): sempre APROVADO (2);
 	/// - AUXÍLIO FINANCEIRO (2): APROVADO (2) se for o primeiro auxílio do
 	///   associado; RENOVAÇÃO (5) se ele já tinha auxílio antes deste contrato
-	///   (outro contrato de auxílio, em qualquer situação, com data anterior);
+	///   (outro contrato de auxílio com data anterior, aprovado, em renovação,
+	///   encerrado, quitado, finalizado ou quitado por dentro; cancelado não conta);
 	/// - outros produtos: `cdSituacao` obrigatório, 2 ou 5.
 	///
 	/// Nos produtos 1 e 2 pode omitir o corpo ou `cdSituacao`; se vier

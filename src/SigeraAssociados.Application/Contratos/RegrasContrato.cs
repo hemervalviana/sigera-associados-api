@@ -133,6 +133,17 @@ public static class RegrasContrato
 			: "O estorno volta o contrato para APROVADO (cdSituacao 2) ou RENOVAÇÃO (cdSituacao 5).";
 
 	/// <summary>
+	/// Situações em que um auxílio financeiro anterior conta para o estorno
+	/// ir para RENOVAÇÃO: aprovado (2), renovação (5), encerrado (4),
+	/// quitado (9), finalizado (12) e quitado por dentro (13). Cancelado e as
+	/// demais não contam.
+	/// </summary>
+	public static readonly IReadOnlyList<decimal> SituacoesQueContamComoAuxilioAnterior =
+	[
+		SituacaoAprovado, SituacaoRenovacao, SituacaoEncerrado, SituacaoQuitado, SituacaoFinalizado, SituacaoQuitadoPorDentro
+	];
+
+	/// <summary>
 	/// Situação de destino do estorno:
 	/// - PLANO ASSOCIATIVO (1): sempre APROVADO (2);
 	/// - AUXÍLIO FINANCEIRO (2): APROVADO (2) se for o primeiro auxílio do
@@ -472,6 +483,15 @@ public static class RegrasContrato
 
 	/// <summary>Estorno de baixa automática vira crédito do associado.</summary>
 	public static bool EstornoGeraCredito(decimal? tipoBaixa) => tipoBaixa == BaixaAutomatica;
+
+	/// <summary>
+	/// Parcela vinculada a uma remessa (averbação em T009RBSR ou marca de
+	/// remessa): não pode ser alterada nem excluída; só estornada.
+	/// </summary>
+	public static bool ParcelaEmRemessa(decimal? averbacao, bool? remessa) => averbacao is not null || remessa == true;
+
+	public const string MensagemParcelaEmRemessa =
+		"A parcela está vinculada a uma remessa (averbação): não pode ser alterada nem excluída. Para desfazer, estorne a parcela (POST .../parcelas/{numeroParcela}/estorno).";
 
 	/// <summary>Contrato quitado (9): parcelas não são incluídas, alteradas nem excluídas.</summary>
 	public static bool ParcelasTravadas(decimal? situacaoContrato) => situacaoContrato == SituacaoQuitado;

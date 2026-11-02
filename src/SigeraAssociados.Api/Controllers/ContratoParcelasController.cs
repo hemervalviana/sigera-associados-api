@@ -87,7 +87,9 @@ public sealed class ContratoParcelasController : ControllerBase
 	///   (inclusive a automática), então reenvie `valorPago` e `dataPagamento`
 	///   atuais para conservar o pagamento;
 	/// - com o parâmetro 1 da filial ligado (T009PARM, TP_FLG = 'S'), parcela
-	///   paga precisa ficar com saldo zero (pago = valor).
+	///   paga precisa ficar com saldo zero (pago = valor);
+	/// - parcela vinculada a uma remessa (`emRemessa`: averbação ou marca de
+	///   remessa) não pode ser alterada (409); só estornada.
 	///
 	///     PUT /api/contratos/{cdFil}/{sqCtr}/parcelas/{numeroParcela}
 	///     { "dataVencimento": "2027-12-10", "valor": 280.50, "dataPagamento": "2027-12-08", "valorPago": 280.50 }
@@ -95,7 +97,7 @@ public sealed class ContratoParcelasController : ControllerBase
 	/// <response code="200">Parcela alterada.</response>
 	/// <response code="400">Dados inválidos ou saldo diferente de zero com o parâmetro 1 ligado.</response>
 	/// <response code="404">Contrato ou parcela não encontrados.</response>
-	/// <response code="409">Contrato quitado.</response>
+	/// <response code="409">Contrato quitado, ou parcela em remessa.</response>
 	[HttpPut("{numeroParcela:decimal}")]
 	[Consumes("application/json")]
 	[ProducesResponseType(typeof(ParcelaDto), StatusCodes.Status200OK)]
@@ -158,12 +160,13 @@ public sealed class ContratoParcelasController : ControllerBase
 	/// <remarks>
 	/// Parcela não paga: Administradores e Gestores. Parcela paga (tipo de
 	/// baixa diferente de 3): Administradores e Financeiro, como no legado.
-	/// A última parcela do contrato não pode ser excluída (409).
+	/// A última parcela do contrato não pode ser excluída (409). Parcela
+	/// vinculada a uma remessa também não (409): só estornada.
 	/// </remarks>
 	/// <response code="200">Parcela excluída.</response>
 	/// <response code="403">Grupo sem permissão para esta parcela.</response>
 	/// <response code="404">Contrato ou parcela não encontrados.</response>
-	/// <response code="409">Contrato quitado, ou única parcela do contrato.</response>
+	/// <response code="409">Contrato quitado, parcela em remessa, ou única parcela do contrato.</response>
 	[HttpDelete("{numeroParcela:decimal}")]
 	[Authorize(Roles = Grupos.PerfisExclusaoParcelas)]
 	[ProducesResponseType(typeof(ParcelaDto), StatusCodes.Status200OK)]

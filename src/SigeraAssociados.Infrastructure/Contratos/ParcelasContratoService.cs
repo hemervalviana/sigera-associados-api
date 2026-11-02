@@ -159,6 +159,11 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 			return NaoEncontrado<ParcelaDto>("Parcela não encontrada.");
 		}
 
+		if (RegrasContrato.ParcelaEmRemessa(parcela.CD_AVB, parcela.ID_REM))
+		{
+			return Conflito<ParcelaDto>(RegrasContrato.MensagemParcelaEmRemessa);
+		}
+
 		parcela.DT_VEN = dados.DataVencimento!.Value.Date;
 		parcela.VR_PCL = dados.Valor!.Value;
 
@@ -220,6 +225,11 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 		if (parcela is null)
 		{
 			return NaoEncontrado<ParcelaDto>("Parcela não encontrada.");
+		}
+
+		if (RegrasContrato.ParcelaEmRemessa(parcela.CD_AVB, parcela.ID_REM))
+		{
+			return Conflito<ParcelaDto>(RegrasContrato.MensagemParcelaEmRemessa);
 		}
 
 		// oe_delete: parcela paga só o Financeiro apaga (aqui também os administradores).
@@ -469,6 +479,7 @@ public sealed class ParcelasContratoService : IParcelasContratoService
 		IdCobranca = p.ID_COB_PCL,
 		DataGeracao = p.DT_GER_PCL,
 		Usuario = p.NM_USU,
-		Paga = RegrasContrato.ParcelaPaga(p.ID_PGT_AUT)
+		Paga = RegrasContrato.ParcelaPaga(p.ID_PGT_AUT),
+		EmRemessa = RegrasContrato.ParcelaEmRemessa(p.CD_AVB, p.ID_REM)
 	};
 }
