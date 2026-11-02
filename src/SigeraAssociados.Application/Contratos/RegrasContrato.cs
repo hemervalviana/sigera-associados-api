@@ -128,9 +128,46 @@ public static class RegrasContrato
 	/// RENOVAÇÃO (5), a partir de qualquer outra situação.
 	/// </summary>
 	public static string? ValidarEstorno(EstornoContratoDados? d) =>
-		d?.CdSituacao is SituacaoAprovado or SituacaoRenovacao
+		d?.CdSituacao is null or SituacaoAprovado or SituacaoRenovacao
 			? null
 			: "O estorno volta o contrato para APROVADO (cdSituacao 2) ou RENOVAÇÃO (cdSituacao 5).";
+
+	/// <summary>
+	/// Situação de destino do estorno:
+	/// - PLANO ASSOCIATIVO (1): sempre APROVADO (2);
+	/// - AUXÍLIO FINANCEIRO (2): APROVADO (2) se for o primeiro auxílio do
+	///   associado; RENOVAÇÃO (5) do segundo em diante;
+	/// - outros produtos: a situação enviada (2 ou 5), obrigatória.
+	/// Nos produtos 1 e 2, situação enviada diferente da calculada: erro.
+	/// </summary>
+	public static (decimal? Situacao, string? Erro) SituacaoDoEstorno(decimal? produto, bool temAuxilioAnterior, decimal? pedida)
+	{
+		decimal? calculada = produto switch
+		{
+			ProdutoPlanoAssociativo => SituacaoAprovado,
+			ProdutoAuxilioFinanceiro => temAuxilioAnterior ? SituacaoRenovacao : SituacaoAprovado,
+			_ => null
+		};
+
+		if (calculada is null)
+		{
+			return pedida is null
+				? (null, "Informe a situação do estorno (cdSituacao): 2 (APROVADO) ou 5 (RENOVAÇÃO).")
+				: (pedida, null);
+		}
+
+		if (pedida is not null && pedida != calculada)
+		{
+			var motivo = produto == ProdutoPlanoAssociativo
+				? "o PLANO ASSOCIATIVO sempre volta para APROVADO (2)"
+				: temAuxilioAnterior
+					? "o associado já tinha auxílio financeiro antes deste contrato, então ele volta para RENOVAÇÃO (5)"
+					: "este é o primeiro auxílio financeiro do associado, então ele volta para APROVADO (2)";
+			return (null, $"Estorno para {pedida:0} não permitido: {motivo}. Pode omitir cdSituacao.");
+		}
+
+		return (calculada, null);
+	}
 
 	/// <summary>O contrato já está na situação pedida: nada a estornar.</summary>
 	public static string? PodeEstornar(decimal? situacaoAtual, decimal situacaoNova) =>

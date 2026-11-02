@@ -6753,10 +6753,10 @@
                 "quitacao"
               ]
             },
-            "description": "Quita o contrato (só de APROVADO (2) ou RENOVAÇÃO (5); senão 409). `data` = referência da quitação (omitida: hoje); `valorQuitacao` opcional; `pagamentoPorDentro: true` grava 13 (QUITADO PGTO POR DENTRO), senão 9 (QUITADO, trava as parcelas: rode depois dos testes de parcela).",
+            "description": "Volta para APROVADO (2) ou RENOVAÇÃO (5). A API decide pelo produto: PLANO ASSOCIATIVO sempre 2; AUXÍLIO FINANCEIRO 2 no primeiro auxílio do associado e 5 do segundo em diante; outros produtos exigem cdSituacao. Limpa quitação (data e valor), finalização, cancelamento e encerramento. Já na situação: 409.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"data\": \"2026-11-02\",\n  \"valorQuitacao\": 1500.0,\n  \"pagamentoPorDentro\": false\n}",
+              "raw": "{ }",
               "options": {
                 "raw": {
                   "language": "json"
@@ -6909,10 +6909,10 @@
                 "estorno"
               ]
             },
-            "description": "Volta para APROVADO (2) ou RENOVAÇÃO (5) de qualquer outra situação. Limpa quitação (data e valor), finalização, cancelamento e encerramento. Já na situação pedida: 409.",
+            "description": "Volta para APROVADO (2) ou RENOVAÇÃO (5). A API decide pelo produto: PLANO ASSOCIATIVO sempre 2; AUXÍLIO FINANCEIRO 2 no primeiro auxílio do associado e 5 do segundo em diante; outros produtos exigem cdSituacao. Limpa quitação (data e valor), finalização, cancelamento e encerramento. Já na situação: 409.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cdSituacao\": 2\n}",
+              "raw": "{ }",
               "options": {
                 "raw": {
                   "language": "json"

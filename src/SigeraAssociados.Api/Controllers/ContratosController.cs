@@ -314,6 +314,16 @@ public sealed class ContratosController : ControllerBase
 	/// Estorna o contrato para APROVADO (2) ou RENOVAÇÃO (5). Administradores e Gestores.
 	/// </summary>
 	/// <remarks>
+	/// A situação de destino depende do produto:
+	/// - PLANO ASSOCIATIVO (1): sempre APROVADO (2);
+	/// - AUXÍLIO FINANCEIRO (2): APROVADO (2) se for o primeiro auxílio do
+	///   associado; RENOVAÇÃO (5) se ele já tinha auxílio antes deste contrato
+	///   (outro contrato de auxílio, em qualquer situação, com data anterior);
+	/// - outros produtos: `cdSituacao` obrigatório, 2 ou 5.
+	///
+	/// Nos produtos 1 e 2 pode omitir o corpo ou `cdSituacao`; se vier
+	/// diferente do que a API decidir, 400 com o motivo.
+	///
 	/// Vale a partir de qualquer outra situação (desfaz quitação, cancelamento,
 	/// encerramento, finalização ou qualquer outra). Limpa a referência e o
 	/// valor da quitação e as datas de finalização, cancelamento e
@@ -321,25 +331,24 @@ public sealed class ContratosController : ControllerBase
 	/// POST .../parcelas/{numeroParcela}/estorno).
 	///
 	///     POST /api/contratos/1/123/estorno
-	///     { "cdSituacao": 2 }
+	///     { }
 	/// </remarks>
 	/// <response code="200">Contrato estornado.</response>
-	/// <response code="400">Situação diferente de 2 e 5.</response>
+	/// <response code="400">Situação diferente de 2 e 5, ou diferente da decidida pelo produto.</response>
 	/// <response code="403">Não é Administrador nem Gestor.</response>
 	/// <response code="404">Contrato não encontrado.</response>
 	/// <response code="409">O contrato já está na situação pedida.</response>
 	[HttpPost("{cdFil:decimal}/{sqCtr:decimal}/estorno")]
 	[Authorize(Roles = Grupos.PerfisExclusaoAssociados)]
-	[Consumes("application/json")]
 	[ProducesResponseType(typeof(ContratoDto), StatusCodes.Status200OK)]
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
 	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-	public async Task<IActionResult> Estornar(decimal cdFil, decimal sqCtr, [FromBody] EstornoContratoDados dados, CancellationToken cancellationToken)
+	public async Task<IActionResult> Estornar(decimal cdFil, decimal sqCtr, [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] EstornoContratoDados? dados, CancellationToken cancellationToken)
 	{
-		var resultado = await _contratos.EstornarAsync(cdFil, sqCtr, dados, cancellationToken);
-		Registrar(resultado.Status, $"Contrato estornado para a situação {dados?.CdSituacao:0}", cdFil, sqCtr);
+		var resultado = await _contratos.EstornarAsync(cdFil, sqCtr, dados ?? new EstornoContratoDados(), cancellationToken);
+		Registrar(resultado.Status, $"Contrato estornado para a situação {resultado.Item?.CdSituacao:0}", cdFil, sqCtr);
 		return this.Converter(resultado);
 	}
 

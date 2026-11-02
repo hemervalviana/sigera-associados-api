@@ -257,7 +257,12 @@ public sealed class EncerramentoContratoDados
 /// </summary>
 public sealed class EstornoContratoDados
 {
-	/// <summary>2 = APROVADO, 5 = RENOVAÇÃO.</summary>
+	/// <summary>
+	/// Opcional nos produtos 1 e 2, em que a API decide: PLANO ASSOCIATIVO
+	/// sempre 2 (APROVADO); AUXÍLIO FINANCEIRO 2 no primeiro auxílio do
+	/// associado e 5 (RENOVAÇÃO) do segundo em diante. Se vier, tem de bater
+	/// com a decisão. Nos outros produtos: obrigatório, 2 ou 5.
+	/// </summary>
 	public decimal? CdSituacao { get; init; }
 }
 

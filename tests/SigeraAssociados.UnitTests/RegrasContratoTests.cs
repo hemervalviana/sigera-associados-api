@@ -505,7 +505,7 @@ public sealed class RegrasContratoTests
 	[InlineData(2, true)]
 	[InlineData(5, true)]
 	[InlineData(9, false)]
-	[InlineData(null, false)]
+	[InlineData(null, true)]
 	public void EstornoDoContrato_SoParaAprovadoOuRenovacao(int? situacao, bool valido)
 	{
 		Assert.Equal(valido, RegrasContrato.ValidarEstorno(new EstornoContratoDados { CdSituacao = situacao }) is null);
@@ -536,5 +536,36 @@ public sealed class RegrasContratoTests
 		Assert.True(RegrasContrato.EstornoGeraCredito(2));
 		Assert.False(RegrasContrato.EstornoGeraCredito(1));
 		Assert.False(RegrasContrato.EstornoGeraCredito(3));
+	}
+
+	[Theory]
+	[InlineData(false, null)]
+	[InlineData(true, null)]
+	[InlineData(false, 2)]
+	public void Estorno_PlanoAssociativo_SempreAprovado(bool anterior, int? pedida)
+	{
+		Assert.Equal((2m, (string?)null), RegrasContrato.SituacaoDoEstorno(1, anterior, pedida));
+	}
+
+	[Fact]
+	public void Estorno_PlanoAssociativo_RenovacaoRecusada()
+	{
+		Assert.NotNull(RegrasContrato.SituacaoDoEstorno(1, false, 5).Erro);
+	}
+
+	[Fact]
+	public void Estorno_AuxilioFinanceiro_PrimeiroAprovado_DemaisRenovacao()
+	{
+		Assert.Equal(2m, RegrasContrato.SituacaoDoEstorno(2, temAuxilioAnterior: false, null).Situacao);
+		Assert.Equal(5m, RegrasContrato.SituacaoDoEstorno(2, temAuxilioAnterior: true, null).Situacao);
+		Assert.NotNull(RegrasContrato.SituacaoDoEstorno(2, temAuxilioAnterior: true, 2).Erro);
+		Assert.NotNull(RegrasContrato.SituacaoDoEstorno(2, temAuxilioAnterior: false, 5).Erro);
+	}
+
+	[Fact]
+	public void Estorno_OutroProduto_ExigeASituacao()
+	{
+		Assert.NotNull(RegrasContrato.SituacaoDoEstorno(7, false, null).Erro);
+		Assert.Equal(5m, RegrasContrato.SituacaoDoEstorno(7, false, 5).Situacao);
 	}
 }

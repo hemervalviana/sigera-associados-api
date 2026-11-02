@@ -156,8 +156,11 @@ Antes de começar:
 | [ ] | 18.19 | Cancelar contrato já cancelado | — | **409** "Só contrato APROVADO (2) ou em RENOVAÇÃO (5)" |
 | [ ] | 18.16 | Encerrar contrato que não está aprovado nem em renovação | Contrato já cancelado (situação 10) | **409** "Só contrato APROVADO (2) ou em RENOVAÇÃO (5)" |
 | [ ] | 18.16 | Situação comum no encerramento | `{ "cdSituacao": 2 }` | **400** indicando PUT .../situacao |
-| [ ] | 18.18 | Estornar contrato quitado | Contrato do 18.16 (quitado); `{ "cdSituacao": 2 }` como administrador | **200**, situação 2, quitação e encerramento nulos |
-| [ ] | 18.18 | Estornar para a situação atual | `{ "cdSituacao": 2 }` de novo | **409** |
+| [ ] | 18.18 | Estornar plano associativo quitado | Contrato produto 1 quitado; `{ }` como administrador | **200**, situação 2, quitação e encerramento nulos |
+| [ ] | 18.18 | Estornar o primeiro auxílio financeiro | Contrato produto 2, primeiro do associado, cancelado; `{ }` | **200**, situação 2 |
+| [ ] | 18.18 | Estornar um auxílio a partir do segundo | Associado com auxílio anterior; `{ }` | **200**, situação 5 (RENOVAÇÃO) |
+| [ ] | 18.18 | Pedir situação diferente da decidida | Plano associativo com `{ "cdSituacao": 5 }` | **400** com o motivo |
+| [ ] | 18.18 | Estornar para a situação atual | Mesmo contrato de novo | **409** |
 | [ ] | 18.18 | Estornar como Financeiro | Outro usuário | **403** |
 | [ ] | 18.19 | Estornar parcela com baixa manual | Parcela paga no 18.9 | **200**, `tipoBaixa` 3, saldo = -valor, `sqCreditoGerado` nulo |
 | [ ] | 18.19 | Estornar parcela com baixa automática | Parcela com `tipoBaixa` 2 | **200**, `sqCreditoGerado` preenchido; crédito aparece em /api/associados/{sqPesCli}/creditos com saldo = valor |

@@ -153,16 +153,22 @@ public sealed class ContratosService : IContratosService
 			comAssociado = comAssociado.Where(x => x.Nome.StartsWith(inicioNome));
 		}
 
-		var total = await comAssociado.CountAsync(cancellationToken);
+		// Sem ORDER BY/OFFSET no SQL: com a paginação, o SQL Server às vezes
+		// reaproveitava um plano ruim para a consulta parametrizada e estourava
+		// o tempo (no SSMS, a mesma consulta levava 14 ms). As chaves filtradas
+		// (dezenas de milhares de linhas, poucos bytes cada) vêm de uma vez,
+		// como na contagem, e a ordem e a página são feitas aqui.
+		var filtrados = await comAssociado.ToListAsync(cancellationToken);
+		var total = filtrados.Count;
 
-		var pagina = await comAssociado
+		var pagina = filtrados
 			.OrderByDescending(x => x.DT_CTR)
-			.ThenBy(x => x.Nome)
+			.ThenBy(x => x.Nome, OrdemNome)
 			.ThenByDescending(x => x.SQ_CTR)
 			.Skip((request.Pagina - 1) * request.TamanhoPagina)
 			.Take(request.TamanhoPagina)
 			.Select(x => new { x.CD_FIL, x.SQ_CTR })
-			.ToListAsync(cancellationToken);
+			.ToList();
 
 		// Etapa 2: descrições só dos contratos da página.
 		var linhas = new List<LinhaContrato>();
@@ -194,6 +200,11 @@ public sealed class ContratosService : IContratosService
 			Contratos = linhas.Select(ParaResumo).ToList()
 		};
 	}
+
+	/// <summary>Ordem do nome como no banco (português, sem diferença de maiúsculas e acentos).</summary>
+	private static readonly StringComparer OrdemNome = StringComparer.Create(
+		System.Globalization.CultureInfo.GetCultureInfo("pt-BR"),
+		System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace);
 
 	/// <summary>
 	/// Contrato na máscara do legado ##-###### (filial + número, ex.:
@@ -582,7 +593,44 @@ public sealed class ContratosService : IContratosService
 			return Invalido<ContratoDto>(erro);
 		}
 
-		var situacao = dados.CdSituacao!.Value;
+		var escopo = await _escopoAcesso.ObterEscopoAsync(cancellationToken);
+		decimal situacao;
+
+		await using (var db = CriarContexto())
+		{
+			if (await ObterEmpresaAsync(db, cancellationToken) is not decimal emp)
+			{
+				return EmpresaIndefinida<ContratoDto>();
+			}
+
+			var atual = await AcessoContrato.CarregarAsync(db, emp, cdFil, sqCtr, escopo, rastrear: false, cancellationToken);
+
+			if (atual is null)
+			{
+				return NaoEncontrado<ContratoDto>("Contrato não encontrado.");
+			}
+
+			// Auxílio anterior: outro contrato de auxílio financeiro do associado
+			// (não excluído pela API, em qualquer situação) feito antes deste.
+			var temAuxilioAnterior = atual.CD_PRD == RegrasContrato.ProdutoAuxilioFinanceiro
+				&& await db.Contratos.AsNoTracking().AnyAsync(c =>
+					c.CD_EMP == emp
+					&& c.SQ_PES_CLI == atual.SQ_PES_CLI
+					&& c.CD_PRD == RegrasContrato.ProdutoAuxilioFinanceiro
+					&& c.DT_EXC_API == null
+					&& !(c.CD_FIL == atual.CD_FIL && c.SQ_CTR == atual.SQ_CTR)
+					&& (c.DT_CTR < atual.DT_CTR || (c.DT_CTR == atual.DT_CTR && c.DT_CAD < atual.DT_CAD)),
+					cancellationToken);
+
+			var (calculada, erroDestino) = RegrasContrato.SituacaoDoEstorno(atual.CD_PRD, temAuxilioAnterior, dados.CdSituacao);
+
+			if (erroDestino is not null)
+			{
+				return Invalido<ContratoDto>(erroDestino);
+			}
+
+			situacao = calculada!.Value;
+		}
 
 		return await MudarSituacaoAsync(cdFil, sqCtr, situacao, (contrato, _) =>
 		{
