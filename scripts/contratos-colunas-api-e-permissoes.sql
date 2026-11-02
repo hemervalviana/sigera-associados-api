@@ -17,7 +17,10 @@
   2) Permissão do login usr_sisgera_api:
      - INSERT e UPDATE em T009CTRT (sem DELETE: a exclusão é lógica);
      - INSERT, UPDATE e DELETE em T009PAGA (parcelas);
-     - INSERT, UPDATE e DELETE em T009CAT (categorias, só administradores).
+     - INSERT, UPDATE e DELETE em T009SCTR (situações: incluir e alterar,
+       Administradores e Gestores; excluir, administradores), T009CAT (categorias), T009CARE (carências),
+       T009OREC (origens do recurso), T009PROD (produtores) e T009INDI
+       (índices): tabelas de apoio do contrato, gravadas só por administradores.
      A leitura das tabelas de apoio (T009SCTR, T009CARE, T009OREC, T009PROD,
      T009INDI, T009RBSR, T009PARM) já vem do db_datareader.
 
@@ -61,7 +64,12 @@ IF DATABASE_PRINCIPAL_ID(N''usr_sisgera_api'') IS NOT NULL
 BEGIN
     GRANT INSERT, UPDATE ON dbo.T009CTRT TO usr_sisgera_api;
     GRANT INSERT, UPDATE, DELETE ON dbo.T009PAGA TO usr_sisgera_api;
+    GRANT INSERT, UPDATE, DELETE ON dbo.T009SCTR TO usr_sisgera_api;
     GRANT INSERT, UPDATE, DELETE ON dbo.T009CAT TO usr_sisgera_api;
+    GRANT INSERT, UPDATE, DELETE ON dbo.T009CARE TO usr_sisgera_api;
+    GRANT INSERT, UPDATE, DELETE ON dbo.T009OREC TO usr_sisgera_api;
+    GRANT INSERT, UPDATE, DELETE ON dbo.T009PROD TO usr_sisgera_api;
+    GRANT INSERT, UPDATE, DELETE ON dbo.T009INDI TO usr_sisgera_api;
     PRINT N''Permissões de contratos concedidas em ' + @Banco + N''';
 END
 ELSE
@@ -180,6 +188,11 @@ GO
 
   REVOKE INSERT, UPDATE ON dbo.T009CTRT FROM usr_sisgera_api;
   REVOKE INSERT, UPDATE, DELETE ON dbo.T009PAGA FROM usr_sisgera_api;
+  REVOKE INSERT, UPDATE, DELETE ON dbo.T009SCTR FROM usr_sisgera_api;
   REVOKE INSERT, UPDATE, DELETE ON dbo.T009CAT FROM usr_sisgera_api;
+  REVOKE INSERT, UPDATE, DELETE ON dbo.T009CARE FROM usr_sisgera_api;
+  REVOKE INSERT, UPDATE, DELETE ON dbo.T009OREC FROM usr_sisgera_api;
+  REVOKE INSERT, UPDATE, DELETE ON dbo.T009PROD FROM usr_sisgera_api;
+  REVOKE INSERT, UPDATE, DELETE ON dbo.T009INDI FROM usr_sisgera_api;
   ALTER TABLE dbo.T009CTRT DROP COLUMN DT_EXC_API, NM_USU_EXC_API;
 */

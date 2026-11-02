@@ -667,6 +667,48 @@ public sealed class GestaoUsuariosEndpointsTests
 	[InlineData("Gestores")]
 	[InlineData("Corretores")]
 	[InlineData("Financeiro")]
+	public async Task Situacoes_IncluirEAlterarSoAdminEGestores_ExcluirSoAdmin(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		using var excluir = await cliente.DeleteAsync("/api/contratos/situacoes/50");
+		Assert.Equal(HttpStatusCode.Forbidden, excluir.StatusCode);
+
+		if (grupo != "Gestores")
+		{
+			using var incluir = await cliente.PostAsJsonAsync("/api/contratos/situacoes", new { descricao = "TESTE" });
+			using var alterar = await cliente.PutAsJsonAsync("/api/contratos/situacoes/50", new { descricao = "TESTE" });
+			Assert.Equal(HttpStatusCode.Forbidden, incluir.StatusCode);
+			Assert.Equal(HttpStatusCode.Forbidden, alterar.StatusCode);
+		}
+	}
+
+	[Theory]
+	[InlineData("Gestores")]
+	[InlineData("Corretores")]
+	[InlineData("Financeiro")]
+	public async Task GravarApoioDoContrato_SemSerAdministrador_DeveRetornar403Todas(string grupo)
+	{
+		using var cliente = Cliente(grupo);
+		cliente.DefaultRequestHeaders.Add("X-Sigera-Sistema", "2");
+
+		foreach (var (rota, chave) in new[] { ("carencias", "1"), ("origens-recurso", "1"), ("produtores", "1"), ("indices", "1/24") })
+		{
+			using var incluir = await cliente.PostAsJsonAsync($"/api/contratos/{rota}", new { descricao = "TESTE" });
+			using var alterar = await cliente.PutAsJsonAsync($"/api/contratos/{rota}/{chave}", new { descricao = "TESTE" });
+			using var excluir = await cliente.DeleteAsync($"/api/contratos/{rota}/{chave}");
+
+			Assert.Equal(HttpStatusCode.Forbidden, incluir.StatusCode);
+			Assert.Equal(HttpStatusCode.Forbidden, alterar.StatusCode);
+			Assert.Equal(HttpStatusCode.Forbidden, excluir.StatusCode);
+		}
+	}
+
+	[Theory]
+	[InlineData("Gestores")]
+	[InlineData("Corretores")]
+	[InlineData("Financeiro")]
 	public async Task GravarCategoriaDoContrato_SemSerAdministrador_DeveRetornar403(string grupo)
 	{
 		using var cliente = Cliente(grupo);

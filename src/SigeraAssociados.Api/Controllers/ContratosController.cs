@@ -26,15 +26,18 @@ public sealed class ContratosController : ControllerBase
 {
 	private readonly IContratosService _contratos;
 	private readonly ICategoriasContratoService _categorias;
+	private readonly ITabelasApoioContratoService _apoio;
 	private readonly ILogger<ContratosController> _logger;
 
 	public ContratosController(
 		IContratosService contratos,
 		ICategoriasContratoService categorias,
+		ITabelasApoioContratoService apoio,
 		ILogger<ContratosController> logger)
 	{
 		_contratos = contratos;
 		_categorias = categorias;
+		_apoio = apoio;
 		_logger = logger;
 	}
 
@@ -405,7 +408,10 @@ public sealed class ContratosController : ControllerBase
 
 	// ===================== Tabelas de apoio (consulta) =====================
 
-	/// <summary>Situações do contrato (T009SCTR).</summary>
+	/// <summary>
+	/// Situações do contrato (T009SCTR). Incluir e alterar: Administradores e
+	/// Gestores; excluir: só administradores.
+	/// </summary>
 	[HttpGet("situacoes")]
 	[ProducesResponseType(typeof(IReadOnlyList<ApoioContratoDto>), StatusCodes.Status200OK)]
 	public async Task<IActionResult> Situacoes(CancellationToken cancellationToken) =>
@@ -423,7 +429,7 @@ public sealed class ContratosController : ControllerBase
 	public async Task<IActionResult> OrigensRecurso(CancellationToken cancellationToken) =>
 		Ok(await _contratos.OrigensRecursoAsync(cancellationToken));
 
-	/// <summary>Produtores (T009PROD), de um corretor ou de todos.</summary>
+	/// <summary>Produtores (T009PROD), de um corretor ou de todos, com o corretor de cada um.</summary>
 	[HttpGet("produtores")]
 	[ProducesResponseType(typeof(IReadOnlyList<ApoioContratoDto>), StatusCodes.Status200OK)]
 	public async Task<IActionResult> Produtores([FromQuery] decimal? sqPesCorretor, CancellationToken cancellationToken) =>
@@ -436,6 +442,351 @@ public sealed class ContratosController : ControllerBase
 	[ProducesResponseType(typeof(IReadOnlyList<IndiceContratoDto>), StatusCodes.Status200OK)]
 	public async Task<IActionResult> Indices([FromQuery] decimal? cdCarencia, [FromQuery] decimal? quantidadeParcelas, CancellationToken cancellationToken) =>
 		Ok(await _contratos.IndicesAsync(cdCarencia, quantidadeParcelas, cancellationToken));
+
+	// ----- Situações: incluir e alterar (Administradores e Gestores), excluir (administradores) -----
+
+	/// <summary>Inclui uma situação do contrato. Administradores e Gestores.</summary>
+	/// <remarks>
+	/// `cdSituacao` omitido: MAX + 1 (1 a 99). `descricao` até 50.
+	///
+	///     POST /api/contratos/situacoes
+	///     { "descricao": "EM ANÁLISE" }
+	/// </remarks>
+	/// <response code="201">Incluída.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é Administrador nem Gestor.</response>
+	/// <response code="409">Código já existe.</response>
+	[HttpPost("situacoes")]
+	[Authorize(Roles = Grupos.PerfisSituacoesContrato)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(SituacaoContratoApoioDados), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> IncluirSituacao([FromBody] SituacaoContratoApoioDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.IncluirSituacaoAsync(dados, cancellationToken);
+		RegistrarApoio(resultado.Status, "Situações: inclusão");
+		return this.Converter(resultado, criado: true);
+	}
+
+	/// <summary>Altera a descrição de uma situação. Administradores e Gestores.</summary>
+	/// <remarks>O código não muda. Vale também para as situações fixas (2, 4, 5, 9, 10, 12 e 13).</remarks>
+	/// <response code="200">Alterada.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é Administrador nem Gestor.</response>
+	/// <response code="404">Não encontrada.</response>
+	[HttpPut("situacoes/{cdSituacao:decimal}")]
+	[Authorize(Roles = Grupos.PerfisSituacoesContrato)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(SituacaoContratoApoioDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	public async Task<IActionResult> AlterarSituacaoApoio(decimal cdSituacao, [FromBody] SituacaoContratoApoioDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.AlterarSituacaoAsync(cdSituacao, dados, cancellationToken);
+		RegistrarApoio(resultado.Status, "Situações: alteração");
+		return this.Converter(resultado);
+	}
+
+	/// <summary>Exclui uma situação. Somente administradores.</summary>
+	/// <remarks>
+	/// Recusada (409) para as situações que a API usa por código (2, 4, 5, 9,
+	/// 10, 12 e 13) e para as que tiverem contratos.
+	/// </remarks>
+	/// <response code="200">Excluída.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrada.</response>
+	/// <response code="409">Situação fixa ou em uso.</response>
+	[HttpDelete("situacoes/{cdSituacao:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[ProducesResponseType(typeof(SituacaoContratoApoioDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> ExcluirSituacaoApoio(decimal cdSituacao, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.ExcluirSituacaoAsync(cdSituacao, cancellationToken);
+		RegistrarApoio(resultado.Status, "Situações: exclusão");
+		return this.Converter(resultado);
+	}
+
+	// ----- Carências: gravação (somente administradores) -----
+
+	/// <summary>Inclui uma carência. Somente administradores.</summary>
+	/// <remarks>
+	/// `cdCarencia` omitido: MAX + 1 (1 a 9). `descricao` até 30.
+	///
+	///     POST /api/contratos/carencias
+	///     { "descricao": "SEM CARÊNCIA" }
+	/// </remarks>
+	/// <response code="201">Incluído.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="409">Código já existe.</response>
+	[HttpPost("carencias")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(CarenciaDados), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> IncluirCarencia([FromBody] CarenciaDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.IncluirCarenciaAsync(dados, cancellationToken);
+		RegistrarApoio(resultado.Status, "Carências: inclusão");
+		return this.Converter(resultado, criado: true);
+	}
+
+	/// <summary>Altera uma carência. Somente administradores.</summary>
+	/// <response code="200">Alterado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	/// <response code="409">Em uso (quando a mudança não é permitida).</response>
+	[HttpPut("carencias/{cdCarencia:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(CarenciaDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> AlterarCarencia(decimal cdCarencia, [FromBody] CarenciaDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.AlterarCarenciaAsync(cdCarencia, dados, cancellationToken);
+		RegistrarApoio(resultado.Status, "Carências: alteração");
+		return this.Converter(resultado);
+	}
+
+	/// <summary>Exclui uma carência. Somente administradores.</summary>
+	/// <remarks>Recusada (409) se houver contratos ou índices com a carência.</remarks>
+	/// <response code="200">Excluído.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	/// <response code="409">Em uso.</response>
+	[HttpDelete("carencias/{cdCarencia:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[ProducesResponseType(typeof(CarenciaDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> ExcluirCarencia(decimal cdCarencia, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.ExcluirCarenciaAsync(cdCarencia, cancellationToken);
+		RegistrarApoio(resultado.Status, "Carências: exclusão");
+		return this.Converter(resultado);
+	}
+
+	// ----- Origens do recurso: gravação (somente administradores) -----
+
+	/// <summary>Inclui uma origem do recurso. Somente administradores.</summary>
+	/// <remarks>
+	/// `cdOrigemRecurso` omitido: MAX + 1. `descricao` até 50; `tipo` (TP_ORI_REC) obrigatório, 1 caractere.
+	///
+	///     POST /api/contratos/origens-recurso
+	///     { "descricao": "RECURSO PRÓPRIO", "tipo": "P" }
+	/// </remarks>
+	/// <response code="201">Incluído.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="409">Código já existe.</response>
+	[HttpPost("origens-recurso")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(OrigemRecursoDados), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> IncluirOrigemRecurso([FromBody] OrigemRecursoDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.IncluirOrigemRecursoAsync(dados, cancellationToken);
+		RegistrarApoio(resultado.Status, "Origens do recurso: inclusão");
+		return this.Converter(resultado, criado: true);
+	}
+
+	/// <summary>Altera uma origem do recurso. Somente administradores.</summary>
+	/// <response code="200">Alterado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	/// <response code="409">Em uso (quando a mudança não é permitida).</response>
+	[HttpPut("origens-recurso/{cdOrigemRecurso:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(OrigemRecursoDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> AlterarOrigemRecurso(decimal cdOrigemRecurso, [FromBody] OrigemRecursoDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.AlterarOrigemRecursoAsync(cdOrigemRecurso, dados, cancellationToken);
+		RegistrarApoio(resultado.Status, "Origens do recurso: alteração");
+		return this.Converter(resultado);
+	}
+
+	/// <summary>Exclui uma origem do recurso. Somente administradores.</summary>
+	/// <remarks>Recusada (409) se houver contratos com a origem.</remarks>
+	/// <response code="200">Excluído.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	/// <response code="409">Em uso.</response>
+	[HttpDelete("origens-recurso/{cdOrigemRecurso:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[ProducesResponseType(typeof(OrigemRecursoDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> ExcluirOrigemRecurso(decimal cdOrigemRecurso, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.ExcluirOrigemRecursoAsync(cdOrigemRecurso, cancellationToken);
+		RegistrarApoio(resultado.Status, "Origens do recurso: exclusão");
+		return this.Converter(resultado);
+	}
+
+	// ----- Produtores: gravação (somente administradores) -----
+
+	/// <summary>Inclui um produtor. Somente administradores.</summary>
+	/// <remarks>
+	/// `sqProdutor` omitido: MAX + 1. `descricao` (nome) até 80; `sqPesCorretor` obrigatório (corretor cadastrado). O corretor de um produtor usado em contratos não pode mudar (409).
+	///
+	///     POST /api/contratos/produtores
+	///     { "descricao": "JOSE PRODUTOR", "sqPesCorretor": 678 }
+	/// </remarks>
+	/// <response code="201">Incluído.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="409">Código já existe.</response>
+	[HttpPost("produtores")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(ProdutorDados), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> IncluirProdutor([FromBody] ProdutorDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.IncluirProdutorAsync(dados, cancellationToken);
+		RegistrarApoio(resultado.Status, "Produtores: inclusão");
+		return this.Converter(resultado, criado: true);
+	}
+
+	/// <summary>Altera um produtor. Somente administradores.</summary>
+	/// <response code="200">Alterado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	/// <response code="409">Em uso (quando a mudança não é permitida).</response>
+	[HttpPut("produtores/{sqProdutor:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(ProdutorDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> AlterarProdutor(decimal sqProdutor, [FromBody] ProdutorDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.AlterarProdutorAsync(sqProdutor, dados, cancellationToken);
+		RegistrarApoio(resultado.Status, "Produtores: alteração");
+		return this.Converter(resultado);
+	}
+
+	/// <summary>Exclui um produtor. Somente administradores.</summary>
+	/// <remarks>Recusada (409) se houver contratos com o produtor.</remarks>
+	/// <response code="200">Excluído.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	/// <response code="409">Em uso.</response>
+	[HttpDelete("produtores/{sqProdutor:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[ProducesResponseType(typeof(ProdutorDados), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> ExcluirProdutor(decimal sqProdutor, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.ExcluirProdutorAsync(sqProdutor, cancellationToken);
+		RegistrarApoio(resultado.Status, "Produtores: exclusão");
+		return this.Converter(resultado);
+	}
+
+	// ----- Índices: gravação (somente administradores) -----
+
+	/// <summary>Inclui um índice. Somente administradores.</summary>
+	/// <remarks>
+	/// Chave: `cdCarencia` (cadastrada) + `quantidadeParcelas` (1 a 9999). `indice` maior que zero, até 9,9999 com 4 casas. A alteração muda só o índice; contratos já gravados mantêm a mensalidade deles.
+	///
+	///     POST /api/contratos/indices
+	///     { "cdCarencia": 1, "quantidadeParcelas": 24, "indice": 0.0471 }
+	/// </remarks>
+	/// <response code="201">Incluído.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="409">Código já existe.</response>
+	[HttpPost("indices")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(IndiceContratoDto), StatusCodes.Status201Created)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> IncluirIndice([FromBody] IndiceDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.IncluirIndiceAsync(dados, cancellationToken);
+		RegistrarApoio(resultado.Status, "Índices: inclusão");
+		return this.Converter(resultado, criado: true);
+	}
+
+	/// <summary>Altera um índice. Somente administradores.</summary>
+	/// <response code="200">Alterado.</response>
+	/// <response code="400">Dados inválidos.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	/// <response code="409">Em uso (quando a mudança não é permitida).</response>
+	[HttpPut("indices/{cdCarencia:decimal}/{quantidadeParcelas:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[Consumes("application/json")]
+	[ProducesResponseType(typeof(IndiceContratoDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> AlterarIndice(decimal cdCarencia, decimal quantidadeParcelas, [FromBody] IndiceDados dados, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.AlterarIndiceAsync(cdCarencia, quantidadeParcelas, dados, cancellationToken);
+		RegistrarApoio(resultado.Status, "Índices: alteração");
+		return this.Converter(resultado);
+	}
+
+	/// <summary>Exclui um índice. Somente administradores.</summary>
+	/// <remarks>Os contratos já gravados não são afetados (guardam o próprio índice).</remarks>
+	/// <response code="200">Excluído.</response>
+	/// <response code="403">Não é administrador.</response>
+	/// <response code="404">Não encontrado.</response>
+	/// <response code="409">Em uso.</response>
+	[HttpDelete("indices/{cdCarencia:decimal}/{quantidadeParcelas:decimal}")]
+	[Authorize(Roles = Grupos.PerfisAdministracao)]
+	[ProducesResponseType(typeof(IndiceContratoDto), StatusCodes.Status200OK)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+	[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+	public async Task<IActionResult> ExcluirIndice(decimal cdCarencia, decimal quantidadeParcelas, CancellationToken cancellationToken)
+	{
+		var resultado = await _apoio.ExcluirIndiceAsync(cdCarencia, quantidadeParcelas, cancellationToken);
+		RegistrarApoio(resultado.Status, "Índices: exclusão");
+		return this.Converter(resultado);
+	}
+
+	private void RegistrarApoio(StatusTabelaApoio status, string operacao)
+	{
+		if (status == StatusTabelaApoio.Sucesso)
+		{
+			_logger.LogInformation("Tabela de apoio do contrato, {Operacao}, por {Usuario}.", operacao, Login());
+		}
+	}
 
 	// ===================== Categorias (T009CAT) =====================
 

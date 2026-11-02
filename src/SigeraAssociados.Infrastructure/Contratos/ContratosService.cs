@@ -761,7 +761,11 @@ public sealed class ContratosService : IContratosService
 		ListarApoioAsync((db, emp) => db.Produtores.AsNoTracking()
 			.Where(p => p.CD_EMP == emp && (sqPesCorretor == null || p.SQ_PES_CRO == sqPesCorretor))
 			.OrderBy(p => p.NM_PRD)
-			.Select(p => new ApoioContratoDto(p.SQ_PRD, p.NM_PRD, null)), cancellationToken);
+			.Select(p => new ApoioContratoDto(p.SQ_PRD, p.NM_PRD, null)
+			{
+				SqPesCorretor = p.SQ_PES_CRO,
+				Corretor = db.Pessoas.Where(x => x.CD_EMP == p.CD_EMP && x.SQ_PES == p.SQ_PES_CRO).Select(x => x.NM_PES).FirstOrDefault()
+			}), cancellationToken);
 
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<IndiceContratoDto>> IndicesAsync(

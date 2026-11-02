@@ -91,6 +91,13 @@ public static class Grupos
 	];
 
 	/// <summary>
+	/// Perfis que incluem e alteram situações do contrato (T009SCTR).
+	/// Excluir: só PerfisAdministracao.
+	/// </summary>
+	public const string PerfisSituacoesContrato =
+		AdministradorLegado + "," + Administradores + "," + Gestores;
+
+	/// <summary>
 	/// Perfis que estornam o pagamento de parcela (manual ou automático).
 	/// </summary>
 	public const string PerfisEstornoParcela =

@@ -514,7 +514,14 @@ public sealed class ParcelaDto
 }
 
 /// <summary>Item de tabela de apoio do contrato.</summary>
-public sealed record ApoioContratoDto(decimal Codigo, string Descricao, string? Tipo = null);
+public sealed record ApoioContratoDto(decimal Codigo, string Descricao, string? Tipo = null)
+{
+	/// <summary>Só nos produtores: corretor do produtor.</summary>
+	public decimal? SqPesCorretor { get; init; }
+
+	/// <summary>Só nos produtores: nome do corretor.</summary>
+	public string? Corretor { get; init; }
+}
 
 /// <summary>Índice de T009INDI.</summary>
 public sealed record IndiceContratoDto(decimal CdCarencia, decimal QuantidadeParcelas, decimal Indice);

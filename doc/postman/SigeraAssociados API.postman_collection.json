@@ -7188,6 +7188,206 @@
               }
             }
           ]
+        },
+        {
+          "name": "18.20 - Incluir carência (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/carencias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "carencias"
+              ]
+            },
+            "description": "Código omitido: MAX + 1 (1 a 9). PUT/DELETE em /carencias/{cdCarencia}. Exclusão recusada com contratos ou índices.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"CARENCIA TESTE API\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.21 - Incluir índice (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/indices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "indices"
+              ]
+            },
+            "description": "Chave carência + quantidade de parcelas. PUT/DELETE em /indices/{cdCarencia}/{quantidadeParcelas}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cdCarencia\": 1,\n  \"quantidadeParcelas\": 24,\n  \"indice\": 0.0471\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.22 - Incluir produtor (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/produtores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "produtores"
+              ]
+            },
+            "description": "Nome até 80 e corretor cadastrado. PUT/DELETE em /produtores/{sqProdutor}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"PRODUTOR TESTE API\",\n  \"sqPesCorretor\": {{sqPesCorretor}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18.23 - Incluir origem do recurso (somente administradores)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Sigera-Sistema",
+                "value": "{{sistema}}",
+                "description": "Sistema: 1 = PROASP, 2 = SONASP, 3 = ABSP, 4 = GSP."
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/contratos/origens-recurso",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "contratos",
+                "origens-recurso"
+              ]
+            },
+            "description": "Descrição até 50, tipo de 1 caractere. PUT/DELETE em /origens-recurso/{cdOrigemRecurso}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"ORIGEM TESTE API\",\n  \"tipo\": \"P\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Resposta esperada (201)\", () => pm.expect(pm.response.code).to.be.oneOf([201]));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

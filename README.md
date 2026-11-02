@@ -314,8 +314,11 @@ Implementação: `Api/Erros/RespostasErro.cs` (formato e títulos), `Api/Erros/T
 | DELETE | `/api/contratos/{cdFil}/{sqCtr}` | Admin e Gestores (exclusão lógica) |
 | GET / POST | `/api/contratos/{cdFil}/{sqCtr}/parcelas` | Conforme acessos (vencimento, valor e baixa manual; contrato quitado trava as parcelas) |
 | PUT / DELETE | `/api/contratos/{cdFil}/{sqCtr}/parcelas/{numeroParcela}` | Conforme acessos; DELETE de parcela não paga: Admin e Gestores; de parcela paga: Admin e Financeiro |
+| POST / PUT | `/api/contratos/situacoes` (PUT com `/{cdSituacao}`) | Admin e Gestores (PUT só muda a descrição) |
+| DELETE | `/api/contratos/situacoes/{cdSituacao}` | Admin (recusado para 2, 4, 5, 9, 10, 12 e 13 e para situação usada por contrato) |
 | GET | `/api/contratos/situacoes`, `/carencias`, `/origens-recurso`, `/produtores?sqPesCorretor=`, `/indices?cdCarencia=&quantidadeParcelas=`, `/categorias?busca=` | Quem tem acesso ao sistema |
 | POST / PUT / DELETE | `/api/contratos/categorias` (PUT e DELETE com `/{cdCategoria}`) | Admin (DELETE recusado se houver contrato com a categoria) |
+| POST / PUT / DELETE | `/api/contratos/carencias`, `/origens-recurso`, `/produtores` (PUT e DELETE com `/{codigo}`), `/indices` (PUT e DELETE com `/{cdCarencia}/{quantidadeParcelas}`) | Admin (DELETE recusado se houver contrato usando; carência também com índices) |
 | GET / POST | `/api/associados/{sqPesCli}/orgaos` | Conforme acessos (vínculos do associado com órgãos) |
 | PUT / DELETE | `/api/associados/{sqPesCli}/orgaos/{sqOrg}` | Conforme acessos; DELETE só Admin e Gestores |
 | GET | `/api/cadastros/filiais`, `/filiais/{cdFil}`, `/situacoes`, `/tratamentos`, `/municipios?uf=&busca=` | Quem tem acesso ao sistema (`X-Sigera-Sistema`) |

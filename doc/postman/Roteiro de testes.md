@@ -134,6 +134,16 @@ Antes de começar:
 | [ ] | 18.13 | Incluir categoria como Gestor | Outro usuário | **403** |
 | [ ] | 18.14 | Excluir categoria usada por contrato | Categoria do 18.4 | **409** "há contratos com ela" |
 | [ ] | 18.4 | Categoria inexistente | `"cdCategoria": 999` (sem cadastro) | **400** "não está cadastrada (T009CAT)" |
+| [ ] | 18.2 | Incluir situação | Como gestor, `{ "descricao": "TESTE" }` em POST /api/contratos/situacoes | **201** |
+| [ ] | 18.2 | Excluir situação como gestor | DELETE /api/contratos/situacoes/{código} | **403** |
+| [ ] | 18.2 | Excluir situação fixa | Como administrador, DELETE /api/contratos/situacoes/9 | **409** "usada pela API" |
+| [ ] | 18.20 | Incluir carência | Como administrador, `{ "descricao": "TESTE" }` | **201**, código MAX + 1 |
+| [ ] | 18.21 | Incluir índice | `{ "cdCarencia": <do 18.20>, "quantidadeParcelas": 24, "indice": 0.0471 }` | **201**; de novo: **409** |
+| [ ] | 18.20 | Excluir carência com índice | Carência do 18.20 | **409** "há índices" |
+| [ ] | 18.22 | Incluir produtor | `{ "descricao": "PRODUTOR TESTE", "sqPesCorretor": {{sqPesCorretor}} }` | **201**, com o nome do corretor |
+| [ ] | 18.22 | Trocar o corretor de produtor usado | Produtor usado em contrato | **409** |
+| [ ] | 18.23 | Incluir origem do recurso | `{ "descricao": "TESTE", "tipo": "p" }` | **201**, tipo gravado "P" |
+| [ ] | 18.20 | Gravar apoio do contrato como Gestor | Outro usuário | **403** |
 | [ ] | 18.4 | Incluir contrato | Códigos reais de produto, convênio, forma, situação (18.2) e categoria | **201**, 12 parcelas de 280,50 (10/12/2026 a 10/11/2027); `cdFilContrato` e `sqCtr` salvos |
 | [ ] | 18.4 | 1ª parcela até a data do contrato | `"dataPrimeiraParcela"` = hoje | **400** |
 | [ ] | 18.4 | Situação quitado sem quitação | `"cdSituacao": 9` sem `dataQuitacao` | **400** |
